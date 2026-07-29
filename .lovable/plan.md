@@ -1,36 +1,20 @@
-## Situação atual
+## Adicionar ferramenta MCP `remove_contact`
 
-Lovable Cloud já está ativo. Autenticação Supabase, tabelas `profiles`, `emergency_contacts`, `trips`, `sos_events` com RLS já funcionam — persistência real e sincronização entre dispositivos já existem hoje. Falta apenas o envio automático de SMS aos contatos quando o SOS é acionado.
+### 1. Novo arquivo `src/lib/mcp/tools/remove_contact.ts`
+- `defineTool` com `name: "remove_contact"`, `title: "Remove emergency contact"`.
+- `inputSchema`: `id` (uuid) do contato.
+- `annotations`: `destructiveHint: true`, `idempotentHint: true`.
+- Handler:
+  - Verifica `ctx.isAuthenticated()`.
+  - Cria client Supabase com bearer do usuário (RLS aplica).
+  - `DELETE FROM emergency_contacts WHERE id = :id AND user_id = ctx.getUserId()` com `.select().maybeSingle()`.
+  - Retorna `{ removed: true, contact }` quando apagou, `{ removed: false, id }` quando id não pertence ao usuário / já removido.
 
-## O que vou implementar
+### 2. Registrar em `src/lib/mcp/index.ts`
+Adicionar import e incluir no array `tools`.
 
-### 1. Conector GatewayAPI
-Conectar o GatewayAPI ao projeto (você escolhe a conexão / cria uma nova no card que abrir). Ele expõe `GATEWAYAPI_API_KEY` no servidor e é chamado via gateway Lovable, sem lidar com tokens direto.
+### 3. Atualização automática da lista no app
+O hook `useContacts` já relê a tabela a cada montagem/refetch. Para refletir mudanças feitas via MCP em tempo real, ativar **Realtime** na tabela `emergency_contacts` (migração `ALTER PUBLICATION supabase_realtime ADD TABLE public.emergency_contacts`) e assinar `postgres_changes` (`event: '*'`) no `useContacts` — ao receber DELETE/INSERT/UPDATE do próprio `user_id`, dispara refetch. Cleanup do canal no unmount.
 
-### 2. Server function `trigger_sos`
-Nova função em `src/lib/sos.functions.ts` protegida por `requireSupabaseAuth`:
-- Recebe `{ latitude, longitude, address?, note? }` do cliente.
-- Insere linha em `sos_events` como o usuário logado (RLS).
-- Lê o perfil (nome, telefone) e todos os `emergency_contacts` do usuário.
-- Monta mensagem curta:
-  `SOS Moto Anjo — {nome} precisa de ajuda. Local: https://maps.google.com/?q={lat},{lng}. {nota opcional}`
-- Envia SMS via `POST /mobile/single` para cada contato (loop com `Promise.allSettled`, sender `MotoAnjo`, reference = `sos_event_id`).
-- Retorna `{ eventId, sent: n, failed: [{contactId, reason}] }`.
-- Falhas por contato não abortam o SOS — o evento já foi registrado.
-
-### 3. Tela SOS
-`src/routes/sos.tsx` passa a chamar `trigger_sos` no fim do hold de 3s (via `useServerFn`), mostra estado "Enviando alerta…", depois confirma quantos contatos foram notificados e lista falhas se houver. Botão de compartilhar link manual permanece como fallback.
-
-### 4. Histórico
-`useHistory` já lê `sos_events` — nenhuma mudança necessária, os novos eventos aparecem automaticamente.
-
-## Não incluso (fora do escopo desta mensagem)
-- E-mail, WhatsApp, chamadas.
-- Rastreamento em tempo real depois do SOS (só a coordenada do momento do acionamento).
-- Cancelamento/atualização de status do evento (fica para próximo passo, se quiser).
-
-## Detalhes técnicos
-- Todo o envio ocorre no servidor via `createServerFn` — `LOVABLE_API_KEY` e `GATEWAYAPI_API_KEY` nunca vão ao browser.
-- Números dos contatos serão normalizados para dígitos-only com código de país (E.164 sem `+`) antes de enviar; contatos sem telefone válido são pulados e reportados como falha.
-- Sender alfanumérico `MotoAnjo` funciona na maioria dos países; alguns (ex.: EUA) exigem número — nesses casos o SMS pode falhar e aparecerá na lista de falhas.
-- Custo do SMS é cobrado na conta GatewayAPI conectada.
+### 4. Validar manifest
+Rodar `app_mcp_server--extract_mcp_manifest` para regenerar `.lovable/mcp/manifest.json` com a nova ferramenta.
