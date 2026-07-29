@@ -7,6 +7,7 @@ import { Header } from "@/components/Header";
 import { GoldButton } from "@/components/GoldButton";
 import { OutlineButton } from "@/components/OutlineButton";
 import { SOSFab } from "@/components/SOSFab";
+import { LocationPermissionGate } from "@/components/LocationPermissionGate";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useHistory } from "@/hooks/useHistory";
 import { useServerFn } from "@tanstack/react-start";
@@ -46,11 +47,12 @@ function MapPage() {
   const [selected, setSelected] = useState<POI | null>(null);
   const [pois, setPois] = useState<POI[]>([]);
   const [loadingPois, setLoadingPois] = useState(false);
+  const [permissionGranted, setPermissionGranted] = useState(false);
   const fetchPOIs = useServerFn(searchPOIs);
 
   useEffect(() => {
-    void capture();
-  }, [capture]);
+    if (permissionGranted) void capture();
+  }, [capture, permissionGranted]);
 
   useEffect(() => {
     if (!position) return;
@@ -85,6 +87,9 @@ function MapPage() {
     <AppShell>
       <Header title="Mapa" subtitle="Onde você está" showBell />
 
+      {!permissionGranted ? (
+        <LocationPermissionGate onGranted={() => setPermissionGranted(true)} />
+      ) : (
       <div className="px-5 pt-4">
         <div className="relative aspect-[4/5] overflow-hidden rounded-3xl glass-card">
           <ClientOnly fallback={
@@ -159,6 +164,7 @@ function MapPage() {
           </GoldButton>
         </div>
       </div>
+      )}
 
       <SOSFab />
     </AppShell>
