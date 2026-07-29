@@ -199,8 +199,8 @@ export default function RealMap({
   }
 
   return (
-    <div className={`relative ${className ?? ""}`}>
-      <div ref={containerRef} className="absolute inset-0 rounded-3xl" />
+    <div className={`relative h-full w-full ${className ?? ""}`}>
+      <div ref={containerRef} className="absolute inset-0 h-full w-full rounded-3xl" />
       {state !== "ready" && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-3xl bg-black/80 text-xs uppercase tracking-widest text-gold">
           {state === "error" ? "Erro ao carregar mapa" : "Carregando mapa..."}
