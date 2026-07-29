@@ -179,6 +179,9 @@ function mapAuthError(msg: string): string {
     return `Senha muito curta (mínimo ${n} caracteres).`;
   }
   if (low.includes("weak password")) return "Senha muito fraca. Use letras, números e símbolos.";
+  if (low.includes("known to be weak") || low.includes("pwned") || low.includes("compromised")) {
+    return "Essa senha apareceu em vazamentos conhecidos. Escolha outra (evite senhas comuns como 123456, senha, qwerty).";
+  }
   if (low.includes("password")) return msg;
   return msg;
 }
