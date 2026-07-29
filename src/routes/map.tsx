@@ -117,6 +117,15 @@ function MapPage() {
             </Suspense>
           </ClientOnly>
 
+          {position && follow && (
+            <div className="moto-user-location-marker left-1/2 top-1/2" aria-label="Sua localização atual">
+              <span className="moto-user-location-marker__pulse" />
+              <span className="moto-user-location-marker__pin">
+                <span />
+              </span>
+            </div>
+          )}
+
           {selected && (
             <div className="absolute inset-x-3 bottom-3 rounded-2xl glass-card p-3 animate-fade-up">
               <div className="flex items-start justify-between gap-3">
