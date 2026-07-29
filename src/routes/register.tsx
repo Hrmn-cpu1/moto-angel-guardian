@@ -229,3 +229,35 @@ function GoogleG() {
     </svg>
   );
 }
+
+function PasswordStrength({
+  checks,
+  score,
+  total,
+}: {
+  checks: { key: string; label: string; ok: boolean }[];
+  score: number;
+  total: number;
+}) {
+  const pct = (score / total) * 100;
+  const label = score <= 2 ? "Fraca" : score <= 4 ? "Média" : score === total ? "Forte" : "Boa";
+  const color = score <= 2 ? "bg-emergency" : score < total ? "bg-gold/70" : "bg-gold";
+  return (
+    <div className="-mt-1 space-y-2">
+      <div className="flex items-center gap-2">
+        <div className="h-1 flex-1 overflow-hidden rounded-full bg-border/50">
+          <div className={`h-full ${color} transition-all duration-300`} style={{ width: `${pct}%` }} />
+        </div>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{label}</span>
+      </div>
+      <ul className="grid grid-cols-2 gap-x-3 gap-y-1">
+        {checks.map((c) => (
+          <li key={c.key} className={`flex items-center gap-1.5 text-[10px] ${c.ok ? "text-gold" : "text-muted-foreground"}`}>
+            {c.ok ? <Check size={11} /> : <X size={11} className="opacity-60" />}
+            <span>{c.label}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
