@@ -21,6 +21,7 @@ import { OutlineButton } from "@/components/OutlineButton";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { useAuth } from "@/hooks/useAuth";
 import type { User } from "@/types";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -128,11 +129,11 @@ function ProfilePage() {
           <Row icon={UserIcon} label="Dados pessoais" onClick={startEdit} />
           <Row icon={Bike} label="Minha motocicleta" onClick={startEdit} />
           <Row icon={ContactIcon} label="Contatos de confiança" onClick={() => navigate({ to: "/contacts" })} />
-          <Row icon={Lock} label="Privacidade" onClick={() => alert("Configurações de privacidade em breve.")} />
-          <Row icon={Shield} label="Permissões" onClick={() => alert("Gerenciar permissões do sistema.")} />
+          <Row icon={Lock} label="Privacidade" onClick={() => toast("Configurações de privacidade em breve.")} />
+          <Row icon={Shield} label="Permissões" onClick={() => toast("Gerenciar permissões do sistema.")} />
           <Row icon={FileText} label="Termos de Uso" onClick={() => navigate({ to: "/terms" })} />
           <Row icon={ShieldCheck} label="Política de Privacidade" onClick={() => navigate({ to: "/privacy" })} />
-          <Row icon={InfoIcon} label="Sobre o Moto Anjo" onClick={() => alert("Moto Anjo v1.0 — MVP demonstração.")} />
+          <Row icon={InfoIcon} label="Sobre o Moto Anjo" onClick={() => toast("Moto Anjo v1.0 — MVP demonstração.")} />
         </nav>
 
         <OutlineButton onClick={doLogout} className="!border-emergency/40 !text-emergency hover:!bg-emergency/10">
