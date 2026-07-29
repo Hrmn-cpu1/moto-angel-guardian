@@ -284,6 +284,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_activity: {
+        Args: { _days?: number }
+        Returns: {
+          day: string
+          new_users: number
+          posts: number
+          sos: number
+          trips: number
+        }[]
+      }
       admin_stats: {
         Args: never
         Returns: {
