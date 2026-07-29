@@ -54,7 +54,10 @@ function Login() {
   const googleSignIn = async () => {
     setError(null);
     try {
-      await loginWithGoogle(next);
+      const result = await loginWithGoogle(next);
+      // Full-page redirect flow: browser navigates away, nothing to do here.
+      if (result?.redirected) return;
+      goNext();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha no login com Google.");
     }
