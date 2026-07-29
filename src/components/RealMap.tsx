@@ -147,7 +147,7 @@ export default function RealMap({
   // Update user marker + recenter when center changes
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !center) return;
+    if (state !== "ready" || !map || !center) return;
     const g = (window as unknown as { google: typeof google }).google;
     if (!userMarkerRef.current) {
       userMarkerRef.current = new g.maps.Marker({
@@ -164,12 +164,12 @@ export default function RealMap({
       userMarkerRef.current.setPosition(center);
     }
     map.panTo(center);
-  }, [center]);
+  }, [center, state]);
 
   // Sync POI markers
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (state !== "ready" || !map) return;
     const g = (window as unknown as { google: typeof google }).google;
     poiMarkersRef.current.forEach((m) => m.setMap(null));
     poiMarkersRef.current = pois.map((p) => {
@@ -188,7 +188,7 @@ export default function RealMap({
       if (onPoiSelect) m.addListener("click", () => onPoiSelect(p));
       return m;
     });
-  }, [pois, onPoiSelect]);
+  }, [pois, onPoiSelect, state]);
 
   if (!apiKey) {
     return (
