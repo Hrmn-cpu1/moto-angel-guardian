@@ -4,10 +4,12 @@ import {
   Bike,
   ChevronRight,
   Contact as ContactIcon,
+  FileText,
   Info as InfoIcon,
   Lock,
   LogOut,
   Shield,
+  ShieldCheck,
   User as UserIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -128,6 +130,8 @@ function ProfilePage() {
           <Row icon={ContactIcon} label="Contatos de confiança" onClick={() => navigate({ to: "/contacts" })} />
           <Row icon={Lock} label="Privacidade" onClick={() => alert("Configurações de privacidade em breve.")} />
           <Row icon={Shield} label="Permissões" onClick={() => alert("Gerenciar permissões do sistema.")} />
+          <Row icon={FileText} label="Termos de Uso" onClick={() => navigate({ to: "/terms" })} />
+          <Row icon={ShieldCheck} label="Política de Privacidade" onClick={() => navigate({ to: "/privacy" })} />
           <Row icon={InfoIcon} label="Sobre o Moto Anjo" onClick={() => alert("Moto Anjo v1.0 — MVP demonstração.")} />
         </nav>
 

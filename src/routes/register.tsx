@@ -97,8 +97,15 @@ function Register() {
             className="mt-0.5 h-4 w-4 accent-[color:oklch(0.78_0.13_84)]"
           />
           <span>
-            Aceito os <span className="text-gold">termos de uso</span> e a{" "}
-            <span className="text-gold">política de privacidade</span>.
+            Li e aceito os{" "}
+            <Link to="/terms" className="font-semibold text-gold underline">
+              Termos de Uso
+            </Link>{" "}
+            e a{" "}
+            <Link to="/privacy" className="font-semibold text-gold underline">
+              Política de Privacidade
+            </Link>
+            .
           </span>
         </label>
 
@@ -110,7 +117,7 @@ function Register() {
         )}
 
         <div className="pt-3">
-          <GoldButton size="lg" type="submit" disabled={loading}>
+          <GoldButton size="lg" type="submit" disabled={loading || !accepted}>
             {loading ? "Criando..." : "Criar conta"}
           </GoldButton>
         </div>

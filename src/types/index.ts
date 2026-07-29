@@ -11,6 +11,10 @@ export interface User {
   emergencyPhone: string;
   avatar?: string;
   createdAt: string;
+  /** ISO date/time when user accepted the current Terms of Use. */
+  termsAcceptedAt?: string;
+  /** Version of the Terms accepted by the user. */
+  termsVersion?: string;
 }
 
 export interface Contact {

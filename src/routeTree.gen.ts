@@ -11,9 +11,11 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as TripRouteImport } from './routes/trip'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SosRouteImport } from './routes/sos'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as MapRouteImport } from './routes/map'
 import { Route as LoginRouteImport } from './routes/login'
@@ -33,6 +35,11 @@ const TripRoute = TripRouteImport.update({
   path: '/trip',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SosRoute = SosRouteImport.update({
   id: '/sos',
   path: '/sos',
@@ -46,6 +53,11 @@ const RegisterRoute = RegisterRouteImport.update({
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotificationsRoute = NotificationsRouteImport.update({
@@ -98,9 +110,11 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/notifications': typeof NotificationsRoute
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/sos': typeof SosRoute
+  '/terms': typeof TermsRoute
   '/trip': typeof TripRoute
   '/welcome': typeof WelcomeRoute
 }
@@ -113,9 +127,11 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/notifications': typeof NotificationsRoute
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/sos': typeof SosRoute
+  '/terms': typeof TermsRoute
   '/trip': typeof TripRoute
   '/welcome': typeof WelcomeRoute
 }
@@ -129,9 +145,11 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/notifications': typeof NotificationsRoute
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/sos': typeof SosRoute
+  '/terms': typeof TermsRoute
   '/trip': typeof TripRoute
   '/welcome': typeof WelcomeRoute
 }
@@ -146,9 +164,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/map'
     | '/notifications'
+    | '/privacy'
     | '/profile'
     | '/register'
     | '/sos'
+    | '/terms'
     | '/trip'
     | '/welcome'
   fileRoutesByTo: FileRoutesByTo
@@ -161,9 +181,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/map'
     | '/notifications'
+    | '/privacy'
     | '/profile'
     | '/register'
     | '/sos'
+    | '/terms'
     | '/trip'
     | '/welcome'
   id:
@@ -176,9 +198,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/map'
     | '/notifications'
+    | '/privacy'
     | '/profile'
     | '/register'
     | '/sos'
+    | '/terms'
     | '/trip'
     | '/welcome'
   fileRoutesById: FileRoutesById
@@ -192,9 +216,11 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MapRoute: typeof MapRoute
   NotificationsRoute: typeof NotificationsRoute
+  PrivacyRoute: typeof PrivacyRoute
   ProfileRoute: typeof ProfileRoute
   RegisterRoute: typeof RegisterRoute
   SosRoute: typeof SosRoute
+  TermsRoute: typeof TermsRoute
   TripRoute: typeof TripRoute
   WelcomeRoute: typeof WelcomeRoute
 }
@@ -213,6 +239,13 @@ declare module '@tanstack/react-router' {
       path: '/trip'
       fullPath: '/trip'
       preLoaderRoute: typeof TripRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sos': {
@@ -234,6 +267,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notifications': {
@@ -304,9 +344,11 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MapRoute: MapRoute,
   NotificationsRoute: NotificationsRoute,
+  PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRoute,
   RegisterRoute: RegisterRoute,
   SosRoute: SosRoute,
+  TermsRoute: TermsRoute,
   TripRoute: TripRoute,
   WelcomeRoute: WelcomeRoute,
 }
