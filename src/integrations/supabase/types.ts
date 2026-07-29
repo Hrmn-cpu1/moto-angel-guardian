@@ -14,7 +14,159 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      emergency_contacts: {
+        Row: {
+          created_at: string
+          id: string
+          is_primary: boolean
+          name: string
+          phone: string
+          relation: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          name: string
+          phone: string
+          relation?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          name?: string
+          phone?: string
+          relation?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bike_model: string
+          blood_type: string
+          created_at: string
+          email: string
+          emergency_contact: string
+          emergency_phone: string
+          id: string
+          name: string
+          phone: string
+          plate: string
+          terms_accepted_at: string | null
+          terms_version: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bike_model?: string
+          blood_type?: string
+          created_at?: string
+          email?: string
+          emergency_contact?: string
+          emergency_phone?: string
+          id: string
+          name?: string
+          phone?: string
+          plate?: string
+          terms_accepted_at?: string | null
+          terms_version?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bike_model?: string
+          blood_type?: string
+          created_at?: string
+          email?: string
+          emergency_contact?: string
+          emergency_phone?: string
+          id?: string
+          name?: string
+          phone?: string
+          plate?: string
+          terms_accepted_at?: string | null
+          terms_version?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sos_events: {
+        Row: {
+          address: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          note: string | null
+          status: string
+          triggered_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          note?: string | null
+          status?: string
+          triggered_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          note?: string | null
+          status?: string
+          triggered_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      trips: {
+        Row: {
+          avg_speed: number
+          companion: string | null
+          created_at: string
+          distance_km: number
+          duration_seconds: number
+          ended_at: string
+          id: string
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          avg_speed?: number
+          companion?: string | null
+          created_at?: string
+          distance_km?: number
+          duration_seconds?: number
+          ended_at: string
+          id?: string
+          started_at: string
+          user_id: string
+        }
+        Update: {
+          avg_speed?: number
+          companion?: string | null
+          created_at?: string
+          distance_km?: number
+          duration_seconds?: number
+          ended_at?: string
+          id?: string
+          started_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
