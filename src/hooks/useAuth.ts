@@ -173,6 +173,12 @@ function mapAuthError(msg: string): string {
   const low = msg.toLowerCase();
   if (low.includes("invalid login")) return "E-mail ou senha inválidos.";
   if (low.includes("already registered") || low.includes("user already")) return "Já existe uma conta com este e-mail.";
-  if (low.includes("password")) return "Senha inválida (mínimo 6 caracteres).";
+  if (low.includes("password should be at least")) {
+    const m = msg.match(/at least (\d+)/i);
+    const n = m ? m[1] : "8";
+    return `Senha muito curta (mínimo ${n} caracteres).`;
+  }
+  if (low.includes("weak password")) return "Senha muito fraca. Use letras, números e símbolos.";
+  if (low.includes("password")) return msg;
   return msg;
 }
