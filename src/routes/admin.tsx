@@ -220,3 +220,29 @@ function StatCard({
     </div>
   );
 }
+
+const tooltipStyle = {
+  background: "rgba(17,17,17,0.95)",
+  border: "1px solid rgba(212,175,55,0.25)",
+  borderRadius: 12,
+  fontSize: 11,
+  color: "#F5F5F5",
+} as const;
+
+function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="glass-card rounded-2xl p-4">
+      <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.28em] text-gold">{title}</p>
+      {children}
+    </div>
+  );
+}
+
+function LegendDot({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="h-2 w-2 rounded-full" style={{ background: color }} />
+      {label}
+    </span>
+  );
+}
