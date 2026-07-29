@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as TripRouteImport } from './routes/trip'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SosRouteImport } from './routes/sos'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -31,6 +32,11 @@ const WelcomeRoute = WelcomeRouteImport.update({
 const TripRoute = TripRouteImport.update({
   id: '/trip',
   path: '/trip',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SosRoute = SosRouteImport.update({
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/sos': typeof SosRoute
+  '/terms': typeof TermsRoute
   '/trip': typeof TripRoute
   '/welcome': typeof WelcomeRoute
 }
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/sos': typeof SosRoute
+  '/terms': typeof TermsRoute
   '/trip': typeof TripRoute
   '/welcome': typeof WelcomeRoute
 }
@@ -132,6 +140,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/sos': typeof SosRoute
+  '/terms': typeof TermsRoute
   '/trip': typeof TripRoute
   '/welcome': typeof WelcomeRoute
 }
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/register'
     | '/sos'
+    | '/terms'
     | '/trip'
     | '/welcome'
   fileRoutesByTo: FileRoutesByTo
@@ -164,6 +174,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/register'
     | '/sos'
+    | '/terms'
     | '/trip'
     | '/welcome'
   id:
@@ -179,6 +190,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/register'
     | '/sos'
+    | '/terms'
     | '/trip'
     | '/welcome'
   fileRoutesById: FileRoutesById
@@ -195,6 +207,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   RegisterRoute: typeof RegisterRoute
   SosRoute: typeof SosRoute
+  TermsRoute: typeof TermsRoute
   TripRoute: typeof TripRoute
   WelcomeRoute: typeof WelcomeRoute
 }
@@ -213,6 +226,13 @@ declare module '@tanstack/react-router' {
       path: '/trip'
       fullPath: '/trip'
       preLoaderRoute: typeof TripRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sos': {
@@ -307,6 +327,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   RegisterRoute: RegisterRoute,
   SosRoute: SosRoute,
+  TermsRoute: TermsRoute,
   TripRoute: TripRoute,
   WelcomeRoute: WelcomeRoute,
 }
