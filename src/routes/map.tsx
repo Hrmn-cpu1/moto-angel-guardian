@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { ClientOnly } from "@tanstack/react-router";
 import { Crosshair, Share2, Navigation, MapPin, Fuel, Wrench, Cross, Shield } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Header } from "@/components/Header";
@@ -8,6 +9,10 @@ import { OutlineButton } from "@/components/OutlineButton";
 import { SOSFab } from "@/components/SOSFab";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useHistory } from "@/hooks/useHistory";
+import { useServerFn } from "@tanstack/react-start";
+import { searchPOIs, type POI } from "@/lib/pois.functions";
+
+const RealMap = lazy(() => import("@/components/RealMap"));
 
 export const Route = createFileRoute("/map")({
   head: () => ({
@@ -21,15 +26,6 @@ export const Route = createFileRoute("/map")({
   component: MapPage,
 });
 
-type POI = { id: string; label: string; type: "hospital" | "fuel" | "shop" | "anjo"; x: number; y: number };
-const POIS: POI[] = [
-  { id: "1", label: "Hospital Central", type: "hospital", x: 30, y: 32 },
-  { id: "2", label: "Posto Ipiranga", type: "fuel", x: 65, y: 48 },
-  { id: "3", label: "Oficina do Zé", type: "shop", x: 22, y: 70 },
-  { id: "4", label: "Ponto Moto Anjo", type: "anjo", x: 75, y: 22 },
-  { id: "5", label: "Posto Shell", type: "fuel", x: 48, y: 78 },
-];
-
 const iconFor = {
   hospital: Cross,
   fuel: Fuel,
@@ -37,14 +33,33 @@ const iconFor = {
   anjo: Shield,
 };
 
+const labelFor: Record<POI["type"], string> = {
+  hospital: "Hospital",
+  fuel: "Combustível",
+  shop: "Oficina",
+  anjo: "Ponto Moto Anjo",
+};
+
 function MapPage() {
   const { position, capture, share } = useGeolocation();
   const { add } = useHistory();
   const [selected, setSelected] = useState<POI | null>(null);
+  const [pois, setPois] = useState<POI[]>([]);
+  const [loadingPois, setLoadingPois] = useState(false);
+  const fetchPOIs = useServerFn(searchPOIs);
 
   useEffect(() => {
-    capture();
+    void capture();
   }, [capture]);
+
+  useEffect(() => {
+    if (!position) return;
+    setLoadingPois(true);
+    fetchPOIs({ data: { lat: position.lat, lng: position.lng, radius: 3000 } })
+      .then((r) => setPois(r.pois))
+      .catch((e) => console.error(e))
+      .finally(() => setLoadingPois(false));
+  }, [position, fetchPOIs]);
 
   const doShare = async () => {
     if (!position) return;
@@ -57,77 +72,66 @@ function MapPage() {
     });
   };
 
+  const openRoute = (target?: POI) => {
+    if (!position) return;
+    const dest = target ? `${target.lat},${target.lng}` : "";
+    const url = target
+      ? `https://www.google.com/maps/dir/?api=1&origin=${position.lat},${position.lng}&destination=${dest}`
+      : `https://www.google.com/maps?q=${position.lat},${position.lng}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <AppShell>
       <Header title="Mapa" subtitle="Onde você está" showBell />
 
       <div className="px-5 pt-4">
         <div className="relative aspect-[4/5] overflow-hidden rounded-3xl glass-card">
-          {/* Stylized map background */}
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "radial-gradient(circle at 50% 50%, oklch(0.14 0 0), oklch(0.06 0 0))",
-            }}
-          />
-          <svg className="absolute inset-0 h-full w-full opacity-40" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <defs>
-              <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
-                <path d="M 10 0 L 0 0 0 10" fill="none" stroke="oklch(0.78 0.13 84 / 0.25)" strokeWidth="0.15" />
-              </pattern>
-            </defs>
-            <rect width="100" height="100" fill="url(#grid)" />
-            <path d="M 10 80 Q 40 60 55 45 T 90 20" stroke="oklch(0.78 0.13 84 / 0.5)" strokeWidth="0.6" fill="none" />
-            <path d="M 5 40 Q 30 55 60 55 T 95 65" stroke="oklch(0.78 0.13 84 / 0.3)" strokeWidth="0.4" fill="none" />
-          </svg>
-
-          {/* You */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-            <div className="relative flex items-center justify-center">
-              <div className="absolute h-16 w-16 animate-ping rounded-full bg-gold/30" />
-              <div className="relative h-4 w-4 rounded-full gold-gradient shadow-[0_0_20px_oklch(0.78_0.13_84/0.8)]" />
+          <ClientOnly fallback={
+            <div className="absolute inset-0 flex items-center justify-center text-xs uppercase tracking-widest text-gold">
+              Preparando mapa...
             </div>
-          </div>
-
-          {POIS.map((p) => {
-            const Icon = iconFor[p.type];
-            const active = selected?.id === p.id;
-            return (
-              <button
-                key={p.id}
-                onClick={() => setSelected(p)}
-                className="absolute -translate-x-1/2 -translate-y-1/2"
-                style={{ left: `${p.x}%`, top: `${p.y}%` }}
-                aria-label={p.label}
-              >
-                <div
-                  className={`flex h-9 w-9 items-center justify-center rounded-full border transition ${
-                    active
-                      ? "gold-gradient border-white/40 text-black scale-110"
-                      : p.type === "hospital"
-                        ? "border-emergency/50 bg-emergency/20 text-emergency"
-                        : "border-gold/40 bg-black/70 text-gold"
-                  }`}
-                >
-                  <Icon size={14} />
-                </div>
-              </button>
-            );
-          })}
+          }>
+            <Suspense fallback={
+              <div className="absolute inset-0 flex items-center justify-center text-xs uppercase tracking-widest text-gold">
+                Carregando mapa...
+              </div>
+            }>
+              <RealMap
+                center={position ? { lat: position.lat, lng: position.lng } : null}
+                pois={pois}
+                onPoiSelect={setSelected}
+                className="absolute inset-0"
+              />
+            </Suspense>
+          </ClientOnly>
 
           {selected && (
-            <div className="absolute inset-x-3 bottom-3 rounded-xl glass-card p-3 animate-fade-up">
-              <p className="text-[10px] uppercase tracking-widest text-gold">
-                {selected.type === "hospital"
-                  ? "Hospital"
-                  : selected.type === "fuel"
-                    ? "Combustível"
-                    : selected.type === "shop"
-                      ? "Oficina"
-                      : "Ponto Moto Anjo"}
-              </p>
-              <p className="mt-0.5 text-sm font-semibold text-foreground">{selected.label}</p>
+            <div className="absolute inset-x-3 bottom-3 rounded-2xl glass-card p-3 animate-fade-up">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-gold">
+                    {(() => { const Ic = iconFor[selected.type]; return <Ic size={12} />; })()}
+                    {labelFor[selected.type]}
+                  </p>
+                  <p className="mt-0.5 truncate text-sm font-semibold text-foreground">{selected.name}</p>
+                  {selected.address && (
+                    <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{selected.address}</p>
+                  )}
+                </div>
+                <button
+                  onClick={() => openRoute(selected)}
+                  className="flex items-center gap-1 rounded-full gold-gradient px-3 py-1.5 text-[11px] font-semibold text-black"
+                >
+                  <Navigation size={12} /> Rota
+                </button>
+              </div>
+            </div>
+          )}
+
+          {loadingPois && !selected && (
+            <div className="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-[10px] uppercase tracking-widest text-gold">
+              Buscando pontos...
             </div>
           )}
         </div>
@@ -150,8 +154,8 @@ function MapPage() {
               <Share2 size={14} /> Compartilhar
             </OutlineButton>
           </div>
-          <GoldButton size="md" onClick={() => alert("Rota planejada. Boa viagem!")}>
-            <Navigation size={14} /> Iniciar rota
+          <GoldButton size="md" onClick={() => openRoute()}>
+            <Navigation size={14} /> Abrir no Google Maps
           </GoldButton>
         </div>
       </div>
