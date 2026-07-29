@@ -52,11 +52,12 @@ export function useContacts() {
 
   const update = useCallback(
     async (id: string, patch: Partial<Contact>) => {
-      const dbPatch: Record<string, unknown> = {};
-      if (patch.name !== undefined) dbPatch.name = patch.name;
-      if (patch.phone !== undefined) dbPatch.phone = patch.phone;
-      if (patch.relation !== undefined) dbPatch.relation = patch.relation;
-      if (patch.isPrimary !== undefined) dbPatch.is_primary = patch.isPrimary;
+      const dbPatch = {
+        ...(patch.name !== undefined && { name: patch.name }),
+        ...(patch.phone !== undefined && { phone: patch.phone }),
+        ...(patch.relation !== undefined && { relation: patch.relation }),
+        ...(patch.isPrimary !== undefined && { is_primary: patch.isPrimary }),
+      };
       await supabase.from("emergency_contacts").update(dbPatch).eq("id", id);
       await reload();
     },
