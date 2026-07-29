@@ -239,6 +239,64 @@
   }
 }
 
+@keyframes moto-user-location-pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(0.45);
+    opacity: 0.85;
+  }
+  70% {
+    transform: translate(-50%, -50%) scale(1.85);
+    opacity: 0;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.85);
+    opacity: 0;
+  }
+}
+
+.moto-user-location-marker {
+  position: absolute;
+  z-index: 100000;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.moto-user-location-marker__pulse {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 9999px;
+  background: oklch(0.78 0.13 84 / 0.24);
+  border: 1px solid oklch(0.88 0.11 88 / 0.5);
+  animation: moto-user-location-pulse 1.8s ease-out infinite;
+}
+
+.moto-user-location-marker__pin {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 9999px;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(135deg, oklch(0.88 0.11 88), oklch(0.78 0.13 84));
+  border: 3px solid oklch(0.97 0.005 90);
+  box-shadow:
+    0 0 0 3px oklch(0.06 0 0 / 0.85),
+    0 0 24px oklch(0.78 0.13 84 / 0.75);
+}
+
+.moto-user-location-marker__pin span {
+  position: absolute;
+  inset: 0.2rem;
+  border-radius: 9999px;
+  background: oklch(0.06 0 0);
+}
+
 @utility animate-pulse-emergency {
   animation: pulse-emergency 1.8s ease-in-out infinite;
 }
