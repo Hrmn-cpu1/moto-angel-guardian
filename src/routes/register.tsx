@@ -1,11 +1,15 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 import { AlertCircle } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { GoldButton } from "@/components/GoldButton";
+import { OutlineButton } from "@/components/OutlineButton";
 import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/register")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    next: typeof s.next === "string" ? s.next : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Criar conta — Moto Anjo" },
@@ -19,7 +23,8 @@ export const Route = createFileRoute("/register")({
 
 function Register() {
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
+  const { next } = useSearch({ from: "/register" });
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -57,11 +62,28 @@ function Register() {
         emergencyContact: form.emergencyContact,
         emergencyPhone: form.emergencyPhone,
       });
-      navigate({ to: "/dashboard" });
+      goNext();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao criar conta.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const goNext = () => {
+    if (next && next.startsWith("/")) {
+      window.location.href = next;
+    } else {
+      navigate({ to: "/dashboard" });
+    }
+  };
+
+  const googleSignIn = async () => {
+    setError(null);
+    try {
+      await loginWithGoogle(next);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Falha no login com Google.");
     }
   };
 
@@ -74,6 +96,16 @@ function Register() {
       </div>
 
       <form onSubmit={submit} className="mt-8 space-y-3 animate-fade-up">
+        <button
+          type="button"
+          onClick={googleSignIn}
+          className="glass-card flex w-full items-center justify-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-foreground transition hover:border-gold"
+        >
+          <GoogleG /> Continuar com Google
+        </button>
+        <div className="flex items-center gap-3 py-1 text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
+          <span className="h-px flex-1 bg-border" /> ou <span className="h-px flex-1 bg-border" />
+        </div>
         <TxtField label="Nome completo" value={form.name} onChange={set("name")} required />
         <TxtField label="E-mail" type="email" value={form.email} onChange={set("email")} required />
         <TxtField label="Telefone" value={form.phone} onChange={set("phone")} required />
