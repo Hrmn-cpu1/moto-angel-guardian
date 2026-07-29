@@ -4,7 +4,7 @@ import {
   Bike,
   ChevronRight,
   Contact as ContactIcon,
-  Info,
+  Info as InfoIcon,
   Lock,
   LogOut,
   Shield,
@@ -113,12 +113,12 @@ function ProfilePage() {
           </div>
         ) : (
           <div className="glass-card grid grid-cols-2 gap-4 rounded-2xl p-5 animate-fade-up">
-            <Info label="Telefone" value={user.phone} />
-            <Info label="Moto" value={user.bikeModel} />
-            <Info label="Placa" value={user.plate} />
-            <Info label="Sangue" value={user.bloodType} />
-            <Info label="Emergência" value={user.emergencyContact} />
-            <Info label="Tel. emergência" value={user.emergencyPhone} />
+            <InfoRow label="Telefone" value={user.phone} />
+            <InfoRow label="Moto" value={user.bikeModel} />
+            <InfoRow label="Placa" value={user.plate} />
+            <InfoRow label="Sangue" value={user.bloodType} />
+            <InfoRow label="Emergência" value={user.emergencyContact} />
+            <InfoRow label="Tel. emergência" value={user.emergencyPhone} />
           </div>
         )}
 
@@ -128,7 +128,7 @@ function ProfilePage() {
           <Row icon={ContactIcon} label="Contatos de confiança" onClick={() => navigate({ to: "/contacts" })} />
           <Row icon={Lock} label="Privacidade" onClick={() => alert("Configurações de privacidade em breve.")} />
           <Row icon={Shield} label="Permissões" onClick={() => alert("Gerenciar permissões do sistema.")} />
-          <Row icon={Info} label="Sobre o Moto Anjo" onClick={() => alert("Moto Anjo v1.0 — MVP demonstração.")} />
+          <Row icon={InfoIcon} label="Sobre o Moto Anjo" onClick={() => alert("Moto Anjo v1.0 — MVP demonstração.")} />
         </nav>
 
         <OutlineButton onClick={doLogout} className="!border-emergency/40 !text-emergency hover:!bg-emergency/10">
@@ -140,7 +140,7 @@ function ProfilePage() {
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</p>

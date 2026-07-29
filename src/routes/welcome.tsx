@@ -51,7 +51,7 @@ function Welcome() {
           </div>
           <div className="space-y-3">
             <Link to="/login" className="block">
-              <GoldButton size="lg" as-child="true">Entrar</GoldButton>
+              <GoldButton size="lg">Entrar</GoldButton>
             </Link>
             <Link to="/register" className="block">
               <OutlineButton size="lg">Criar conta</OutlineButton>
