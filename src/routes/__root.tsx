@@ -77,14 +77,23 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Moto Anjo — Proteção em cada caminho" },
+      {
+        name: "description",
+        content:
+          "Aplicativo premium de segurança, comunidade e emergência para motociclistas.",
+      },
+      { name: "author", content: "Moto Anjo" },
+      { name: "theme-color", content: "#050505" },
+      { property: "og:title", content: "Moto Anjo — Proteção em cada caminho" },
+      {
+        property: "og:description",
+        content:
+          "Aplicativo premium de segurança, comunidade e emergência para motociclistas.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:site", content: "@MotoAnjo" },
     ],
     links: [
       {
