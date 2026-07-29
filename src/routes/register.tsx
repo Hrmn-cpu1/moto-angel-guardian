@@ -46,7 +46,7 @@ function Register() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (form.password.length < 6) return setError("Senha precisa ter no mínimo 6 caracteres.");
+    if (form.password.length < 8) return setError("Senha precisa ter no mínimo 8 caracteres.");
     if (form.password !== form.confirm) return setError("As senhas não coincidem.");
     if (!accepted) return setError("Você precisa aceitar os termos.");
     setLoading(true);
