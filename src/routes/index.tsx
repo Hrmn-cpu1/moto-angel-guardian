@@ -1,8 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { BrandMark } from "@/components/BrandMark";
-import { storage, STORAGE_KEYS } from "@/lib/storage";
-import type { Session } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
   component: Splash,
@@ -11,11 +10,28 @@ export const Route = createFileRoute("/")({
 function Splash() {
   const navigate = useNavigate();
   useEffect(() => {
-    const t = window.setTimeout(() => {
-      const session = storage.get<Session | null>(STORAGE_KEYS.session, null);
-      navigate({ to: session ? "/dashboard" : "/welcome" });
-    }, 2200);
-    return () => window.clearTimeout(t);
+    let cancelled = false;
+    const t = window.setTimeout(async () => {
+      const { data } = await supabase.auth.getSession();
+      if (cancelled) return;
+      // Honor a saved intent from Google OAuth redirect.
+      let next: string | null = null;
+      try {
+        next = sessionStorage.getItem("moto_anjo_next");
+        if (next) sessionStorage.removeItem("moto_anjo_next");
+      } catch {
+        /* ignore */
+      }
+      if (data.session?.user) {
+        navigate({ to: next && next.startsWith("/") ? next : "/dashboard" });
+      } else {
+        navigate({ to: "/welcome" });
+      }
+    }, 1600);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
   }, [navigate]);
 
   return (
