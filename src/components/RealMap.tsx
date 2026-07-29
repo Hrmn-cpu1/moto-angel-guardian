@@ -1,7 +1,6 @@
+/// <reference types="google.maps" />
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { POI } from "@/lib/pois.functions";
-
-/// <reference types="google.maps" />
 
 // Premium dark style with gold accents
 const DARK_STYLE: google.maps.MapTypeStyle[] = [
