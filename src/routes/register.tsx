@@ -113,6 +113,9 @@ function Register() {
           <TxtField label="Senha" type="password" value={form.password} onChange={set("password")} required />
           <TxtField label="Confirmar" type="password" value={form.confirm} onChange={set("confirm")} required />
         </div>
+        <p className="text-[10px] leading-relaxed text-muted-foreground -mt-1">
+          Mínimo 8 caracteres. Evite senhas comuns (ex.: 123456, senha, qwerty). Use letras, números e símbolos.
+        </p>
         <div className="grid grid-cols-2 gap-3">
           <TxtField label="Modelo da moto" value={form.bikeModel} onChange={set("bikeModel")} />
           <TxtField label="Placa" value={form.plate} onChange={set("plate")} />
