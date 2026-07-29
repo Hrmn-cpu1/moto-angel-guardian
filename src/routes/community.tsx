@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { Heart, MessageCircle, Plus, Users } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Heart, MapPin, MessageCircle, Plus, Send, Trash2, Users } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Header } from "@/components/Header";
 import { SOSFab } from "@/components/SOSFab";
 import { GoldButton } from "@/components/GoldButton";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/community")({
   head: () => ({
@@ -20,90 +22,201 @@ export const Route = createFileRoute("/community")({
 
 const CATEGORIES = ["Geral", "Alertas na estrada", "Dicas", "Eventos", "Oficinas"] as const;
 
-type Post = {
+type PostRow = {
   id: string;
-  name: string;
-  initial: string;
-  time: string;
+  user_id: string;
+  author_name: string;
+  category: string;
+  region: string;
   text: string;
-  likes: number;
-  comments: number;
-  category: (typeof CATEGORIES)[number];
+  created_at: string;
 };
 
-const SEED: Post[] = [
-  {
-    id: "1",
-    name: "Ricardo Alves",
-    initial: "R",
-    time: "há 12 min",
-    text: "Trecho da Rodovia dos Bandeirantes km 45 com óleo na pista. Cuidado, pessoal! 🏍️",
-    likes: 34,
-    comments: 8,
-    category: "Alertas na estrada",
-  },
-  {
-    id: "2",
-    name: "Juliana Prado",
-    initial: "J",
-    time: "há 1h",
-    text: "Dica: sempre confira a pressão dos pneus antes de sair. Faz diferença enorme na chuva.",
-    likes: 128,
-    comments: 22,
-    category: "Dicas",
-  },
-  {
-    id: "3",
-    name: "Motoclube Aurora",
-    initial: "M",
-    time: "há 3h",
-    text: "Encontro deste sábado confirmado — 07h no posto Anjo Dourado. Venham!",
-    likes: 76,
-    comments: 14,
-    category: "Eventos",
-  },
-  {
-    id: "4",
-    name: "Oficina do Zé",
-    initial: "O",
-    time: "há 6h",
-    text: "Revisão completa por R$180 esta semana. Agendem pelo WhatsApp.",
-    likes: 41,
-    comments: 6,
-    category: "Oficinas",
-  },
-];
+type CommentRow = {
+  id: string;
+  post_id: string;
+  user_id: string;
+  author_name: string;
+  text: string;
+  created_at: string;
+};
+
+type FeedPost = PostRow & {
+  likes: number;
+  liked: boolean;
+  commentsCount: number;
+};
+
+function relTime(iso: string): string {
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (diff < 60) return "agora";
+  if (diff < 3600) return `há ${Math.floor(diff / 60)} min`;
+  if (diff < 86400) return `há ${Math.floor(diff / 3600)}h`;
+  return `há ${Math.floor(diff / 86400)}d`;
+}
+
+function initialOf(name: string) {
+  return (name.trim()[0] || "?").toUpperCase();
+}
 
 function Community() {
-  const [active, setActive] = useState<(typeof CATEGORIES)[number]>("Geral");
-  const [posts, setPosts] = useState<Post[]>(SEED);
+  const { user } = useAuth();
+  const [category, setCategory] = useState<(typeof CATEGORIES)[number]>("Geral");
+  const [regionFilter, setRegionFilter] = useState("");
+  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [loading, setLoading] = useState(true);
   const [composing, setComposing] = useState(false);
   const [text, setText] = useState("");
+  const [postRegion, setPostRegion] = useState("");
+  const [postCategory, setPostCategory] = useState<(typeof CATEGORIES)[number]>("Geral");
+  const [openComments, setOpenComments] = useState<string | null>(null);
+  const [comments, setComments] = useState<Record<string, CommentRow[]>>({});
+  const [commentDraft, setCommentDraft] = useState("");
 
-  const filtered =
-    active === "Geral" ? posts : posts.filter((p) => p.category === active);
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data: rows } = await supabase
+      .from("community_posts")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    const list = (rows ?? []) as PostRow[];
+    const ids = list.map((p) => p.id);
+    let likes: { post_id: string; user_id: string }[] = [];
+    let cCounts: { post_id: string }[] = [];
+    if (ids.length) {
+      const [{ data: lk }, { data: cm }] = await Promise.all([
+        supabase.from("community_likes").select("post_id,user_id").in("post_id", ids),
+        supabase.from("community_comments").select("post_id").in("post_id", ids),
+      ]);
+      likes = (lk ?? []) as typeof likes;
+      cCounts = (cm ?? []) as typeof cCounts;
+    }
+    const likeMap = new Map<string, { count: number; mine: boolean }>();
+    likes.forEach((l) => {
+      const entry = likeMap.get(l.post_id) ?? { count: 0, mine: false };
+      entry.count += 1;
+      if (user && l.user_id === user.id) entry.mine = true;
+      likeMap.set(l.post_id, entry);
+    });
+    const cMap = new Map<string, number>();
+    cCounts.forEach((c) => cMap.set(c.post_id, (cMap.get(c.post_id) ?? 0) + 1));
+    setPosts(
+      list.map((p) => ({
+        ...p,
+        likes: likeMap.get(p.id)?.count ?? 0,
+        liked: likeMap.get(p.id)?.mine ?? false,
+        commentsCount: cMap.get(p.id) ?? 0,
+      })),
+    );
+    setLoading(false);
+  }, [user]);
 
-  const publish = () => {
-    if (!text.trim()) return;
-    setPosts([
-      {
-        id: `p-${Date.now()}`,
-        name: "Você",
-        initial: "V",
-        time: "agora",
-        text: text.trim(),
-        likes: 0,
-        comments: 0,
-        category: active === "Geral" ? "Geral" : active,
-      },
-      ...posts,
-    ]);
-    setText("");
-    setComposing(false);
+  useEffect(() => {
+    void load();
+    const ch = supabase
+      .channel("community-feed")
+      .on("postgres_changes", { event: "*", schema: "public", table: "community_posts" }, () => void load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "community_likes" }, () => void load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "community_comments" }, (payload) => {
+        void load();
+        const row = (payload.new || payload.old) as CommentRow | undefined;
+        if (row && openComments === row.post_id) void loadComments(row.post_id);
+      })
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(ch);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [load]);
+
+  const regions = useMemo(() => {
+    const set = new Set<string>();
+    posts.forEach((p) => p.region.trim() && set.add(p.region.trim()));
+    return Array.from(set).sort();
+  }, [posts]);
+
+  const filtered = useMemo(() => {
+    return posts.filter((p) => {
+      if (category !== "Geral" && p.category !== category) return false;
+      if (regionFilter && p.region.trim().toLowerCase() !== regionFilter.toLowerCase()) return false;
+      return true;
+    });
+  }, [posts, category, regionFilter]);
+
+  const publish = async () => {
+    if (!text.trim() || !user) return;
+    const { error } = await supabase.from("community_posts").insert({
+      user_id: user.id,
+      author_name: user.name || user.email.split("@")[0],
+      category: postCategory,
+      region: postRegion.trim(),
+      text: text.trim(),
+    });
+    if (!error) {
+      setText("");
+      setPostRegion("");
+      setComposing(false);
+    }
   };
 
-  const like = (id: string) =>
-    setPosts((ps) => ps.map((p) => (p.id === id ? { ...p, likes: p.likes + 1 } : p)));
+  const toggleLike = async (post: FeedPost) => {
+    if (!user) return;
+    // optimistic
+    setPosts((ps) =>
+      ps.map((p) =>
+        p.id === post.id
+          ? { ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) }
+          : p,
+      ),
+    );
+    if (post.liked) {
+      await supabase.from("community_likes").delete().eq("post_id", post.id).eq("user_id", user.id);
+    } else {
+      await supabase.from("community_likes").insert({ post_id: post.id, user_id: user.id });
+    }
+  };
+
+  const loadComments = async (postId: string) => {
+    const { data } = await supabase
+      .from("community_comments")
+      .select("*")
+      .eq("post_id", postId)
+      .order("created_at", { ascending: true });
+    setComments((prev) => ({ ...prev, [postId]: (data ?? []) as CommentRow[] }));
+  };
+
+  const toggleComments = async (postId: string) => {
+    if (openComments === postId) {
+      setOpenComments(null);
+      return;
+    }
+    setOpenComments(postId);
+    setCommentDraft("");
+    if (!comments[postId]) await loadComments(postId);
+  };
+
+  const sendComment = async (postId: string) => {
+    if (!commentDraft.trim() || !user) return;
+    const draft = commentDraft.trim();
+    setCommentDraft("");
+    await supabase.from("community_comments").insert({
+      post_id: postId,
+      user_id: user.id,
+      author_name: user.name || user.email.split("@")[0],
+      text: draft,
+    });
+    await loadComments(postId);
+  };
+
+  const deletePost = async (postId: string) => {
+    await supabase.from("community_posts").delete().eq("id", postId);
+  };
+
+  const deleteComment = async (postId: string, commentId: string) => {
+    await supabase.from("community_comments").delete().eq("id", commentId);
+    await loadComments(postId);
+  };
 
   return (
     <AppShell>
@@ -126,9 +239,9 @@ function Community() {
         {CATEGORIES.map((c) => (
           <button
             key={c}
-            onClick={() => setActive(c)}
+            onClick={() => setCategory(c)}
             className={`whitespace-nowrap rounded-full border px-4 py-1.5 text-[11px] font-semibold uppercase tracking-widest transition ${
-              active === c
+              category === c
                 ? "border-gold bg-gold text-black"
                 : "border-gold/25 bg-black/40 text-muted-foreground hover:border-gold/50 hover:text-gold"
             }`}
@@ -136,6 +249,30 @@ function Community() {
             {c}
           </button>
         ))}
+      </div>
+
+      <div className="flex items-center gap-2 px-5 pt-3">
+        <MapPin size={14} className="text-gold shrink-0" />
+        <input
+          list="motoanjo-regions"
+          value={regionFilter}
+          onChange={(e) => setRegionFilter(e.target.value)}
+          placeholder="Filtrar por região (ex: São Paulo, SP)"
+          className="w-full rounded-full border border-gold/25 bg-black/40 px-3 py-1.5 text-[11px] uppercase tracking-widest text-foreground outline-none placeholder:text-muted-foreground/60 focus:border-gold/60"
+        />
+        <datalist id="motoanjo-regions">
+          {regions.map((r) => (
+            <option key={r} value={r} />
+          ))}
+        </datalist>
+        {regionFilter && (
+          <button
+            onClick={() => setRegionFilter("")}
+            className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-gold"
+          >
+            limpar
+          </button>
+        )}
       </div>
 
       {composing && (
@@ -148,43 +285,150 @@ function Community() {
               className="w-full resize-none bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/60"
               rows={3}
             />
-            <GoldButton size="sm" onClick={publish}>Publicar</GoldButton>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <select
+                value={postCategory}
+                onChange={(e) => setPostCategory(e.target.value as (typeof CATEGORIES)[number])}
+                className="flex-1 rounded-lg border border-gold/25 bg-black/60 px-3 py-2 text-xs text-foreground outline-none focus:border-gold/60"
+              >
+                {CATEGORIES.filter((c) => c !== "Geral").map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+                <option value="Geral">Geral</option>
+              </select>
+              <input
+                value={postRegion}
+                onChange={(e) => setPostRegion(e.target.value)}
+                placeholder="Região (ex: Curitiba, PR)"
+                className="flex-1 rounded-lg border border-gold/25 bg-black/60 px-3 py-2 text-xs text-foreground outline-none placeholder:text-muted-foreground/60 focus:border-gold/60"
+              />
+            </div>
+            <div className="flex justify-end">
+              <GoldButton size="sm" onClick={publish}>Publicar</GoldButton>
+            </div>
+            {!user && (
+              <p className="text-[10px] uppercase tracking-widest text-emergency">
+                Entre na sua conta para publicar.
+              </p>
+            )}
           </div>
         </div>
       )}
 
       <div className="space-y-3 px-5 pt-4">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="glass-card rounded-2xl p-8 text-center text-xs uppercase tracking-widest text-muted-foreground">
+            Carregando feed...
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="glass-card rounded-2xl p-8 text-center">
             <Users size={28} className="mx-auto text-gold" />
-            <p className="mt-3 text-sm text-muted-foreground">Nenhuma publicação nesta categoria.</p>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Nenhuma publicação {regionFilter ? `em ${regionFilter}` : "nesta categoria"}.
+            </p>
           </div>
         ) : (
           filtered.map((p) => (
             <article key={p.id} className="glass-card rounded-2xl p-4 animate-fade-up">
               <header className="flex items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full gold-gradient text-sm font-black text-black">
-                  {p.initial}
+                  {initialOf(p.author_name || "?")}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-foreground">{p.name}</p>
+                  <p className="truncate text-sm font-semibold text-foreground">
+                    {p.author_name || "Motociclista"}
+                  </p>
                   <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                    {p.time} · {p.category}
+                    {relTime(p.created_at)} · {p.category}
+                    {p.region ? ` · ${p.region}` : ""}
                   </p>
                 </div>
+                {user?.id === p.user_id && (
+                  <button
+                    onClick={() => deletePost(p.id)}
+                    aria-label="Apagar publicação"
+                    className="text-muted-foreground/60 hover:text-emergency"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
               </header>
-              <p className="mt-3 text-sm leading-relaxed text-foreground/90">{p.text}</p>
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">{p.text}</p>
               <footer className="mt-3 flex items-center gap-4 border-t border-white/5 pt-3 text-xs text-muted-foreground">
                 <button
-                  onClick={() => like(p.id)}
+                  onClick={() => toggleLike(p)}
+                  className={`flex items-center gap-1.5 transition ${p.liked ? "text-gold" : "hover:text-gold"}`}
+                  aria-pressed={p.liked}
+                >
+                  <Heart size={14} fill={p.liked ? "currentColor" : "none"} /> {p.likes}
+                </button>
+                <button
+                  onClick={() => toggleComments(p.id)}
                   className="flex items-center gap-1.5 transition hover:text-gold"
                 >
-                  <Heart size={14} /> {p.likes}
+                  <MessageCircle size={14} /> {p.commentsCount}
                 </button>
-                <span className="flex items-center gap-1.5">
-                  <MessageCircle size={14} /> {p.comments}
-                </span>
               </footer>
+
+              {openComments === p.id && (
+                <div className="mt-3 space-y-2 border-t border-white/5 pt-3 animate-fade-up">
+                  {(comments[p.id] ?? []).length === 0 && (
+                    <p className="text-[11px] text-muted-foreground/70">
+                      Seja o primeiro a comentar.
+                    </p>
+                  )}
+                  {(comments[p.id] ?? []).map((c) => (
+                    <div key={c.id} className="flex items-start gap-2">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gold/10 text-[10px] font-bold text-gold">
+                        {initialOf(c.author_name || "?")}
+                      </div>
+                      <div className="min-w-0 flex-1 rounded-lg border border-white/5 bg-black/40 px-3 py-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="truncate text-[11px] font-semibold text-foreground">
+                            {c.author_name || "Motociclista"}
+                          </p>
+                          <span className="text-[9px] uppercase tracking-widest text-muted-foreground">
+                            {relTime(c.created_at)}
+                          </span>
+                        </div>
+                        <p className="mt-0.5 whitespace-pre-wrap text-xs text-foreground/90">{c.text}</p>
+                      </div>
+                      {user?.id === c.user_id && (
+                        <button
+                          onClick={() => deleteComment(p.id, c.id)}
+                          aria-label="Apagar comentário"
+                          className="text-muted-foreground/60 hover:text-emergency"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {user && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <input
+                        value={commentDraft}
+                        onChange={(e) => setCommentDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            void sendComment(p.id);
+                          }
+                        }}
+                        placeholder="Escreva um comentário..."
+                        className="flex-1 rounded-full border border-gold/25 bg-black/60 px-3 py-1.5 text-xs text-foreground outline-none placeholder:text-muted-foreground/60 focus:border-gold/60"
+                      />
+                      <button
+                        onClick={() => sendComment(p.id)}
+                        className="flex h-8 w-8 items-center justify-center rounded-full gold-gradient text-black"
+                        aria-label="Enviar comentário"
+                      >
+                        <Send size={13} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </article>
           ))
         )}
