@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { useState } from "react";
-import { AlertCircle } from "lucide-react";
+import { useMemo, useState } from "react";
+import { AlertCircle, Check, X } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { GoldButton } from "@/components/GoldButton";
 import { OutlineButton } from "@/components/OutlineButton";
@@ -43,10 +43,26 @@ function Register() {
 
   const set = (k: keyof typeof form) => (v: string) => setForm((s) => ({ ...s, [k]: v }));
 
+  const pwdChecks = useMemo(() => {
+    const p = form.password;
+    const common = ["123456", "12345678", "123456789", "password", "senha", "qwerty", "111111", "abc123", "iloveyou", "admin", "motoanjo"];
+    return [
+      { key: "len", label: "Mínimo 8 caracteres", ok: p.length >= 8 },
+      { key: "upper", label: "Uma letra maiúscula", ok: /[A-Z]/.test(p) },
+      { key: "lower", label: "Uma letra minúscula", ok: /[a-z]/.test(p) },
+      { key: "num", label: "Um número", ok: /[0-9]/.test(p) },
+      { key: "sym", label: "Um símbolo (!@#$...)", ok: /[^A-Za-z0-9]/.test(p) },
+      { key: "common", label: "Não é uma senha comum", ok: p.length > 0 && !common.some((c) => p.toLowerCase().includes(c)) },
+    ];
+  }, [form.password]);
+  const pwdScore = pwdChecks.filter((c) => c.ok).length;
+  const pwdStrong = pwdScore === pwdChecks.length;
+  const pwdMatch = form.confirm.length > 0 && form.password === form.confirm;
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (form.password.length < 8) return setError("Senha precisa ter no mínimo 8 caracteres.");
+    if (!pwdStrong) return setError("Sua senha não atende a todos os requisitos de segurança.");
     if (form.password !== form.confirm) return setError("As senhas não coincidem.");
     if (!accepted) return setError("Você precisa aceitar os termos.");
     setLoading(true);
@@ -113,9 +129,13 @@ function Register() {
           <TxtField label="Senha" type="password" value={form.password} onChange={set("password")} required />
           <TxtField label="Confirmar" type="password" value={form.confirm} onChange={set("confirm")} required />
         </div>
-        <p className="text-[10px] leading-relaxed text-muted-foreground -mt-1">
-          Mínimo 8 caracteres. Evite senhas comuns (ex.: 123456, senha, qwerty). Use letras, números e símbolos.
-        </p>
+        <PasswordStrength checks={pwdChecks} score={pwdScore} total={pwdChecks.length} />
+        {form.confirm.length > 0 && (
+          <div className={`flex items-center gap-2 text-[11px] ${pwdMatch ? "text-gold" : "text-emergency"}`}>
+            {pwdMatch ? <Check size={12} /> : <X size={12} />}
+            {pwdMatch ? "As senhas coincidem." : "As senhas não coincidem."}
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <TxtField label="Modelo da moto" value={form.bikeModel} onChange={set("bikeModel")} />
           <TxtField label="Placa" value={form.plate} onChange={set("plate")} />
@@ -152,7 +172,7 @@ function Register() {
         )}
 
         <div className="pt-3">
-          <GoldButton size="lg" type="submit" disabled={loading || !accepted}>
+          <GoldButton size="lg" type="submit" disabled={loading || !accepted || !pwdStrong || !pwdMatch}>
             {loading ? "Criando..." : "Criar conta"}
           </GoldButton>
         </div>
@@ -207,5 +227,37 @@ function GoogleG() {
       <path fill="#FBBC05" d="M11.6 28.8c-.5-1.4-.8-2.9-.8-4.3s.3-2.9.8-4.3l-8.9-6.9C1 16.7 0 20.2 0 24s1 7.3 2.7 10.7l8.9-5.9z"/>
       <path fill="#34A853" d="M24 47c6.5 0 12-2.1 16-5.8l-7.6-5.9c-2.1 1.4-4.8 2.2-8.4 2.2-5.8 0-10.6-3.9-12.4-9.1l-8.9 5.9C6.5 41.6 14.6 47 24 47z"/>
     </svg>
+  );
+}
+
+function PasswordStrength({
+  checks,
+  score,
+  total,
+}: {
+  checks: { key: string; label: string; ok: boolean }[];
+  score: number;
+  total: number;
+}) {
+  const pct = (score / total) * 100;
+  const label = score <= 2 ? "Fraca" : score <= 4 ? "Média" : score === total ? "Forte" : "Boa";
+  const color = score <= 2 ? "bg-emergency" : score < total ? "bg-gold/70" : "bg-gold";
+  return (
+    <div className="-mt-1 space-y-2">
+      <div className="flex items-center gap-2">
+        <div className="h-1 flex-1 overflow-hidden rounded-full bg-border/50">
+          <div className={`h-full ${color} transition-all duration-300`} style={{ width: `${pct}%` }} />
+        </div>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{label}</span>
+      </div>
+      <ul className="grid grid-cols-2 gap-x-3 gap-y-1">
+        {checks.map((c) => (
+          <li key={c.key} className={`flex items-center gap-1.5 text-[10px] ${c.ok ? "text-gold" : "text-muted-foreground"}`}>
+            {c.ok ? <Check size={11} /> : <X size={11} className="opacity-60" />}
+            <span>{c.label}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
