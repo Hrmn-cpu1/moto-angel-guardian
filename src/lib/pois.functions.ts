@@ -73,7 +73,7 @@ async function nearby(
 }
 
 export const searchPOIs = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => InputSchema.parse(input))
+  .validator((input: unknown) => InputSchema.parse(input))
   .handler(async ({ data }) => {
     const lovableKey = process.env.LOVABLE_API_KEY;
     const apiKey = process.env.GOOGLE_MAPS_API_KEY;
