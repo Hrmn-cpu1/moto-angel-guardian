@@ -279,6 +279,69 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_notifications: {
+        Row: {
+          attempts: number
+          created_at: string
+          emergency_contact_id: string | null
+          error_message: string | null
+          id: string
+          provider: string
+          provider_message_id: string | null
+          recipient_name: string
+          recipient_phone: string
+          sent_at: string | null
+          sos_event_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          emergency_contact_id?: string | null
+          error_message?: string | null
+          id?: string
+          provider?: string
+          provider_message_id?: string | null
+          recipient_name?: string
+          recipient_phone: string
+          sent_at?: string | null
+          sos_event_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          emergency_contact_id?: string | null
+          error_message?: string | null
+          id?: string
+          provider?: string
+          provider_message_id?: string | null
+          recipient_name?: string
+          recipient_phone?: string
+          sent_at?: string | null
+          sos_event_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_notifications_emergency_contact_id_fkey"
+            columns: ["emergency_contact_id"]
+            isOneToOne: false
+            referencedRelation: "emergency_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_notifications_sos_event_id_fkey"
+            columns: ["sos_event_id"]
+            isOneToOne: false
+            referencedRelation: "sos_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
