@@ -15,6 +15,7 @@ import { AppShell } from "@/components/AppShell";
 import { Header } from "@/components/Header";
 import { SOSFab } from "@/components/SOSFab";
 import { LocationCard } from "@/components/LocationCard";
+import { ShareLocationButton } from "@/components/ShareLocationButton";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useAuth } from "@/hooks/useAuth";
 import { useGeolocation } from "@/hooks/useGeolocation";
@@ -103,6 +104,7 @@ function Dashboard() {
         </div>
 
         <LocationCard position={position} lastSync={sync} />
+        <ShareLocationButton />
 
         <div>
           <p className="mb-3 px-1 text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
