@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { storage, STORAGE_KEYS } from "../lib/storage";
 import type { Session, User } from "../types";
+import { CURRENT_TERMS_VERSION } from "../lib/terms";
 
 const DEMO_USER: User = {
   id: "demo-user",
@@ -14,6 +15,8 @@ const DEMO_USER: User = {
   emergencyContact: "Ana Souza",
   emergencyPhone: "+55 11 98888-8888",
   createdAt: new Date().toISOString(),
+  termsAcceptedAt: new Date().toISOString(),
+  termsVersion: CURRENT_TERMS_VERSION,
 };
 
 function ensureDemoUser() {
@@ -62,6 +65,8 @@ export function useAuth() {
       ...data,
       id: `user-${Date.now()}`,
       createdAt: new Date().toISOString(),
+      termsAcceptedAt: new Date().toISOString(),
+      termsVersion: CURRENT_TERMS_VERSION,
     };
     storage.set(STORAGE_KEYS.users, [newUser, ...users]);
     storage.set<Session>(STORAGE_KEYS.session, {
