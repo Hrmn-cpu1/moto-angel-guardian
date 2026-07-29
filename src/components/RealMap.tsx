@@ -265,6 +265,14 @@ export default function RealMap({
   return (
     <div className={`relative h-full w-full ${className ?? ""}`}>
       <div ref={containerRef} className="absolute inset-0 h-full w-full rounded-3xl" />
+      {center && follow && state === "ready" && (
+        <div className="moto-user-location-marker left-1/2 top-1/2" aria-label="Sua localização atual">
+          <span className="moto-user-location-marker__pulse" />
+          <span className="moto-user-location-marker__pin">
+            <span />
+          </span>
+        </div>
+      )}
       {state !== "ready" && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-3xl bg-black/80 text-xs uppercase tracking-widest text-gold">
           {state === "error" ? "Erro ao carregar mapa" : "Carregando mapa..."}
