@@ -86,6 +86,32 @@
         "outputSchema": null
       },
       {
+        "name": "remove_contact",
+        "title": "Remove emergency contact",
+        "description": "Remove an emergency contact of the signed-in user by its id.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": true
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "UUID of the emergency contact to remove."
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
         "name": "list_history",
         "title": "List trip and SOS history",
         "description": "Return recent trips and SOS events for the signed-in user.",
