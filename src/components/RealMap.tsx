@@ -86,6 +86,8 @@ function pinSvg(color: string, glyphColor: string, glyph: "you" | POI["type"]): 
 
 interface Props {
   center?: { lat: number; lng: number } | null;
+  accuracy?: number | null;
+  follow?: boolean;
   pois?: POI[];
   onPoiSelect?: (poi: POI) => void;
   interactive?: boolean;
@@ -94,6 +96,8 @@ interface Props {
 
 export default function RealMap({
   center,
+  accuracy = null,
+  follow = true,
   pois = [],
   onPoiSelect,
   interactive = true,
@@ -102,6 +106,7 @@ export default function RealMap({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const userMarkerRef = useRef<google.maps.Marker | null>(null);
+  const accuracyCircleRef = useRef<google.maps.Circle | null>(null);
   const poiMarkersRef = useRef<google.maps.Marker[]>([]);
   const [state, setState] = useState<LoaderState>("idle");
 
@@ -163,8 +168,24 @@ export default function RealMap({
     } else {
       userMarkerRef.current.setPosition(center);
     }
-    map.panTo(center);
-  }, [center, state]);
+    if (!accuracyCircleRef.current) {
+      accuracyCircleRef.current = new g.maps.Circle({
+        map,
+        center,
+        radius: accuracy ?? 30,
+        strokeColor: "#D4AF37",
+        strokeOpacity: 0.6,
+        strokeWeight: 1,
+        fillColor: "#D4AF37",
+        fillOpacity: 0.08,
+        clickable: false,
+      });
+    } else {
+      accuracyCircleRef.current.setCenter(center);
+      if (accuracy != null) accuracyCircleRef.current.setRadius(accuracy);
+    }
+    if (follow) map.panTo(center);
+  }, [center, state, accuracy, follow]);
 
   // Sync POI markers
   useEffect(() => {

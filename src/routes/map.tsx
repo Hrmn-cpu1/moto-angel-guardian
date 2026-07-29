@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { ClientOnly } from "@tanstack/react-router";
-import { Crosshair, Share2, Navigation, MapPin, Fuel, Wrench, Cross, Shield } from "lucide-react";
+import { Crosshair, Share2, Navigation, MapPin, Fuel, Wrench, Cross, Shield, LocateFixed, LocateOff } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Header } from "@/components/Header";
 import { GoldButton } from "@/components/GoldButton";
@@ -42,17 +42,21 @@ const labelFor: Record<POI["type"], string> = {
 };
 
 function MapPage() {
-  const { position, capture, share } = useGeolocation();
+  const { position, capture, share, startWatch, stopWatch, watching } = useGeolocation();
   const { add } = useHistory();
   const [selected, setSelected] = useState<POI | null>(null);
   const [pois, setPois] = useState<POI[]>([]);
   const [loadingPois, setLoadingPois] = useState(false);
   const [permissionGranted, setPermissionGranted] = useState(false);
+  const [follow, setFollow] = useState(true);
   const fetchPOIs = useServerFn(searchPOIs);
 
   useEffect(() => {
-    if (permissionGranted) void capture();
-  }, [capture, permissionGranted]);
+    if (!permissionGranted) return;
+    void capture();
+    startWatch();
+    return () => stopWatch();
+  }, [capture, permissionGranted, startWatch, stopWatch]);
 
   useEffect(() => {
     if (!position) return;
@@ -104,6 +108,8 @@ function MapPage() {
             }>
               <RealMap
                 center={position ? { lat: position.lat, lng: position.lng } : null}
+                accuracy={position?.accuracy ?? null}
+                follow={follow}
                 pois={pois}
                 onPoiSelect={setSelected}
                 className="absolute inset-0"
@@ -139,6 +145,19 @@ function MapPage() {
               Buscando pontos...
             </div>
           )}
+
+          <button
+            onClick={() => setFollow((f) => !f)}
+            className={`absolute right-3 top-3 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest transition ${
+              follow
+                ? "border-gold bg-gold/15 text-gold shadow-[0_0_20px_-6px_oklch(0.78_0.13_84/0.6)]"
+                : "border-white/10 bg-black/70 text-muted-foreground"
+            }`}
+            aria-pressed={follow}
+          >
+            {follow ? <LocateFixed size={12} /> : <LocateOff size={12} />}
+            {follow ? "Seguindo" : "Livre"}
+          </button>
         </div>
 
         <div className="mt-4 space-y-2">
@@ -146,13 +165,13 @@ function MapPage() {
             <MapPin size={14} className="text-gold" />
             <span className="font-mono text-xs text-muted-foreground">
               {position
-                ? `${position.lat.toFixed(5)}, ${position.lng.toFixed(5)}${position.simulated ? " (simulado)" : ""}`
+                ? `${position.lat.toFixed(5)}, ${position.lng.toFixed(5)}${position.accuracy ? ` · ±${Math.round(position.accuracy)}m` : ""}${position.simulated ? " (sim)" : ""}${watching ? " · ao vivo" : ""}`
                 : "Localizando..."}
             </span>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <OutlineButton onClick={() => capture()} size="sm">
+            <OutlineButton onClick={() => { setFollow(true); void capture(); }} size="sm">
               <Crosshair size={14} /> Centralizar
             </OutlineButton>
             <OutlineButton onClick={doShare} size="sm">
