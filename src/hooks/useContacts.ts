@@ -34,6 +34,27 @@ export function useContacts() {
     void reload();
   }, [reload]);
 
+  useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
+      channel = supabase
+        .channel(`emergency_contacts:${user.id}`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "emergency_contacts", filter: `user_id=eq.${user.id}` },
+          () => { void reload(); },
+        )
+        .subscribe();
+    })();
+    return () => {
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, [reload]);
+
   const add = useCallback(
     async (c: Omit<Contact, "id">) => {
       const { data: { user } } = await supabase.auth.getUser();
