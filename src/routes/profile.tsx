@@ -20,6 +20,7 @@ import { GoldButton } from "@/components/GoldButton";
 import { OutlineButton } from "@/components/OutlineButton";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@/types";
 import { toast } from "sonner";
 
@@ -40,10 +41,21 @@ function ProfilePage() {
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/welcome" });
   }, [loading, user, navigate]);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .then(({ data }) => setIsAdmin(!!data && data.length > 0));
+  }, [user]);
 
   if (loading || !user) return <LoadingScreen />;
 
@@ -134,6 +146,9 @@ function ProfilePage() {
           <Row icon={FileText} label="Termos de Uso" onClick={() => navigate({ to: "/terms" })} />
           <Row icon={ShieldCheck} label="Política de Privacidade" onClick={() => navigate({ to: "/privacy" })} />
           <Row icon={InfoIcon} label="Sobre o Moto Anjo" onClick={() => toast("Moto Anjo v1.0 — MVP demonstração.")} />
+          {isAdmin && (
+            <Row icon={ShieldCheck} label="Painel Admin" onClick={() => navigate({ to: "/admin" })} />
+          )}
         </nav>
 
         <OutlineButton onClick={doLogout} className="!border-emergency/40 !text-emergency hover:!bg-emergency/10">
