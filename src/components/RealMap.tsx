@@ -35,6 +35,11 @@ const DARK_STYLE: google.maps.MapTypeStyle[] = [
 type LoaderState = "idle" | "loading" | "ready" | "error";
 
 let loaderPromise: Promise<typeof google> | null = null;
+const DEFAULT_CENTER = { lat: -23.55052, lng: -46.633308 };
+
+type UserLocationOverlay = google.maps.OverlayView & {
+  setPosition: (position: google.maps.LatLngLiteral) => void;
+};
 
 function loadGoogleMaps(apiKey: string, channel?: string): Promise<typeof google> {
   if (typeof window === "undefined") return Promise.reject(new Error("no window"));
@@ -105,7 +110,7 @@ export default function RealMap({
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
-  const userMarkerRef = useRef<google.maps.Marker | null>(null);
+  const userMarkerRef = useRef<UserLocationOverlay | null>(null);
   const accuracyCircleRef = useRef<google.maps.Circle | null>(null);
   const poiMarkersRef = useRef<google.maps.Marker[]>([]);
   const [state, setState] = useState<LoaderState>("idle");
@@ -117,7 +122,7 @@ export default function RealMap({
     | string
     | undefined;
 
-  const fallbackCenter = useMemo(() => center ?? { lat: -23.55052, lng: -46.633308 }, [center]);
+  const fallbackCenter = useMemo(() => center ?? DEFAULT_CENTER, []);
 
   useEffect(() => {
     if (!apiKey || !containerRef.current) return;
@@ -146,6 +151,12 @@ export default function RealMap({
       });
     return () => {
       cancelled = true;
+      userMarkerRef.current?.setMap(null);
+      userMarkerRef.current = null;
+      accuracyCircleRef.current?.setMap(null);
+      accuracyCircleRef.current = null;
+      poiMarkersRef.current.forEach((m) => m.setMap(null));
+      poiMarkersRef.current = [];
     };
   }, [apiKey, channel, fallbackCenter, interactive]);
 
@@ -155,16 +166,48 @@ export default function RealMap({
     if (state !== "ready" || !map || !center) return;
     const g = (window as unknown as { google: typeof google }).google;
     if (!userMarkerRef.current) {
-      userMarkerRef.current = new g.maps.Marker({
-        map,
-        position: center,
-        icon: {
-          url: pinSvg("#D4AF37", "#050505", "you"),
-          scaledSize: new g.maps.Size(34, 42),
-          anchor: new g.maps.Point(17, 42),
-        },
-        zIndex: 999,
-      });
+      class MotoUserLocationOverlay extends g.maps.OverlayView {
+        private position: google.maps.LatLngLiteral;
+        private element: HTMLDivElement | null = null;
+
+        constructor(position: google.maps.LatLngLiteral) {
+          super();
+          this.position = position;
+        }
+
+        onAdd() {
+          const element = document.createElement("div");
+          element.className = "moto-user-location-marker";
+          element.setAttribute("aria-label", "Sua localização atual");
+          element.innerHTML = '<span class="moto-user-location-marker__pulse"></span><span class="moto-user-location-marker__pin"><span></span></span>';
+          this.element = element;
+          this.getPanes()?.overlayMouseTarget.appendChild(element);
+        }
+
+        draw() {
+          const projection = this.getProjection();
+          if (!projection || !this.element) return;
+          const point = projection.fromLatLngToDivPixel(
+            new g.maps.LatLng(this.position.lat, this.position.lng),
+          );
+          if (!point) return;
+          this.element.style.transform = `translate3d(${point.x}px, ${point.y}px, 0)`;
+        }
+
+        onRemove() {
+          this.element?.remove();
+          this.element = null;
+        }
+
+        setPosition(position: google.maps.LatLngLiteral) {
+          this.position = position;
+          this.draw();
+        }
+      }
+
+      const marker = new MotoUserLocationOverlay(center);
+      marker.setMap(map);
+      userMarkerRef.current = marker;
     } else {
       userMarkerRef.current.setPosition(center);
     }
