@@ -147,16 +147,17 @@ export function useAuth() {
 
   const updateUser = useCallback(async (patch: Partial<AppUser>) => {
     if (!user) return;
-    const dbPatch: Record<string, unknown> = {};
-    if (patch.name !== undefined) dbPatch.name = patch.name;
-    if (patch.phone !== undefined) dbPatch.phone = patch.phone;
-    if (patch.bikeModel !== undefined) dbPatch.bike_model = patch.bikeModel;
-    if (patch.plate !== undefined) dbPatch.plate = patch.plate;
-    if (patch.bloodType !== undefined) dbPatch.blood_type = patch.bloodType;
-    if (patch.emergencyContact !== undefined) dbPatch.emergency_contact = patch.emergencyContact;
-    if (patch.emergencyPhone !== undefined) dbPatch.emergency_phone = patch.emergencyPhone;
-    if (patch.termsAcceptedAt !== undefined) dbPatch.terms_accepted_at = patch.termsAcceptedAt;
-    if (patch.termsVersion !== undefined) dbPatch.terms_version = patch.termsVersion;
+    const dbPatch = {
+      ...(patch.name !== undefined && { name: patch.name }),
+      ...(patch.phone !== undefined && { phone: patch.phone }),
+      ...(patch.bikeModel !== undefined && { bike_model: patch.bikeModel }),
+      ...(patch.plate !== undefined && { plate: patch.plate }),
+      ...(patch.bloodType !== undefined && { blood_type: patch.bloodType }),
+      ...(patch.emergencyContact !== undefined && { emergency_contact: patch.emergencyContact }),
+      ...(patch.emergencyPhone !== undefined && { emergency_phone: patch.emergencyPhone }),
+      ...(patch.termsAcceptedAt !== undefined && { terms_accepted_at: patch.termsAcceptedAt }),
+      ...(patch.termsVersion !== undefined && { terms_version: patch.termsVersion }),
+    };
     if (Object.keys(dbPatch).length === 0) return;
     await supabase.from("profiles").update(dbPatch).eq("id", user.id);
     setUser({ ...user, ...patch });
