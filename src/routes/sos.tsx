@@ -1,17 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { Share2, X, MapPin, MessageCircle, Send } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Share2, X, MapPin, MessageCircle, Send, RefreshCw, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { EmergencyButton } from "@/components/EmergencyButton";
 import { OutlineButton } from "@/components/OutlineButton";
 import { GoldButton } from "@/components/GoldButton";
 import { useGeolocation, type GeoPosition } from "@/hooks/useGeolocation";
 import { useHistory } from "@/hooks/useHistory";
-import { useContacts } from "@/hooks/useContacts";
-import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { waLink } from "@/lib/phone";
-import type { Contact } from "@/types";
+import { triggerSos, dispatchSosNotifications } from "@/lib/sos.functions";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/sos")({
   head: () => ({
@@ -29,22 +27,59 @@ function SOS() {
   const navigate = useNavigate();
   const { capture, share } = useGeolocation();
   const { add } = useHistory();
-  const { contacts } = useContacts();
-  const { user } = useAuth();
   const [pos, setPos] = useState<GeoPosition | null>(null);
   const [activated, setActivated] = useState(false);
-  const [notified, setNotified] = useState<string[]>([]);
+  const [sosEventId, setSosEventId] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [dispatching, setDispatching] = useState(false);
+  const dispatchedOnce = useRef(false);
 
-  const buildMessage = (p: GeoPosition) => {
-    const name = user?.name || "Um motociclista";
-    const url = `https://www.google.com/maps?q=${p.lat},${p.lng}`;
-    return `🚨 ALERTA MOTO ANJO 🚨\n\n${name} acionou o SOS e pode precisar de ajuda.\n\n📍 Localização: ${url}\n(${p.lat.toFixed(5)}, ${p.lng.toFixed(5)})\n\nEnviado automaticamente pelo app Moto Anjo.`;
-  };
+  const summary = useMemo(() => {
+    const sent = notifications.filter((n) => n.status === "sent").length;
+    const failed = notifications.filter((n) => n.status === "failed").length;
+    const pending = notifications.filter((n) => n.status === "queued").length;
+    return { sent, failed, pending, total: notifications.length };
+  }, [notifications]);
 
-  const openWhatsApp = (contact: Contact, p: GeoPosition) => {
-    const link = waLink(contact.phone, buildMessage(p));
-    window.open(link, "_blank", "noopener,noreferrer");
-    setNotified((n) => (n.includes(contact.id) ? n : [...n, contact.id]));
+  // Realtime subscription for progress of the current SOS event
+  useEffect(() => {
+    if (!sosEventId) return;
+    const load = async () => {
+      const { data } = await supabase
+        .from("whatsapp_notifications")
+        .select("id, recipient_name, recipient_phone, status, error_message, sent_at")
+        .eq("sos_event_id", sosEventId)
+        .order("created_at", { ascending: true });
+      setNotifications((data ?? []) as Notification[]);
+    };
+    void load();
+    const channel = supabase
+      .channel(`wn:${sosEventId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "whatsapp_notifications", filter: `sos_event_id=eq.${sosEventId}` },
+        () => { void load(); },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [sosEventId]);
+
+  const runDispatch = async (onlyFailed: boolean) => {
+    if (!sosEventId) return;
+    setDispatching(true);
+    try {
+      const res = await dispatchSosNotifications({ data: { sosEventId, onlyFailed } });
+      if (res.failed > 0) {
+        toast.warning(`${res.sent} enviados · ${res.failed} falharam`);
+      } else if (res.sent > 0) {
+        toast.success("Todos os contatos foram notificados.");
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Falha ao enviar alertas.";
+      toast.error(msg);
+    } finally {
+      setDispatching(false);
+    }
   };
 
   const activate = async () => {
@@ -57,33 +92,31 @@ function SOS() {
       description: `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`,
     });
 
-    // Persist SOS event in Supabase
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (authUser) {
-        await supabase.from("sos_events").insert({
-          user_id: authUser.id,
-          latitude: p.lat,
-          longitude: p.lng,
-          status: "active",
-          note: p.simulated ? "Localização simulada" : null,
-        });
+      const res = await triggerSos({
+        data: { lat: p.lat, lng: p.lng, note: p.simulated ? "Localização simulada" : null },
+      });
+      setSosEventId(res.sosEventId);
+      if (res.queued === 0) {
+        toast.info("SOS registrado — nenhum contato de emergência cadastrado.");
+        return;
+      }
+      toast.success(`SOS registrado — enviando ${res.queued} alerta(s)...`);
+      if (!dispatchedOnce.current) {
+        dispatchedOnce.current = true;
+        void runDispatch(false);
       }
     } catch (e) {
-      console.error("Failed to persist SOS event", e);
-    }
-
-    // Auto-open WhatsApp for the primary contact (or first contact) in the same user gesture
-    const primary = contacts.find((c) => c.isPrimary) ?? contacts[0];
-    if (primary) {
-      openWhatsApp(primary, p);
+      const msg = e instanceof Error ? e.message : "Falha ao registrar SOS.";
+      toast.error(msg);
     }
   };
 
   const shareAlert = async () => {
     if (!pos) return;
     const url = `https://www.google.com/maps?q=${pos.lat},${pos.lng}`;
-    const ok = await share(buildMessage(pos), url);
+    const msg = `🚨 MOTO ANJO — Preciso de ajuda.\n📍 ${url}`;
+    const ok = await share(msg, url);
     add({
       type: "share",
       title: "Alerta compartilhado",
@@ -94,7 +127,9 @@ function SOS() {
   const cancel = () => {
     setActivated(false);
     setPos(null);
-    setNotified([]);
+    setSosEventId(null);
+    setNotifications([]);
+    dispatchedOnce.current = false;
   };
 
   return (
@@ -131,52 +166,62 @@ function SOS() {
               )}
             </div>
 
-            {contacts.length > 0 ? (
+            {notifications.length > 0 ? (
               <div className="glass-card space-y-2 rounded-3xl p-4">
-                <div className="mb-1 flex items-center gap-2 px-1 text-xs uppercase tracking-widest text-gold">
-                  <MessageCircle size={14} /> Contatos de emergência
+                <div className="mb-1 flex items-center justify-between px-1">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-gold">
+                    <MessageCircle size={14} /> Alertas WhatsApp
+                  </div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                    {summary.sent}/{summary.total} enviados
+                    {summary.failed > 0 && ` · ${summary.failed} falhou`}
+                  </div>
                 </div>
-                {contacts.map((c) => {
-                  const sent = notified.includes(c.id);
-                  return (
-                    <button
-                      key={c.id}
-                      onClick={() => pos && openWhatsApp(c, pos)}
-                      className="flex w-full items-center justify-between rounded-2xl border border-white/5 bg-black/40 px-4 py-3 text-left transition hover:border-gold/40"
-                    >
-                      <div>
-                        <div className="text-sm font-semibold text-foreground">
-                          {c.name}
-                          {c.isPrimary && (
-                            <span className="ml-2 text-[10px] uppercase tracking-widest text-gold">
-                              Principal
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-xs text-muted-foreground">{c.phone} · {c.relation}</div>
+                {notifications.map((n) => (
+                  <div
+                    key={n.id}
+                    className="flex items-center justify-between rounded-2xl border border-white/5 bg-black/40 px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-foreground">
+                        {n.recipient_name || "Contato"}
                       </div>
-                      <span
-                        className={`flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold ${
-                          sent
-                            ? "bg-gold/20 text-gold"
-                            : "bg-emergency/20 text-emergency"
-                        }`}
-                      >
-                        <Send size={12} /> {sent ? "Enviado" : "WhatsApp"}
-                      </span>
-                    </button>
-                  );
-                })}
+                      <div className="truncate text-xs text-muted-foreground">
+                        {n.recipient_phone}
+                        {n.status === "failed" && n.error_message && (
+                          <span className="ml-2 text-emergency">· {shortError(n.error_message)}</span>
+                        )}
+                      </div>
+                    </div>
+                    <StatusPill status={n.status} />
+                  </div>
+                ))}
+                {summary.failed > 0 && (
+                  <button
+                    onClick={() => runDispatch(true)}
+                    disabled={dispatching}
+                    className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border border-gold/30 bg-gold/5 px-4 py-3 text-xs font-semibold uppercase tracking-widest text-gold transition hover:bg-gold/10 disabled:opacity-50"
+                  >
+                    <RefreshCw size={14} className={dispatching ? "animate-spin" : ""} />
+                    Reenviar {summary.failed} alerta{summary.failed > 1 ? "s" : ""}
+                  </button>
+                )}
               </div>
             ) : (
               <div className="glass-card rounded-3xl p-4 text-center text-xs text-muted-foreground">
-                Nenhum contato de emergência cadastrado.{" "}
-                <button
-                  onClick={() => navigate({ to: "/contacts" })}
-                  className="font-semibold text-gold underline"
-                >
-                  Cadastrar agora
-                </button>
+                {sosEventId ? (
+                  "Nenhum contato de emergência cadastrado para notificar."
+                ) : (
+                  <>
+                    Nenhum contato de emergência cadastrado.{" "}
+                    <button
+                      onClick={() => navigate({ to: "/contacts" })}
+                      className="font-semibold text-gold underline"
+                    >
+                      Cadastrar agora
+                    </button>
+                  </>
+                )}
               </div>
             )}
 
@@ -201,4 +246,39 @@ function SOS() {
       />
     </div>
   );
+}
+
+type Notification = {
+  id: string;
+  recipient_name: string;
+  recipient_phone: string;
+  status: "queued" | "sent" | "failed" | string;
+  error_message: string | null;
+  sent_at: string | null;
+};
+
+function StatusPill({ status }: { status: string }) {
+  if (status === "sent")
+    return (
+      <span className="flex items-center gap-1 rounded-full bg-gold/20 px-3 py-1 text-[11px] font-semibold text-gold">
+        <CheckCircle2 size={12} /> Enviado
+      </span>
+    );
+  if (status === "failed")
+    return (
+      <span className="flex items-center gap-1 rounded-full bg-emergency/20 px-3 py-1 text-[11px] font-semibold text-emergency">
+        <XCircle size={12} /> Falhou
+      </span>
+    );
+  return (
+    <span className="flex items-center gap-1 rounded-full bg-white/5 px-3 py-1 text-[11px] font-semibold text-muted-foreground">
+      <Loader2 size={12} className="animate-spin" /> Enviando
+    </span>
+  );
+}
+
+function shortError(msg: string): string {
+  const m = msg.match(/"message"\s*:\s*"([^"]+)"/);
+  const raw = m ? m[1] : msg;
+  return raw.length > 60 ? `${raw.slice(0, 60)}…` : raw;
 }
