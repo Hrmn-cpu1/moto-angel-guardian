@@ -1,57 +1,86 @@
 import { useCallback, useEffect, useState } from "react";
-import { storage, STORAGE_KEYS } from "../lib/storage";
-import type { Contact } from "../types";
+import { supabase } from "@/integrations/supabase/client";
+import type { Contact } from "@/types";
 
-const SEED: Contact[] = [
-  { id: "c-1", name: "Ana Souza", phone: "+55 11 98888-8888", relation: "Esposa", isPrimary: true },
-  { id: "c-2", name: "Carlos Lima", phone: "+55 11 97777-7777", relation: "Irmão", isPrimary: false },
-];
+type Row = {
+  id: string;
+  name: string;
+  phone: string;
+  relation: string;
+  is_primary: boolean;
+};
+
+const toContact = (r: Row): Contact => ({
+  id: r.id,
+  name: r.name,
+  phone: r.phone,
+  relation: r.relation,
+  isPrimary: r.is_primary,
+});
 
 export function useContacts() {
   const [contacts, setContacts] = useState<Contact[]>([]);
 
-  useEffect(() => {
-    const existing = storage.get<Contact[] | null>(STORAGE_KEYS.contacts, null);
-    if (!existing) {
-      storage.set(STORAGE_KEYS.contacts, SEED);
-      setContacts(SEED);
-    } else {
-      setContacts(existing);
-    }
+  const reload = useCallback(async () => {
+    const { data } = await supabase
+      .from("emergency_contacts")
+      .select("*")
+      .order("is_primary", { ascending: false })
+      .order("created_at", { ascending: true });
+    setContacts(((data ?? []) as Row[]).map(toContact));
   }, []);
 
-  const persist = (next: Contact[]) => {
-    storage.set(STORAGE_KEYS.contacts, next);
-    setContacts(next);
-  };
+  useEffect(() => {
+    void reload();
+  }, [reload]);
 
   const add = useCallback(
-    (c: Omit<Contact, "id">) => {
-      const next = [...contacts, { ...c, id: `c-${Date.now()}` }];
-      persist(next);
+    async (c: Omit<Contact, "id">) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      await supabase.from("emergency_contacts").insert({
+        user_id: user.id,
+        name: c.name,
+        phone: c.phone,
+        relation: c.relation,
+        is_primary: c.isPrimary,
+      });
+      await reload();
     },
-    [contacts],
+    [reload],
   );
 
   const update = useCallback(
-    (id: string, patch: Partial<Contact>) => {
-      persist(contacts.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+    async (id: string, patch: Partial<Contact>) => {
+      const dbPatch = {
+        ...(patch.name !== undefined && { name: patch.name }),
+        ...(patch.phone !== undefined && { phone: patch.phone }),
+        ...(patch.relation !== undefined && { relation: patch.relation }),
+        ...(patch.isPrimary !== undefined && { is_primary: patch.isPrimary }),
+      };
+      await supabase.from("emergency_contacts").update(dbPatch).eq("id", id);
+      await reload();
     },
-    [contacts],
+    [reload],
   );
 
   const remove = useCallback(
-    (id: string) => {
-      persist(contacts.filter((c) => c.id !== id));
+    async (id: string) => {
+      await supabase.from("emergency_contacts").delete().eq("id", id);
+      await reload();
     },
-    [contacts],
+    [reload],
   );
 
   const setPrimary = useCallback(
-    (id: string) => {
-      persist(contacts.map((c) => ({ ...c, isPrimary: c.id === id })));
+    async (id: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      await supabase.from("emergency_contacts").update({ is_primary: false }).eq("user_id", user.id);
+      await supabase.from("emergency_contacts").update({ is_primary: true }).eq("id", id);
+      await reload();
     },
-    [contacts],
+    [reload],
   );
 
   return { contacts, add, update, remove, setPrimary };
