@@ -1,12 +1,17 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Share2, X, MapPin } from "lucide-react";
+import { Share2, X, MapPin, MessageCircle, Send } from "lucide-react";
 import { Header } from "@/components/Header";
 import { EmergencyButton } from "@/components/EmergencyButton";
 import { OutlineButton } from "@/components/OutlineButton";
 import { GoldButton } from "@/components/GoldButton";
 import { useGeolocation, type GeoPosition } from "@/hooks/useGeolocation";
 import { useHistory } from "@/hooks/useHistory";
+import { useContacts } from "@/hooks/useContacts";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { waLink } from "@/lib/phone";
+import type { Contact } from "@/types";
 
 export const Route = createFileRoute("/sos")({
   head: () => ({
@@ -24,8 +29,23 @@ function SOS() {
   const navigate = useNavigate();
   const { capture, share } = useGeolocation();
   const { add } = useHistory();
+  const { contacts } = useContacts();
+  const { user } = useAuth();
   const [pos, setPos] = useState<GeoPosition | null>(null);
   const [activated, setActivated] = useState(false);
+  const [notified, setNotified] = useState<string[]>([]);
+
+  const buildMessage = (p: GeoPosition) => {
+    const name = user?.name || "Um motociclista";
+    const url = `https://www.google.com/maps?q=${p.lat},${p.lng}`;
+    return `🚨 ALERTA MOTO ANJO 🚨\n\n${name} acionou o SOS e pode precisar de ajuda.\n\n📍 Localização: ${url}\n(${p.lat.toFixed(5)}, ${p.lng.toFixed(5)})\n\nEnviado automaticamente pelo app Moto Anjo.`;
+  };
+
+  const openWhatsApp = (contact: Contact, p: GeoPosition) => {
+    const link = waLink(contact.phone, buildMessage(p));
+    window.open(link, "_blank", "noopener,noreferrer");
+    setNotified((n) => (n.includes(contact.id) ? n : [...n, contact.id]));
+  };
 
   const activate = async () => {
     const p = await capture();
@@ -33,18 +53,37 @@ function SOS() {
     setActivated(true);
     add({
       type: "sos",
-      title: "Alerta SOS ativado (demo)",
+      title: "Alerta SOS ativado",
       description: `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`,
     });
+
+    // Persist SOS event in Supabase
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        await supabase.from("sos_events").insert({
+          user_id: authUser.id,
+          latitude: p.lat,
+          longitude: p.lng,
+          status: "active",
+          note: p.simulated ? "Localização simulada" : null,
+        });
+      }
+    } catch (e) {
+      console.error("Failed to persist SOS event", e);
+    }
+
+    // Auto-open WhatsApp for the primary contact (or first contact) in the same user gesture
+    const primary = contacts.find((c) => c.isPrimary) ?? contacts[0];
+    if (primary) {
+      openWhatsApp(primary, p);
+    }
   };
 
   const shareAlert = async () => {
     if (!pos) return;
     const url = `https://www.google.com/maps?q=${pos.lat},${pos.lng}`;
-    const ok = await share(
-      `[DEMO] Alerta Moto Anjo — preciso de ajuda em ${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`,
-      url,
-    );
+    const ok = await share(buildMessage(pos), url);
     add({
       type: "share",
       title: "Alerta compartilhado",
@@ -55,6 +94,7 @@ function SOS() {
   const cancel = () => {
     setActivated(false);
     setPos(null);
+    setNotified([]);
   };
 
   return (
@@ -76,10 +116,10 @@ function SOS() {
                 <MapPin size={28} />
               </div>
               <h2 className="mt-4 text-xl font-black text-foreground">
-                Alerta de demonstração ativado
+                Alerta SOS ativado
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Nenhum serviço de emergência real foi contatado.
+                Notifique seus contatos de emergência via WhatsApp.
               </p>
               {pos && (
                 <div className="mt-4 rounded-xl border border-white/5 bg-black/40 p-3 font-mono text-xs text-gold">
@@ -90,6 +130,56 @@ function SOS() {
                 </div>
               )}
             </div>
+
+            {contacts.length > 0 ? (
+              <div className="glass-card space-y-2 rounded-3xl p-4">
+                <div className="mb-1 flex items-center gap-2 px-1 text-xs uppercase tracking-widest text-gold">
+                  <MessageCircle size={14} /> Contatos de emergência
+                </div>
+                {contacts.map((c) => {
+                  const sent = notified.includes(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => pos && openWhatsApp(c, pos)}
+                      className="flex w-full items-center justify-between rounded-2xl border border-white/5 bg-black/40 px-4 py-3 text-left transition hover:border-gold/40"
+                    >
+                      <div>
+                        <div className="text-sm font-semibold text-foreground">
+                          {c.name}
+                          {c.isPrimary && (
+                            <span className="ml-2 text-[10px] uppercase tracking-widest text-gold">
+                              Principal
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground">{c.phone} · {c.relation}</div>
+                      </div>
+                      <span
+                        className={`flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold ${
+                          sent
+                            ? "bg-gold/20 text-gold"
+                            : "bg-emergency/20 text-emergency"
+                        }`}
+                      >
+                        <Send size={12} /> {sent ? "Enviado" : "WhatsApp"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="glass-card rounded-3xl p-4 text-center text-xs text-muted-foreground">
+                Nenhum contato de emergência cadastrado.{" "}
+                <button
+                  onClick={() => navigate({ to: "/contacts" })}
+                  className="font-semibold text-gold underline"
+                >
+                  Cadastrar agora
+                </button>
+              </div>
+            )}
+
             <div className="space-y-3">
               <GoldButton onClick={shareAlert} size="lg">
                 <Share2 size={16} /> Compartilhar alerta
