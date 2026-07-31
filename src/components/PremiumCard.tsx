@@ -6,13 +6,14 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
   glow?: boolean;
 }
 
+// Reference card: graphite panel, thin gold hairline, 12px radius.
 export function PremiumCard({ children, className, glow = false, ...rest }: Props) {
   return (
     <div
       {...rest}
       className={cn(
-        "glass-card animate-fade-up rounded-2xl p-5",
-        glow && "shadow-[0_0_60px_-20px_oklch(0.83_0.169_85/0.35)]",
+        "glass-card animate-fade-up rounded-xl p-4",
+        glow && "border-gold/60",
         className,
       )}
     >
