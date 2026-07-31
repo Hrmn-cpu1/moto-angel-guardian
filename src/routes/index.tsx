@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { ShieldPlus, Users, MapPin, ShieldCheck, Clock } from "lucide-react";
-import poster from "@/assets/moto-anjo-poster.png.asset.json";
+import poster from "@/assets/moto-anjo-hero.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
@@ -56,8 +56,8 @@ function Splash() {
         src={poster.url}
         alt="Moto Anjo — um por todos, todos por um"
         width={895}
-        height={1180}
-        className="absolute inset-x-0 top-0 h-[68%] w-full object-cover object-top animate-scale-in"
+        height={930}
+        className="absolute inset-x-0 top-0 h-[70%] w-full object-cover object-top animate-scale-in"
       />
       <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/35 to-black" />
 
