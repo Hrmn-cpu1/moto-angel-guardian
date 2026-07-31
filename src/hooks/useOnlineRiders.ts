@@ -18,7 +18,8 @@ export interface OnlineRider {
  * Riders who opted in to live sharing (live_locations.sharing = true) and
  * pushed a position recently. Access is enforced server-side by the
  * `online_riders` function: only authenticated callers, never own row,
- * never e-mail/phone.
+ * never e-mail/phone, and only riders who authorized the caller by adding
+ * their phone number to their own emergency contacts list.
  */
 export function useOnlineRiders(pos: { lat: number; lng: number } | null, radiusKm = 50) {
   const qc = useQueryClient();
