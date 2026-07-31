@@ -161,11 +161,9 @@ function SOS() {
     const url = `https://www.google.com/maps?q=${pos.lat},${pos.lng}`;
     const msg = `🚨 MOTO ANJO — Preciso de ajuda.\n📍 ${url}`;
     const ok = await share(msg, url);
-    add({
-      type: "share",
-      title: "Alerta compartilhado",
-      description: ok ? "Compartilhado com sucesso" : "Copiado / falha no envio",
-    });
+    toast[ok ? "success" : "error"](
+      ok ? "Alerta compartilhado." : "Não foi possível compartilhar o alerta.",
+    );
   };
 
   const cancel = () => {
