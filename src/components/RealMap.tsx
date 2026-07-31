@@ -92,6 +92,20 @@ type RiderOverlay = google.maps.OverlayView & {
   update: (rider: MapRider) => void;
 };
 
+export interface MapPartner {
+  id: string;
+  name: string;
+  benefit: string;
+  logoUrl?: string | null;
+  featured?: boolean;
+  lat: number;
+  lng: number;
+}
+
+type PartnerOverlay = google.maps.OverlayView & {
+  update: (partner: MapPartner) => void;
+};
+
 function pinSvg(color: string, glyphColor: string, glyph: string): string {
   const paths: Record<string, string> = {
     hospital:
@@ -145,6 +159,8 @@ interface Props {
   onAlertSelect?: (alert: MapAlert) => void;
   riders?: MapRider[];
   onRiderSelect?: (rider: MapRider) => void;
+  partners?: MapPartner[];
+  onPartnerSelect?: (partner: MapPartner) => void;
   interactive?: boolean;
   className?: string;
 }
@@ -159,6 +175,8 @@ export default function RealMap({
   onAlertSelect,
   riders = [],
   onRiderSelect,
+  partners = [],
+  onPartnerSelect,
   interactive = true,
   className,
 }: Props) {
@@ -169,6 +187,7 @@ export default function RealMap({
   const poiMarkersRef = useRef<google.maps.Marker[]>([]);
   const alertMarkersRef = useRef<google.maps.Marker[]>([]);
   const riderOverlaysRef = useRef<Map<string, RiderOverlay>>(new Map());
+  const partnerOverlaysRef = useRef<Map<string, PartnerOverlay>>(new Map());
   const [state, setState] = useState<LoaderState>("idle");
 
   const apiKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as
@@ -217,6 +236,8 @@ export default function RealMap({
       alertMarkersRef.current = [];
       riderOverlaysRef.current.forEach((o) => o.setMap(null));
       riderOverlaysRef.current.clear();
+      partnerOverlaysRef.current.forEach((o) => o.setMap(null));
+      partnerOverlaysRef.current.clear();
     };
   }, [apiKey, channel, fallbackCenter, interactive]);
 
