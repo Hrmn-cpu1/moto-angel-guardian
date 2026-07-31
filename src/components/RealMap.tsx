@@ -92,6 +92,20 @@ type RiderOverlay = google.maps.OverlayView & {
   update: (rider: MapRider) => void;
 };
 
+export interface MapPartner {
+  id: string;
+  name: string;
+  benefit: string;
+  logoUrl?: string | null;
+  featured?: boolean;
+  lat: number;
+  lng: number;
+}
+
+type PartnerOverlay = google.maps.OverlayView & {
+  update: (partner: MapPartner) => void;
+};
+
 function pinSvg(color: string, glyphColor: string, glyph: string): string {
   const paths: Record<string, string> = {
     hospital:
@@ -145,6 +159,8 @@ interface Props {
   onAlertSelect?: (alert: MapAlert) => void;
   riders?: MapRider[];
   onRiderSelect?: (rider: MapRider) => void;
+  partners?: MapPartner[];
+  onPartnerSelect?: (partner: MapPartner) => void;
   interactive?: boolean;
   className?: string;
 }
@@ -159,6 +175,8 @@ export default function RealMap({
   onAlertSelect,
   riders = [],
   onRiderSelect,
+  partners = [],
+  onPartnerSelect,
   interactive = true,
   className,
 }: Props) {
@@ -169,6 +187,7 @@ export default function RealMap({
   const poiMarkersRef = useRef<google.maps.Marker[]>([]);
   const alertMarkersRef = useRef<google.maps.Marker[]>([]);
   const riderOverlaysRef = useRef<Map<string, RiderOverlay>>(new Map());
+  const partnerOverlaysRef = useRef<Map<string, PartnerOverlay>>(new Map());
   const [state, setState] = useState<LoaderState>("idle");
 
   const apiKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as
@@ -217,6 +236,8 @@ export default function RealMap({
       alertMarkersRef.current = [];
       riderOverlaysRef.current.forEach((o) => o.setMap(null));
       riderOverlaysRef.current.clear();
+      partnerOverlaysRef.current.forEach((o) => o.setMap(null));
+      partnerOverlaysRef.current.clear();
     };
   }, [apiKey, channel, fallbackCenter, interactive]);
 
@@ -415,6 +436,84 @@ export default function RealMap({
       }
     });
   }, [riders, onRiderSelect, state]);
+
+  // Sync partner markers (premium gold badges with logo)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (state !== "ready" || !map) return;
+    const g = (window as unknown as { google: typeof google }).google;
+
+    class PartnerOverlayImpl extends g.maps.OverlayView {
+      private partner: MapPartner;
+      private element: HTMLDivElement | null = null;
+
+      constructor(partner: MapPartner) {
+        super();
+        this.partner = partner;
+      }
+
+      private render() {
+        if (!this.element) return;
+        const initials = (this.partner.name || "?").trim().charAt(0).toUpperCase();
+        const logo = this.partner.logoUrl
+          ? `<img src="${this.partner.logoUrl}" alt="" loading="lazy" />`
+          : `<span class="moto-partner-marker__initial">${initials}</span>`;
+        this.element.innerHTML = `
+          <span class="moto-partner-marker__badge${this.partner.featured ? " is-featured" : ""}" title="${this.partner.name}">${logo}</span>
+          <span class="moto-partner-marker__tag">${this.partner.benefit}</span>`;
+      }
+
+      onAdd() {
+        const element = document.createElement("div");
+        element.className = "moto-partner-marker";
+        element.setAttribute("aria-label", `Parceiro: ${this.partner.name}`);
+        this.element = element;
+        this.render();
+        element.addEventListener("click", () => onPartnerSelect?.(this.partner));
+        this.getPanes()?.overlayMouseTarget.appendChild(element);
+      }
+
+      draw() {
+        const projection = this.getProjection();
+        if (!projection || !this.element) return;
+        const point = projection.fromLatLngToDivPixel(
+          new g.maps.LatLng(this.partner.lat, this.partner.lng),
+        );
+        if (!point) return;
+        this.element.style.transform = `translate3d(${point.x}px, ${point.y}px, 0)`;
+      }
+
+      onRemove() {
+        this.element?.remove();
+        this.element = null;
+      }
+
+      update(partner: MapPartner) {
+        this.partner = partner;
+        this.render();
+        this.draw();
+      }
+    }
+
+    const seen = new Set<string>();
+    partners.forEach((p) => {
+      seen.add(p.id);
+      const existing = partnerOverlaysRef.current.get(p.id);
+      if (existing) {
+        existing.update(p);
+      } else {
+        const overlay = new PartnerOverlayImpl(p);
+        overlay.setMap(map);
+        partnerOverlaysRef.current.set(p.id, overlay);
+      }
+    });
+    partnerOverlaysRef.current.forEach((overlay, id) => {
+      if (!seen.has(id)) {
+        overlay.setMap(null);
+        partnerOverlaysRef.current.delete(id);
+      }
+    });
+  }, [partners, onPartnerSelect, state]);
 
   if (!apiKey) {
     return (

@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { BadgePercent, MapPin } from "lucide-react";
+import { useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { BadgePercent, MapPin, Navigation } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Header } from "@/components/Header";
-import { supabase } from "@/integrations/supabase/client";
+import { usePartners, filterPartners, BENEFIT_FILTERS } from "@/hooks/usePartners";
 
 export const Route = createFileRoute("/_authenticated/benefits")({
   head: () => ({
@@ -25,32 +26,10 @@ export const Route = createFileRoute("/_authenticated/benefits")({
   component: BenefitsPage,
 });
 
-interface Partner {
-  id: string;
-  name: string;
-  category: string;
-  benefit: string;
-  detail: string | null;
-  featured: boolean;
-}
-
 function BenefitsPage() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["partners"],
-    staleTime: 5 * 60_000,
-    queryFn: async (): Promise<Partner[]> => {
-      const { data, error } = await supabase
-        .from("partners")
-        .select("id,name,category,benefit,detail,featured")
-        .eq("active", true)
-        .order("sort_order")
-        .order("name");
-      if (error) throw error;
-      return (data ?? []) as Partner[];
-    },
-  });
-
-  const partners = data ?? [];
+  const { partners: all, loading: isLoading } = usePartners();
+  const [filter, setFilter] = useState("todos");
+  const partners = filterPartners(all, filter);
 
   return (
     <AppShell>
@@ -67,6 +46,29 @@ function BenefitsPage() {
           <p className="mt-1 text-xs text-muted-foreground">
             Apresente seu perfil no estabelecimento parceiro para garantir o desconto.
           </p>
+          <Link
+            to="/map"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold/10 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-gold"
+          >
+            <MapPin size={12} /> Ver parceiros no mapa
+          </Link>
+        </div>
+
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+          {BENEFIT_FILTERS.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest transition ${
+                filter === f.id
+                  ? "border-gold bg-gold/15 text-gold"
+                  : "border-white/10 bg-black/40 text-muted-foreground"
+              }`}
+              aria-pressed={filter === f.id}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
 
         {isLoading && (
@@ -83,17 +85,36 @@ function BenefitsPage() {
                 p.featured ? "border-gold/45" : ""
               }`}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[9px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                    {p.category}
-                  </p>
-                  <h2 className="mt-0.5 truncate text-sm font-bold text-foreground">{p.name}</h2>
-                </div>
-                <span className="shrink-0 rounded-full border border-gold/40 bg-gold/10 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-gold">
-                  {p.benefit}
-                </span>
+              <div className="flex items-start gap-3">
+                  {p.logo_url ? (
+                    <img
+                      src={p.logo_url}
+                      alt={`Logo ${p.name}`}
+                      loading="lazy"
+                      width={48}
+                      height={48}
+                      className="h-12 w-12 shrink-0 rounded-xl border border-gold/25 bg-black/50 object-contain p-1.5"
+                    />
+                  ) : (
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-gold/25 bg-black/50 text-gold">
+                      <BadgePercent size={18} />
+                    </span>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                      {p.category}
+                    </p>
+                    <h2 className="mt-0.5 truncate text-sm font-bold text-foreground">{p.name}</h2>
+                    {p.address && (
+                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                        {p.address}
+                      </p>
+                    )}
+                  </div>
               </div>
+              <p className="mt-3 rounded-full border border-gold/40 bg-gold/10 px-3 py-1 text-center text-[10px] font-black uppercase tracking-wider text-gold">
+                {p.benefit}
+              </p>
               {p.detail && (
                 <p className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
                   <MapPin size={12} className="mt-0.5 shrink-0 text-gold" /> {p.detail}
@@ -104,12 +125,22 @@ function BenefitsPage() {
                   Parceiro destaque
                 </p>
               )}
+              {p.lat != null && p.lng != null && (
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-full gold-gradient px-3 py-1.5 text-[11px] font-semibold text-black"
+                >
+                  <Navigation size={12} /> Traçar rota
+                </a>
+              )}
             </article>
           ))}
 
           {!isLoading && partners.length === 0 && (
             <div className="glass-card rounded-xl p-6 text-center text-xs text-muted-foreground">
-              Nenhum parceiro disponível no momento.
+              Nenhum parceiro nesta categoria por enquanto.
             </div>
           )}
         </div>

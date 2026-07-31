@@ -22,7 +22,8 @@ import { useGeolocation } from "@/hooks/useGeolocation";
 import { useHistory } from "@/hooks/useHistory";
 import { useAlerts } from "@/hooks/useAlerts";
 import { useOnlineRiders } from "@/hooks/useOnlineRiders";
-import { Users } from "lucide-react";
+import { Users, BadgePercent, Phone } from "lucide-react";
+import { usePartners, filterPartners, BENEFIT_FILTERS, type Partner } from "@/hooks/usePartners";
 import { useServerFn } from "@tanstack/react-start";
 import { searchPOIs, type POI } from "@/lib/pois.functions";
 
@@ -66,6 +67,10 @@ function MapPage() {
   const { alerts } = useAlerts(position);
   const { riders } = useOnlineRiders(position);
   const [selectedRider, setSelectedRider] = useState<{ name: string } | null>(null);
+  const { located: locatedPartners } = usePartners();
+  const [benefitFilter, setBenefitFilter] = useState("todos");
+  const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
+  const visiblePartners = filterPartners(locatedPartners, benefitFilter);
 
   useEffect(() => {
     if (!permissionGranted) return;
@@ -147,6 +152,20 @@ function MapPage() {
                     lng: r.lng,
                   }))}
                   onRiderSelect={(r) => setSelectedRider({ name: r.name })}
+                  partners={visiblePartners.map((p) => ({
+                    id: p.id,
+                    name: p.name,
+                    benefit: p.benefit,
+                    logoUrl: p.logo_url,
+                    featured: p.featured,
+                    lat: p.lat as number,
+                    lng: p.lng as number,
+                  }))}
+                  onPartnerSelect={(p) => {
+                    const full = locatedPartners.find((x) => x.id === p.id) ?? null;
+                    setSelectedPartner(full);
+                    setSelected(null);
+                  }}
                   className="absolute inset-0"
                 />
               </Suspense>
@@ -200,6 +219,68 @@ function MapPage() {
               </div>
             )}
 
+            {selectedPartner && !selected && (
+              <div className="absolute inset-x-3 bottom-3 rounded-2xl glass-card p-3 animate-fade-up">
+                <div className="flex items-start gap-3">
+                  {selectedPartner.logo_url ? (
+                    <img
+                      src={selectedPartner.logo_url}
+                      alt={`Logo ${selectedPartner.name}`}
+                      loading="lazy"
+                      width={44}
+                      height={44}
+                      className="h-11 w-11 shrink-0 rounded-xl border border-gold/30 bg-black/60 object-contain p-1"
+                    />
+                  ) : (
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gold/30 bg-black/60 text-gold">
+                      <BadgePercent size={18} />
+                    </span>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] uppercase tracking-widest text-gold">
+                      {selectedPartner.benefit}
+                    </p>
+                    <p className="mt-0.5 truncate text-sm font-semibold text-foreground">
+                      {selectedPartner.name}
+                    </p>
+                    {selectedPartner.address && (
+                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                        {selectedPartner.address}
+                      </p>
+                    )}
+                    <div className="mt-2 flex items-center gap-2">
+                      <button
+                        onClick={() =>
+                          window.open(
+                            `https://www.google.com/maps/dir/?api=1&destination=${selectedPartner.lat},${selectedPartner.lng}`,
+                            "_blank",
+                            "noopener,noreferrer",
+                          )
+                        }
+                        className="flex items-center gap-1 rounded-full gold-gradient px-3 py-1.5 text-[11px] font-semibold text-black"
+                      >
+                        <Navigation size={12} /> Rota
+                      </button>
+                      {selectedPartner.phone && (
+                        <a
+                          href={`tel:${selectedPartner.phone}`}
+                          className="flex items-center gap-1 rounded-full border border-gold/40 px-3 py-1.5 text-[11px] font-semibold text-gold"
+                        >
+                          <Phone size={12} /> Ligar
+                        </a>
+                      )}
+                      <button
+                        onClick={() => setSelectedPartner(null)}
+                        className="ml-auto text-[11px] text-muted-foreground"
+                      >
+                        Fechar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {riders.length > 0 && !selected && (
               <div className="absolute left-3 bottom-3 flex items-center gap-1.5 rounded-full border border-gold/30 bg-black/75 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-gold">
                 <Users size={12} />
@@ -224,6 +305,30 @@ function MapPage() {
           </div>
 
           <div className="mt-4 space-y-2">
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+              {BENEFIT_FILTERS.map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => {
+                    setBenefitFilter(f.id);
+                    setSelectedPartner(null);
+                  }}
+                  className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest transition ${
+                    benefitFilter === f.id
+                      ? "border-gold bg-gold/15 text-gold"
+                      : "border-white/10 bg-black/40 text-muted-foreground"
+                  }`}
+                  aria-pressed={benefitFilter === f.id}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            <p className="px-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+              {visiblePartners.length}{" "}
+              {visiblePartners.length === 1 ? "parceiro no mapa" : "parceiros no mapa"}
+            </p>
+
             <div className="flex items-center gap-2 rounded-xl border border-white/5 bg-black/40 px-4 py-3">
               <MapPin size={14} className="text-gold" />
               <span className="font-mono text-xs text-muted-foreground">
