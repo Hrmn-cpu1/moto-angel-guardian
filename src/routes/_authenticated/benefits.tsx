@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { BadgePercent, ExternalLink, MapPin, Phone } from "lucide-react";
+import { BadgePercent, MapPin } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Header } from "@/components/Header";
 import { supabase } from "@/integrations/supabase/client";
