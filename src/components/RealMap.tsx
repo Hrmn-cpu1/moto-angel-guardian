@@ -72,7 +72,15 @@ function loadGoogleMaps(apiKey: string, channel?: string): Promise<typeof google
   return loaderPromise;
 }
 
-function pinSvg(color: string, glyphColor: string, glyph: "you" | POI["type"]): string {
+export interface MapAlert {
+  id: string;
+  type: string;
+  title: string;
+  lat: number;
+  lng: number;
+}
+
+function pinSvg(color: string, glyphColor: string, glyph: string): string {
   const paths: Record<string, string> = {
     hospital:
       '<path d="M12 8v8M8 12h8" stroke="' +
@@ -91,6 +99,20 @@ function pinSvg(color: string, glyphColor: string, glyph: "you" | POI["type"]): 
       glyphColor +
       '"/>',
     you: '<circle cx="12" cy="12" r="4" fill="' + glyphColor + '"/>',
+    perigo:
+      '<path d="M12 7l5 9H7l5-9z" fill="none" stroke="' +
+      glyphColor +
+      '" stroke-width="1.8" stroke-linejoin="round"/>',
+    acidente:
+      '<path d="M12 7l1.6 3.4 3.4.6-2.6 2.4.7 3.6-3.1-1.8-3.1 1.8.7-3.6L7 11l3.4-.6z" fill="' +
+      glyphColor +
+      '"/>',
+    bloqueio:
+      '<path d="M8 10h8v4H8z" fill="' + glyphColor + '"/>',
+    roubo:
+      '<path d="M12 7c2 0 3.5 1.5 3.5 3.5S14 14 12 14s-3.5-1.5-3.5-3.5S10 7 12 7z" fill="none" stroke="' +
+      glyphColor +
+      '" stroke-width="1.8"/>',
   };
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="34" height="42" viewBox="0 0 24 30">
     <defs><filter id="s" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#000" flood-opacity="0.6"/></filter></defs>
@@ -107,6 +129,8 @@ interface Props {
   follow?: boolean;
   pois?: POI[];
   onPoiSelect?: (poi: POI) => void;
+  alerts?: MapAlert[];
+  onAlertSelect?: (alert: MapAlert) => void;
   interactive?: boolean;
   className?: string;
 }
@@ -117,6 +141,8 @@ export default function RealMap({
   follow = true,
   pois = [],
   onPoiSelect,
+  alerts = [],
+  onAlertSelect,
   interactive = true,
   className,
 }: Props) {
@@ -125,6 +151,7 @@ export default function RealMap({
   const userMarkerRef = useRef<UserLocationOverlay | null>(null);
   const accuracyCircleRef = useRef<google.maps.Circle | null>(null);
   const poiMarkersRef = useRef<google.maps.Marker[]>([]);
+  const alertMarkersRef = useRef<google.maps.Marker[]>([]);
   const [state, setState] = useState<LoaderState>("idle");
 
   const apiKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as
@@ -169,6 +196,8 @@ export default function RealMap({
       accuracyCircleRef.current = null;
       poiMarkersRef.current.forEach((m) => m.setMap(null));
       poiMarkersRef.current = [];
+      alertMarkersRef.current.forEach((m) => m.setMap(null));
+      alertMarkersRef.current = [];
     };
   }, [apiKey, channel, fallbackCenter, interactive]);
 
@@ -266,6 +295,31 @@ export default function RealMap({
       return m;
     });
   }, [pois, onPoiSelect, state]);
+
+  // Sync community alert markers
+  useEffect(() => {
+    const map = mapRef.current;
+    if (state !== "ready" || !map) return;
+    const g = (window as unknown as { google: typeof google }).google;
+    alertMarkersRef.current.forEach((m) => m.setMap(null));
+    alertMarkersRef.current = alerts.map((a) => {
+      const color = a.type === "acidente" || a.type === "roubo" ? "#D92323" : "#D4AF37";
+      const glyphColor = color === "#D92323" ? "#F5F5F5" : "#D4AF37";
+      const m = new g.maps.Marker({
+        map,
+        position: { lat: a.lat, lng: a.lng },
+        icon: {
+          url: pinSvg(color, glyphColor, a.type),
+          scaledSize: new g.maps.Size(32, 40),
+          anchor: new g.maps.Point(16, 40),
+        },
+        title: a.title,
+        zIndex: 20,
+      });
+      if (onAlertSelect) m.addListener("click", () => onAlertSelect(a));
+      return m;
+    });
+  }, [alerts, onAlertSelect, state]);
 
   if (!apiKey) {
     return (
