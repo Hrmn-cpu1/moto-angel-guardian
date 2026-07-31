@@ -564,17 +564,7 @@ export default function RealMap({
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-3xl bg-[radial-gradient(circle_at_center,rgba(212,175,55,0.10),#050505_70%)] px-6 text-center">
           {center ? (
             <>
-              <div
-                className="moto-user-location-marker relative"
-                aria-label="Sua localização atual"
-                style={{ transform: "none" }}
-              >
-                <span className="moto-user-location-marker__pulse" />
-                <span className="moto-user-location-marker__pin">
-                  <span />
-                </span>
-              </div>
-              <p className="mt-6 text-[10px] uppercase tracking-widest text-gold">
+              <p className="mt-16 text-[10px] uppercase tracking-widest text-gold">
                 Você está aqui
               </p>
               <p className="font-mono text-xs text-foreground">
