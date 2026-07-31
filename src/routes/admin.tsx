@@ -45,6 +45,14 @@ type Activity = {
   posts: number;
 };
 
+type ActivityRow = {
+  day: string;
+  new_users: number | string;
+  trips: number | string;
+  sos: number | string;
+  posts: number | string;
+};
+
 function AdminPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();

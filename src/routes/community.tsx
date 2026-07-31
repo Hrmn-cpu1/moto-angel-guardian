@@ -114,17 +114,28 @@ function Community() {
 
   useEffect(() => {
     void load();
+    // Realtime bursts (a post + its likes/comments) are coalesced so the feed
+    // is refetched once instead of on every single row event.
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleLoad = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        void load();
+      }, 400);
+    };
     const ch = supabase
       .channel("community-feed")
-      .on("postgres_changes", { event: "*", schema: "public", table: "community_posts" }, () => void load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "community_likes" }, () => void load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "community_posts" }, scheduleLoad)
+      .on("postgres_changes", { event: "*", schema: "public", table: "community_likes" }, scheduleLoad)
       .on("postgres_changes", { event: "*", schema: "public", table: "community_comments" }, (payload) => {
-        void load();
+        scheduleLoad();
         const row = (payload.new || payload.old) as CommentRow | undefined;
         if (row && openComments === row.post_id) void loadComments(row.post_id);
       })
       .subscribe();
     return () => {
+      if (timer) clearTimeout(timer);
       void supabase.removeChannel(ch);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
