@@ -19,6 +19,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedTripRouteImport } from './routes/_authenticated/trip'
 import { Route as AuthenticatedSosRouteImport } from './routes/_authenticated/sos'
+import { Route as AuthenticatedSharingRouteImport } from './routes/_authenticated/sharing'
 import { Route as AuthenticatedRideRouteImport } from './routes/_authenticated/ride'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
@@ -81,6 +82,11 @@ const AuthenticatedTripRoute = AuthenticatedTripRouteImport.update({
 const AuthenticatedSosRoute = AuthenticatedSosRouteImport.update({
   id: '/sos',
   path: '/sos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSharingRoute = AuthenticatedSharingRouteImport.update({
+  id: '/sharing',
+  path: '/sharing',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedRideRoute = AuthenticatedRideRouteImport.update({
@@ -178,6 +184,7 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/ride': typeof AuthenticatedRideRoute
+  '/sharing': typeof AuthenticatedSharingRoute
   '/sos': typeof AuthenticatedSosRoute
   '/trip': typeof AuthenticatedTripRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -203,6 +210,7 @@ export interface FileRoutesByTo {
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/ride': typeof AuthenticatedRideRoute
+  '/sharing': typeof AuthenticatedSharingRoute
   '/sos': typeof AuthenticatedSosRoute
   '/trip': typeof AuthenticatedTripRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -230,6 +238,7 @@ export interface FileRoutesById {
   '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/ride': typeof AuthenticatedRideRoute
+  '/_authenticated/sharing': typeof AuthenticatedSharingRoute
   '/_authenticated/sos': typeof AuthenticatedSosRoute
   '/_authenticated/trip': typeof AuthenticatedTripRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -257,6 +266,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/ride'
+    | '/sharing'
     | '/sos'
     | '/trip'
     | '/.lovable/oauth/consent'
@@ -282,6 +292,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/ride'
+    | '/sharing'
     | '/sos'
     | '/trip'
     | '/.lovable/oauth/consent'
@@ -308,6 +319,7 @@ export interface FileRouteTypes {
     | '/_authenticated/notifications'
     | '/_authenticated/profile'
     | '/_authenticated/ride'
+    | '/_authenticated/sharing'
     | '/_authenticated/sos'
     | '/_authenticated/trip'
     | '/.lovable/oauth/consent'
@@ -399,6 +411,13 @@ declare module '@tanstack/react-router' {
       path: '/sos'
       fullPath: '/sos'
       preLoaderRoute: typeof AuthenticatedSosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/sharing': {
+      id: '/_authenticated/sharing'
+      path: '/sharing'
+      fullPath: '/sharing'
+      preLoaderRoute: typeof AuthenticatedSharingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/ride': {
@@ -513,6 +532,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedNotificationsRoute: typeof AuthenticatedNotificationsRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedRideRoute: typeof AuthenticatedRideRoute
+  AuthenticatedSharingRoute: typeof AuthenticatedSharingRoute
   AuthenticatedSosRoute: typeof AuthenticatedSosRoute
   AuthenticatedTripRoute: typeof AuthenticatedTripRoute
 }
@@ -528,6 +548,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedNotificationsRoute: AuthenticatedNotificationsRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedRideRoute: AuthenticatedRideRoute,
+  AuthenticatedSharingRoute: AuthenticatedSharingRoute,
   AuthenticatedSosRoute: AuthenticatedSosRoute,
   AuthenticatedTripRoute: AuthenticatedTripRoute,
 }
