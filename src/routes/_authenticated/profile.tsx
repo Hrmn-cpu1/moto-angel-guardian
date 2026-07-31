@@ -10,6 +10,7 @@ import {
   LogOut,
   Shield,
   ShieldCheck,
+  Sparkles,
   User as UserIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -20,6 +21,7 @@ import { OutlineButton } from "@/components/OutlineButton";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { setIntroHidden } from "@/lib/intro";
 import type { User } from "@/types";
 import { toast } from "sonner";
 
@@ -144,6 +146,16 @@ function ProfilePage() {
             icon={FileText}
             label="Termos de Uso"
             onClick={() => navigate({ to: "/terms", search: { accept: false } })}
+          />
+          <Row
+            icon={Sparkles}
+            label="Mostrar tela de boas-vindas novamente"
+            onClick={() => {
+              setIntroHidden(false);
+              toast("Tela de boas-vindas reativada.", {
+                description: "Ela será exibida no próximo acesso ao aplicativo.",
+              });
+            }}
           />
           <Row
             icon={ShieldCheck}
