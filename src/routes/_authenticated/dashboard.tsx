@@ -42,13 +42,8 @@ function greeting() {
 
 function Dashboard() {
   const { user, loading } = useAuth();
-  const navigate = useNavigate();
   const { position, capture } = useGeolocation();
   const [sync, setSync] = useState<string>();
-
-  useEffect(() => {
-    if (!loading && !user) navigate({ to: "/login", search: { next: undefined } });
-  }, [loading, user, navigate]);
 
   useEffect(() => {
     capture().then(() => setSync(new Date().toLocaleTimeString("pt-BR").slice(0, 5)));
