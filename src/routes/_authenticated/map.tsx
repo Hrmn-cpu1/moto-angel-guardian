@@ -286,7 +286,7 @@ function MapPage() {
                 <Users size={12} />
                 {selectedRider
                   ? selectedRider.name
-                  : `${riders.length} ${riders.length === 1 ? "amigo online" : "amigos online"}`}
+                  : `${riders.length} ${riders.length === 1 ? "contato online" : "contatos online"}`}
               </div>
             )}
 
