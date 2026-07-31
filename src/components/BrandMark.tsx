@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
-import logo from "@/assets/moto-anjo-logo.png";
+import logo from "@/assets/moto-anjo-emblem.png";
 
-// Official emblem from the brand reference: winged rider with halo, in gold.
+// Official emblem from the brand reference: winged rider with gold halo and wings.
 export function BrandMark({
   size = 64,
   className,
@@ -16,8 +16,8 @@ export function BrandMark({
       src={logo}
       alt="Moto Anjo"
       width={1024}
-      height={768}
-      className={cn("block h-auto object-contain", !withWordmark && className)}
+      height={1024}
+      className={cn("block h-auto object-contain drop-shadow-[0_0_28px_rgba(212,175,55,0.35)]", !withWordmark && className)}
       style={{ width: size * 1.6 }}
     />
   );
@@ -26,10 +26,16 @@ export function BrandMark({
     <div className={cn("flex flex-col items-center", className)}>
       {img}
       <span
-        className="text-primary font-black uppercase italic leading-none tracking-[0.06em]"
-        style={{ fontSize: size * 0.42 }}
+        className="font-black lowercase italic leading-none tracking-[0.02em] text-foreground"
+        style={{ fontSize: size * 0.46 }}
       >
-        Moto-Anjo
+        moto-<span className="gold-text">anjo</span>
+      </span>
+      <span
+        className="mt-1.5 text-[9px] font-bold uppercase tracking-[0.22em] text-muted-foreground"
+        style={{ fontSize: Math.max(8, size * 0.1) }}
+      >
+        Um por todos. <span className="gold-text">Todos por um.</span>
       </span>
     </div>
   );

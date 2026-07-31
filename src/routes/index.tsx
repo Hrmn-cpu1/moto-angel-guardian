@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { BrandMark } from "@/components/BrandMark";
+import { ShieldPlus, Users, MapPin, ShieldCheck, Clock } from "lucide-react";
+import poster from "@/assets/moto-anjo-hero.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
@@ -42,7 +43,7 @@ function Splash() {
       } else {
         navigate({ to: "/welcome" });
       }
-    }, 1600);
+    }, 2600);
     return () => {
       cancelled = true;
       window.clearTimeout(t);
@@ -50,38 +51,50 @@ function Splash() {
   }, [navigate]);
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background px-6 text-center">
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(circle at 50% 40%, oklch(0.83 0.169 85 / 0.18), transparent 55%)",
-        }}
+    <div className="relative mx-auto flex min-h-screen max-w-md flex-col overflow-hidden bg-background">
+      <img
+        src={poster.url}
+        alt="Moto Anjo — um por todos, todos por um"
+        width={895}
+        height={930}
+        className="absolute inset-x-0 top-0 h-[70%] w-full object-cover object-top animate-scale-in"
       />
-      <div className="animate-scale-in">
-        <BrandMark size={104} withWordmark />
-      </div>
-      <h1 className="mt-8 text-4xl font-black tracking-[0.32em] gold-text animate-fade-up">
-        MOTO ANJO
-      </h1>
-      <div className="mt-3 h-px w-16 bg-gradient-to-r from-transparent via-gold to-transparent" />
-      <p
-        className="mt-4 text-sm font-medium tracking-widest text-muted-foreground animate-fade-up"
-        style={{ animationDelay: "0.2s" }}
-      >
-        Proteção em cada caminho.
-      </p>
-      <div className="absolute bottom-10 flex flex-col items-center gap-3">
-        <div className="h-1 w-24 overflow-hidden rounded-full bg-white/5">
-          <div
-            className="h-full gold-gradient"
-            style={{ animation: "shimmer 2s linear infinite", width: "40%" }}
-          />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/35 to-black" />
+
+      <div className="relative z-10 mt-auto w-full px-5 pb-8 text-center animate-fade-up">
+        <h1 className="text-base font-black uppercase tracking-[0.14em] text-foreground">
+          Um por todos. Todos por um.
+        </h1>
+        <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.1em] gold-text">
+          Porque o mais importante é voltar para casa.
+        </p>
+
+        <div className="mt-6 grid grid-cols-5 gap-1">
+          {FEATURES.map((f) => (
+            <div key={f.label} className="flex flex-col items-center gap-1.5">
+              <f.icon size={20} className={f.red ? "text-emergency" : "text-gold"} />
+              <span className="text-[7px] font-semibold uppercase leading-tight tracking-wide text-foreground/80">
+                {f.label}
+              </span>
+            </div>
+          ))}
         </div>
-        <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-          Inicializando escudo
+
+        <div className="mx-auto mt-7 h-1.5 w-48 overflow-hidden rounded-full bg-white/10">
+          <div className="h-full rounded-full bg-gradient-to-r from-gold to-gold-light animate-splash-progress" />
+        </div>
+        <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.3em] gold-text">
+          Carregando...
         </p>
       </div>
     </div>
   );
 }
+
+const FEATURES = [
+  { icon: ShieldPlus, label: "Proteção em tempo real", red: true },
+  { icon: Users, label: "Comunidade unida", red: false },
+  { icon: MapPin, label: "Alerta automático", red: true },
+  { icon: ShieldCheck, label: "Segurança na rotina", red: false },
+  { icon: Clock, label: "Assistência 24 horas", red: false },
+];
