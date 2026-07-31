@@ -128,17 +128,15 @@ function SOS() {
     setGpsFailed(false);
     setPos(p);
     setActivated(true);
-    add({
-      type: "sos",
-      title: "Alerta SOS ativado",
-      description: `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`,
-    });
 
     try {
       const res = await triggerSos({
         data: { lat: p.lat, lng: p.lng, note: null },
       });
       setSosEventId(res.sosEventId);
+      // The server function is the single writer of the SOS record; just refresh
+      // the local history cache so the event shows up without duplicating rows.
+      refreshHistory();
       if (res.queued === 0) {
         toast.info("SOS registrado — nenhum contato de emergência cadastrado.");
         return;
