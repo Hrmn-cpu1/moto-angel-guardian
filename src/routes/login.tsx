@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Mail, Lock, AlertCircle } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { GoldButton } from "@/components/GoldButton";
+import { OutlineButton } from "@/components/OutlineButton";
 import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/login")({
