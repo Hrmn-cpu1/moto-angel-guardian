@@ -19,7 +19,7 @@ import { useGeolocation, type GeoPosition } from "@/hooks/useGeolocation";
 import { historyKey } from "@/hooks/useHistory";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { triggerSos, dispatchSosNotifications } from "@/lib/sos.functions";
+import { triggerSos } from "@/lib/sos.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/sos")({
@@ -45,10 +45,8 @@ function SOS() {
   const [activated, setActivated] = useState(false);
   const [sosEventId, setSosEventId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [dispatching, setDispatching] = useState(false);
-  const dispatchedOnce = useRef(false);
+  const openedOnce = useRef(false);
   const [gpsFailed, setGpsFailed] = useState(false);
-  const [manualFallback, setManualFallback] = useState(false);
 
   const whatsappLink = (phone: string) => {
     const digits = (phone || "").replace(/\D/g, "");
@@ -97,30 +95,14 @@ function SOS() {
     };
   }, [sosEventId]);
 
-  const runDispatch = async (onlyFailed: boolean, eventId?: string) => {
-    // The id must be passed explicitly right after activation: at that point the
-    // `sosEventId` state update has not been applied to this closure yet.
-    const id = eventId ?? sosEventId;
-    if (!id) return;
-    setDispatching(true);
-    try {
-      const res = await dispatchSosNotifications({ data: { sosEventId: id, onlyFailed } });
-      if (res.failed > 0) {
-        // Automatic delivery unavailable (e.g. provider not configured):
-        // fall back to manual WhatsApp links so the alert still goes out.
-        setManualFallback(true);
-        toast.warning(`${res.sent} enviados · ${res.failed} falharam`);
-      } else if (res.sent > 0) {
-        toast.success("Todos os contatos foram notificados.");
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Falha ao enviar alertas.";
-      setManualFallback(true);
-      toast.error(msg);
-    } finally {
-      setDispatching(false);
-    }
-  };
+  // With a single contact the WhatsApp chat opens automatically once.
+  useEffect(() => {
+    if (openedOnce.current) return;
+    if (!pos || notifications.length !== 1) return;
+    openedOnce.current = true;
+    window.open(whatsappLink(notifications[0].recipient_phone), "_blank", "noopener,noreferrer");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notifications, pos]);
 
   const activate = async () => {
     const p = await capture();
@@ -148,11 +130,7 @@ function SOS() {
         toast.info("SOS registrado — nenhum contato de emergência cadastrado.");
         return;
       }
-      toast.success(`SOS registrado — enviando ${res.queued} alerta(s)...`);
-      if (!dispatchedOnce.current) {
-        dispatchedOnce.current = true;
-        void runDispatch(false, res.sosEventId);
-      }
+      toast.success(`SOS registrado — envie o alerta pelo WhatsApp (${res.queued} contato(s)).`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Falha ao registrar SOS.";
       toast.error(msg);
@@ -174,9 +152,8 @@ function SOS() {
     setPos(null);
     setSosEventId(null);
     setNotifications([]);
-    dispatchedOnce.current = false;
+    openedOnce.current = false;
     setGpsFailed(false);
-    setManualFallback(false);
   };
 
   return (
@@ -232,61 +209,33 @@ function SOS() {
                     <MessageCircle size={14} /> Alertas WhatsApp
                   </div>
                   <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                    {summary.sent}/{summary.total} enviados
-                    {summary.failed > 0 && ` · ${summary.failed} falhou`}
+                    {summary.total} contato{summary.total > 1 ? "s" : ""}
                   </div>
                 </div>
+                <p className="px-1 pb-1 text-[11px] text-muted-foreground">
+                  Toque em cada contato para enviar o alerta pelo seu WhatsApp:
+                </p>
                 {notifications.map((n) => (
-                  <div
+                  <a
                     key={n.id}
-                    className="flex items-center justify-between rounded-2xl border border-white/5 bg-black/40 px-4 py-3"
+                    href={whatsappLink(n.recipient_phone)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between gap-3 rounded-2xl border border-gold/25 bg-black/40 px-4 py-3 transition hover:bg-gold/10"
                   >
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-foreground">
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold text-foreground">
                         {n.recipient_name || "Contato"}
-                      </div>
-                      <div className="truncate text-xs text-muted-foreground">
+                      </span>
+                      <span className="block truncate text-xs text-muted-foreground">
                         {n.recipient_phone}
-                        {n.status === "failed" && n.error_message && (
-                          <span className="ml-2 text-emergency">
-                            · {shortError(n.error_message)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <StatusPill status={n.status} />
-                  </div>
+                      </span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-1 text-[11px] font-semibold uppercase tracking-widest text-gold">
+                      <Send size={13} /> WhatsApp
+                    </span>
+                  </a>
                 ))}
-                {manualFallback && (
-                  <div className="mt-2 space-y-2 rounded-2xl border border-gold/25 bg-gold/5 p-3">
-                    <p className="text-[11px] text-muted-foreground">
-                      Envio automático indisponível. Toque para enviar pelo seu WhatsApp:
-                    </p>
-                    {notifications
-                      .filter((n) => n.status !== "sent")
-                      .map((n) => (
-                        <a
-                          key={`wa-${n.id}`}
-                          href={whatsappLink(n.recipient_phone)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center justify-center gap-2 rounded-2xl border border-gold/40 bg-black/40 px-4 py-3 text-xs font-semibold uppercase tracking-widest text-gold transition hover:bg-gold/10"
-                        >
-                          <Send size={14} /> {n.recipient_name || n.recipient_phone}
-                        </a>
-                      ))}
-                  </div>
-                )}
-                {summary.failed > 0 && (
-                  <button
-                    onClick={() => runDispatch(true)}
-                    disabled={dispatching}
-                    className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border border-gold/30 bg-gold/5 px-4 py-3 text-xs font-semibold uppercase tracking-widest text-gold transition hover:bg-gold/10 disabled:opacity-50"
-                  >
-                    <RefreshCw size={14} className={dispatching ? "animate-spin" : ""} />
-                    Reenviar {summary.failed} alerta{summary.failed > 1 ? "s" : ""}
-                  </button>
-                )}
               </div>
             ) : (
               <div className="glass-card rounded-3xl p-4 text-center text-xs text-muted-foreground">
