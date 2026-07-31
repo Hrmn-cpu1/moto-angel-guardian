@@ -511,6 +511,25 @@ export type Database = {
           type: string
         }[]
       }
+      online_riders: {
+        Args: {
+          _lat: number
+          _lng: number
+          _minutes?: number
+          _radius_km?: number
+        }
+        Returns: {
+          avatar_url: string
+          distance_km: number
+          heading: number
+          lat: number
+          lng: number
+          name: string
+          speed_kmh: number
+          updated_at: string
+          user_id: string
+        }[]
+      }
       user_history: {
         Args: { _limit?: number }
         Returns: {
