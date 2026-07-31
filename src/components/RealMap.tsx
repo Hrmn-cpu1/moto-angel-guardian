@@ -37,6 +37,26 @@ type LoaderState = "idle" | "loading" | "ready" | "error";
 let loaderPromise: Promise<typeof google> | null = null;
 const DEFAULT_CENTER = { lat: -23.55052, lng: -46.633308 };
 
+// Google does NOT reject the loader when the API key is rejected (invalid key,
+// domain not authorized, billing off). It calls the global gm_authFailure hook
+// and paints its own grey "Oops" box — which is what users see as a blank map.
+// Track it globally so every RealMap instance can show a proper fallback.
+let authFailed = false;
+const authFailureListeners = new Set<() => void>();
+
+function registerAuthFailureHandler(listener: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  authFailureListeners.add(listener);
+  const w = window as unknown as { gm_authFailure?: () => void };
+  if (!w.gm_authFailure) {
+    w.gm_authFailure = () => {
+      authFailed = true;
+      authFailureListeners.forEach((l) => l());
+    };
+  }
+  return () => authFailureListeners.delete(listener);
+}
+
 type UserLocationOverlay = google.maps.OverlayView & {
   setPosition: (position: google.maps.LatLngLiteral) => void;
 };
@@ -200,8 +220,17 @@ export default function RealMap({
   const fallbackCenter = useMemo(() => center ?? DEFAULT_CENTER, []);
 
   useEffect(() => {
+    if (authFailed) setState("error");
+    return registerAuthFailureHandler(() => setState("error"));
+  }, []);
+
+  useEffect(() => {
     if (!apiKey || !containerRef.current) return;
-    setState("loading");
+    if (authFailed) {
+      setState("error");
+      return;
+    }
+    setState((s) => (s === "error" ? s : "loading"));
     let cancelled = false;
     loadGoogleMaps(apiKey, channel)
       .then((g) => {
@@ -218,7 +247,7 @@ export default function RealMap({
           styles: DARK_STYLE,
         });
         mapRef.current = map;
-        setState("ready");
+        setState((s) => (s === "error" || authFailed ? "error" : "ready"));
       })
       .catch((err) => {
         console.error(err);
