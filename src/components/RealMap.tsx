@@ -37,6 +37,26 @@ type LoaderState = "idle" | "loading" | "ready" | "error";
 let loaderPromise: Promise<typeof google> | null = null;
 const DEFAULT_CENTER = { lat: -23.55052, lng: -46.633308 };
 
+// Google does NOT reject the loader when the API key is rejected (invalid key,
+// domain not authorized, billing off). It calls the global gm_authFailure hook
+// and paints its own grey "Oops" box — which is what users see as a blank map.
+// Track it globally so every RealMap instance can show a proper fallback.
+let authFailed = false;
+const authFailureListeners = new Set<() => void>();
+
+function registerAuthFailureHandler(listener: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  authFailureListeners.add(listener);
+  const w = window as unknown as { gm_authFailure?: () => void };
+  if (!w.gm_authFailure) {
+    w.gm_authFailure = () => {
+      authFailed = true;
+      authFailureListeners.forEach((l) => l());
+    };
+  }
+  return () => authFailureListeners.delete(listener);
+}
+
 type UserLocationOverlay = google.maps.OverlayView & {
   setPosition: (position: google.maps.LatLngLiteral) => void;
 };
@@ -200,8 +220,17 @@ export default function RealMap({
   const fallbackCenter = useMemo(() => center ?? DEFAULT_CENTER, []);
 
   useEffect(() => {
+    if (authFailed) setState("error");
+    return registerAuthFailureHandler(() => setState("error"));
+  }, []);
+
+  useEffect(() => {
     if (!apiKey || !containerRef.current) return;
-    setState("loading");
+    if (authFailed) {
+      setState("error");
+      return;
+    }
+    setState((s) => (s === "error" ? s : "loading"));
     let cancelled = false;
     loadGoogleMaps(apiKey, channel)
       .then((g) => {
@@ -218,7 +247,7 @@ export default function RealMap({
           styles: DARK_STYLE,
         });
         mapRef.current = map;
-        setState("ready");
+        setState((s) => (s === "error" || authFailed ? "error" : "ready"));
       })
       .catch((err) => {
         console.error(err);
@@ -527,12 +556,38 @@ export default function RealMap({
 
   return (
     <div className={`relative h-full w-full ${className ?? ""}`}>
-      <div ref={containerRef} className="absolute inset-0 h-full w-full rounded-3xl" />
-      {state !== "ready" && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-3xl bg-black/80 text-xs uppercase tracking-widest text-gold">
-          {state === "error" ? "Erro ao carregar mapa" : "Carregando mapa..."}
+      <div
+        ref={containerRef}
+        className={`absolute inset-0 h-full w-full rounded-3xl ${state === "error" ? "invisible" : ""}`}
+      />
+      {state === "error" ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-3xl bg-black/90 px-6 text-center">
+          <p className="text-xs uppercase tracking-widest text-gold">Mapa indisponível</p>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            O mapa não pôde ser carregado neste endereço. Sua localização continua ativa e você
+            pode abrir a rota no Google Maps.
+          </p>
+          <button
+            type="button"
+            onClick={() =>
+              window.open(
+                center
+                  ? `https://www.google.com/maps?q=${center.lat},${center.lng}`
+                  : "https://www.google.com/maps",
+                "_blank",
+                "noopener,noreferrer",
+              )
+            }
+            className="rounded-full gold-gradient px-4 py-2 text-[11px] font-semibold text-black"
+          >
+            Abrir no Google Maps
+          </button>
         </div>
-      )}
+      ) : state !== "ready" ? (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-3xl bg-black/80 text-xs uppercase tracking-widest text-gold">
+          Carregando mapa...
+        </div>
+      ) : null}
     </div>
   );
 }
