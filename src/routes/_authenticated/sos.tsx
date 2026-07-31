@@ -304,7 +304,7 @@ function SOS() {
             )}
 
             <div className="space-y-3">
-              <GoldButton onClick={shareAlert} size="lg">
+              <GoldButton onClick={shareAlert} size="lg" disabled={!pos}>
                 <Share2 size={16} /> Compartilhar alerta
               </GoldButton>
               <OutlineButton onClick={cancel} size="lg">
@@ -315,7 +315,7 @@ function SOS() {
         )}
       </div>
       <p className="px-6 pb-8 text-center text-[10px] uppercase tracking-widest text-muted-foreground">
-        Esta é uma demonstração. Em uma emergência real, ligue 190 / 193 / 192.
+        Em uma emergência com risco de vida, ligue também 190 / 193 / 192.
       </p>
       <button onClick={() => navigate({ to: "/dashboard" })} className="hidden" aria-hidden />
     </div>
