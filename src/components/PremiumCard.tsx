@@ -12,7 +12,7 @@ export function PremiumCard({ children, className, glow = false, ...rest }: Prop
       {...rest}
       className={cn(
         "glass-card animate-fade-up rounded-2xl p-5",
-        glow && "shadow-[0_0_60px_-20px_oklch(0.78_0.13_84/0.35)]",
+        glow && "shadow-[0_0_60px_-20px_oklch(0.83_0.169_85/0.35)]",
         className,
       )}
     >

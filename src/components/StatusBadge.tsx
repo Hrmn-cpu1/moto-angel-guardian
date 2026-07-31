@@ -11,9 +11,9 @@ export function StatusBadge({ status, label, className }: Props) {
     status === "active"
       ? "bg-success shadow-[0_0_8px_oklch(0.72_0.18_150/0.8)]"
       : status === "warning"
-        ? "bg-gold shadow-[0_0_8px_oklch(0.78_0.13_84/0.8)]"
+        ? "bg-gold shadow-[0_0_8px_oklch(0.83_0.169_85/0.8)]"
         : status === "danger"
-          ? "bg-emergency shadow-[0_0_8px_oklch(0.6_0.24_26/0.8)]"
+          ? "bg-emergency shadow-[0_0_8px_oklch(0.586_0.213_27.5/0.8)]"
           : "bg-muted-foreground";
   return (
     <span

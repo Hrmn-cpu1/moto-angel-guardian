@@ -243,7 +243,7 @@ function Community() {
         right={
           <button
             onClick={() => setComposing((c) => !c)}
-            className="flex h-10 w-10 items-center justify-center rounded-full gold-gradient text-black shadow-[0_8px_24px_-8px_oklch(0.78_0.13_84/0.6)]"
+            className="flex h-10 w-10 items-center justify-center rounded-full gold-gradient text-black shadow-[0_8px_24px_-8px_oklch(0.83_0.169_85/0.6)]"
             aria-label="Nova publicação"
           >
             <Plus size={18} strokeWidth={2.6} />

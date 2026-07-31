@@ -20,7 +20,7 @@ export const OutlineButton = forwardRef<HTMLButtonElement, Props>(
         {...rest}
         className={cn(
           "w-full rounded-xl border border-gold/40 bg-transparent font-semibold uppercase tracking-[0.14em] text-gold transition-all duration-300",
-          "hover:border-gold hover:bg-gold/5 hover:shadow-[0_8px_24px_-8px_oklch(0.78_0.13_84/0.3)]",
+          "hover:border-gold hover:bg-gold/5 hover:shadow-[0_8px_24px_-8px_oklch(0.83_0.169_85/0.3)]",
           "active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50",
           sizeCls,
           className,

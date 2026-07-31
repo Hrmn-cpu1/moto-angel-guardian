@@ -192,7 +192,7 @@ function Register() {
             type="checkbox"
             checked={accepted}
             onChange={(e) => setAccepted(e.target.checked)}
-            className="mt-0.5 h-4 w-4 accent-[color:oklch(0.78_0.13_84)]"
+            className="mt-0.5 h-4 w-4 accent-[color:oklch(0.83_0.169_85)]"
           />
           <span>
             Li e aceito os{" "}

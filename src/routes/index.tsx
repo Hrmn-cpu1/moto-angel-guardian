@@ -55,7 +55,7 @@ function Splash() {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(circle at 50% 40%, oklch(0.78 0.13 84 / 0.18), transparent 55%)",
+            "radial-gradient(circle at 50% 40%, oklch(0.83 0.169 85 / 0.18), transparent 55%)",
         }}
       />
       <div className="animate-scale-in">

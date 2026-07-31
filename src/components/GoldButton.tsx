@@ -20,7 +20,7 @@ export const GoldButton = forwardRef<HTMLButtonElement, Props>(
         {...rest}
         className={cn(
           "gold-gradient relative w-full overflow-hidden rounded-xl font-semibold uppercase tracking-[0.14em] text-black transition-all duration-300",
-          "shadow-[0_8px_32px_-8px_oklch(0.78_0.13_84/0.4)] hover:shadow-[0_12px_40px_-8px_oklch(0.78_0.13_84/0.6)]",
+          "shadow-[0_8px_32px_-8px_oklch(0.83_0.169_85/0.4)] hover:shadow-[0_12px_40px_-8px_oklch(0.83_0.169_85/0.6)]",
           "active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50",
           "before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/25 before:to-transparent before:translate-x-[-100%] hover:before:translate-x-[100%] before:transition-transform before:duration-700",
           sizeCls,

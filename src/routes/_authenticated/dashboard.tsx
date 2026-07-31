@@ -70,7 +70,7 @@ function Dashboard() {
           <div
             className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full"
             style={{
-              background: "radial-gradient(circle, oklch(0.78 0.13 84 / 0.25), transparent 70%)",
+              background: "radial-gradient(circle, oklch(0.83 0.169 85 / 0.25), transparent 70%)",
             }}
           />
           <div className="flex items-start justify-between">
@@ -84,7 +84,7 @@ function Dashboard() {
                 Localização e recursos de segurança disponíveis.
               </p>
             </div>
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl gold-gradient shadow-[0_10px_40px_-10px_oklch(0.78_0.13_84/0.6)]">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl gold-gradient shadow-[0_10px_40px_-10px_oklch(0.83_0.169_85/0.6)]">
               <Shield size={30} className="text-black" strokeWidth={2.4} />
             </div>
           </div>

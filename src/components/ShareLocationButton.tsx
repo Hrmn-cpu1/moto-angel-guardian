@@ -53,7 +53,7 @@ export function ShareLocationButton() {
           onClick={handleShare}
           disabled={loading}
           aria-label="Compartilhar minha localização"
-          className="flex h-11 items-center gap-2 rounded-xl gold-gradient px-4 text-xs font-black uppercase tracking-[0.18em] text-black shadow-[0_10px_30px_-12px_oklch(0.78_0.13_84/0.7)] transition active:scale-[0.98] disabled:opacity-60"
+          className="flex h-11 items-center gap-2 rounded-xl gold-gradient px-4 text-xs font-black uppercase tracking-[0.18em] text-black shadow-[0_10px_30px_-12px_oklch(0.83_0.169_85/0.7)] transition active:scale-[0.98] disabled:opacity-60"
         >
           {loading ? <Loader2 size={16} className="animate-spin" /> : <Share2 size={16} />}
           Compartilhar
