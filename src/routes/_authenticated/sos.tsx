@@ -21,7 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { triggerSos, dispatchSosNotifications } from "@/lib/sos.functions";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/sos")({
+export const Route = createFileRoute("/_authenticated/sos")({
   head: () => ({
     meta: [
       { title: "SOS — Moto Anjo" },

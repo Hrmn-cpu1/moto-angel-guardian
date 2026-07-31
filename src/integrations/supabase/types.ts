@@ -360,12 +360,38 @@ export type Database = {
           total_users: number;
         }[];
       };
+      community_feed: {
+        Args: { _limit?: number };
+        Returns: {
+          author_name: string;
+          category: string;
+          comments_count: number;
+          created_at: string;
+          id: string;
+          liked: boolean;
+          likes_count: number;
+          region: string;
+          text: string;
+          user_id: string;
+        }[];
+      };
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"];
           _user_id: string;
         };
         Returns: boolean;
+      };
+      user_history: {
+        Args: { _limit?: number };
+        Returns: {
+          description: string;
+          id: string;
+          kind: string;
+          meta: Json;
+          title: string;
+          ts: string;
+        }[];
       };
     };
     Enums: {

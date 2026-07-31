@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   Shield,
@@ -21,7 +21,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { LoadingScreen } from "@/components/LoadingScreen";
 
-export const Route = createFileRoute("/dashboard")({
+export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
       { title: "Início — Moto Anjo" },
@@ -42,13 +42,8 @@ function greeting() {
 
 function Dashboard() {
   const { user, loading } = useAuth();
-  const navigate = useNavigate();
   const { position, capture } = useGeolocation();
   const [sync, setSync] = useState<string>();
-
-  useEffect(() => {
-    if (!loading && !user) navigate({ to: "/login", search: { next: undefined } });
-  }, [loading, user, navigate]);
 
   useEffect(() => {
     capture().then(() => setSync(new Date().toLocaleTimeString("pt-BR").slice(0, 5)));
