@@ -52,7 +52,7 @@ function Welcome() {
             <Link to="/login" search={{ next: undefined }} className="block">
               <GoldButton size="lg">Entrar</GoldButton>
             </Link>
-            <Link to="/register" className="block">
+            <Link to="/register" search={{ next: undefined }} className="block">
               <OutlineButton size="lg">Criar conta</OutlineButton>
             </Link>
           </div>
