@@ -6,28 +6,27 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: "sm" | "md" | "lg";
 }
 
+// Reference button: flat metallic gold block, black uppercase label, 8px radius.
 export const GoldButton = forwardRef<HTMLButtonElement, Props>(
   ({ children, className, size = "md", ...rest }, ref) => {
     const sizeCls =
       size === "sm"
-        ? "h-10 px-4 text-sm"
+        ? "h-10 px-4 text-xs"
         : size === "lg"
-          ? "h-14 px-8 text-base"
+          ? "h-13 px-8 text-sm"
           : "h-12 px-6 text-sm";
     return (
       <button
         ref={ref}
         {...rest}
         className={cn(
-          "gold-gradient relative w-full overflow-hidden rounded-xl font-semibold uppercase tracking-[0.14em] text-black transition-all duration-300",
-          "shadow-[0_8px_32px_-8px_oklch(0.78_0.13_84/0.4)] hover:shadow-[0_12px_40px_-8px_oklch(0.78_0.13_84/0.6)]",
-          "active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50",
-          "before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/25 before:to-transparent before:translate-x-[-100%] hover:before:translate-x-[100%] before:transition-transform before:duration-700",
+          "w-full rounded-lg bg-gold font-bold uppercase tracking-[0.12em] text-black transition-colors duration-200",
+          "hover:bg-gold-light active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50",
           sizeCls,
           className,
         )}
       >
-        <span className="relative z-10 flex items-center justify-center gap-2">{children}</span>
+        <span className="flex items-center justify-center gap-2">{children}</span>
       </button>
     );
   },

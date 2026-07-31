@@ -6,22 +6,22 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: "sm" | "md" | "lg";
 }
 
+// Reference secondary button: 1px gold outline on graphite, gold uppercase label.
 export const OutlineButton = forwardRef<HTMLButtonElement, Props>(
   ({ children, className, size = "md", ...rest }, ref) => {
     const sizeCls =
       size === "sm"
-        ? "h-10 px-4 text-sm"
+        ? "h-10 px-4 text-xs"
         : size === "lg"
-          ? "h-14 px-8 text-base"
+          ? "h-13 px-8 text-sm"
           : "h-12 px-6 text-sm";
     return (
       <button
         ref={ref}
         {...rest}
         className={cn(
-          "w-full rounded-xl border border-gold/40 bg-transparent font-semibold uppercase tracking-[0.14em] text-gold transition-all duration-300",
-          "hover:border-gold hover:bg-gold/5 hover:shadow-[0_8px_24px_-8px_oklch(0.78_0.13_84/0.3)]",
-          "active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50",
+          "w-full rounded-lg border border-gold bg-transparent font-bold uppercase tracking-[0.12em] text-gold transition-colors duration-200",
+          "hover:bg-gold/10 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50",
           sizeCls,
           className,
         )}

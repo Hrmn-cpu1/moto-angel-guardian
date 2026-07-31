@@ -34,7 +34,7 @@ function Welcome() {
       <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/80 to-black" />
       <div className="relative z-10 flex flex-1 flex-col justify-between px-6 pt-16 pb-10">
         <div className="flex flex-col items-center text-center animate-fade-up">
-          <BrandMark size={72} />
+          <BrandMark size={72} withWordmark />
           <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.36em] text-gold">
             Moto Anjo
           </p>

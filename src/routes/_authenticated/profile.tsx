@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Header } from "@/components/Header";
-import { SOSFab } from "@/components/SOSFab";
 import { GoldButton } from "@/components/GoldButton";
 import { OutlineButton } from "@/components/OutlineButton";
 import { LoadingScreen } from "@/components/LoadingScreen";
@@ -172,7 +171,6 @@ function ProfilePage() {
           <LogOut size={14} /> Sair
         </OutlineButton>
       </div>
-      <SOSFab />
     </AppShell>
   );
 }

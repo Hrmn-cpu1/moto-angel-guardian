@@ -1,18 +1,36 @@
-import { Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
+import logo from "@/assets/moto-anjo-logo.png";
 
-export function BrandMark({ size = 64, className }: { size?: number; className?: string }) {
+// Official emblem from the brand reference: winged rider with halo, in gold.
+export function BrandMark({
+  size = 64,
+  className,
+  withWordmark = false,
+}: {
+  size?: number;
+  className?: string;
+  withWordmark?: boolean;
+}) {
+  const img = (
+    <img
+      src={logo}
+      alt="Moto Anjo"
+      width={1024}
+      height={768}
+      className={cn("block h-auto object-contain", !withWordmark && className)}
+      style={{ width: size * 1.6 }}
+    />
+  );
+  if (!withWordmark) return img;
   return (
-    <div
-      className={cn(
-        "relative flex items-center justify-center rounded-2xl gold-gradient",
-        "shadow-[0_10px_40px_-10px_oklch(0.78_0.13_84/0.6)]",
-        className,
-      )}
-      style={{ width: size, height: size }}
-    >
-      <Shield size={size * 0.55} className="text-black" strokeWidth={2.4} />
-      <div className="absolute inset-0 rounded-2xl border border-white/20" />
+    <div className={cn("flex flex-col items-center", className)}>
+      {img}
+      <span
+        className="text-primary font-black uppercase italic leading-none tracking-[0.06em]"
+        style={{ fontSize: size * 0.42 }}
+      >
+        Moto-Anjo
+      </span>
     </div>
   );
 }

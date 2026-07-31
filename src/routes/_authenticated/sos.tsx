@@ -158,8 +158,11 @@ function SOS() {
         {!activated ? (
           <>
             <div className="text-center">
-              <h2 className="text-3xl font-black tracking-tight text-emergency">EMERGÊNCIA</h2>
-              <p className="mt-2 text-sm text-muted-foreground">Modo de demonstração</p>
+              <h2 className="text-2xl font-black uppercase tracking-tight text-emergency">
+                ⚠ Emergência
+              </h2>
+              <p className="mt-2 text-sm text-foreground">Precisa de ajuda?</p>
+              <p className="text-sm text-muted-foreground">Acione o botão abaixo.</p>
             </div>
             <EmergencyButton onActivate={activate} />
           </>

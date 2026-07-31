@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Siren } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -53,7 +54,9 @@ export function EmergencyButton({ onActivate, disabled }: Props) {
           disabled && "opacity-50",
         )}
         style={{
-          background: "radial-gradient(circle at 30% 30%, oklch(0.7 0.24 26), oklch(0.45 0.24 26))",
+          background:
+            "radial-gradient(circle at 50% 35%, oklch(0.66 0.21 27.5), oklch(0.42 0.19 27.5))",
+          boxShadow: "0 0 60px oklch(0.586 0.213 27.5 / 0.55)",
         }}
         aria-label="Botão de emergência"
       >
@@ -65,20 +68,22 @@ export function EmergencyButton({ onActivate, disabled }: Props) {
             mask: "radial-gradient(circle, transparent 62%, black 63%)",
           }}
         />
-        <div className="relative z-10 flex flex-col items-center gap-1 text-white">
-          <span className="text-xs font-semibold uppercase tracking-[0.3em] opacity-80">
-            {holding ? "Segure" : "Pressione"}
-          </span>
-          <span className="text-6xl font-black tabular-nums leading-none">
-            {holding ? countdown : "SOS"}
-          </span>
-          <span className="text-[10px] font-medium uppercase tracking-[0.28em] opacity-80">
+        <div className="relative z-10 flex flex-col items-center gap-2 text-white">
+          {holding ? (
+            <span className="text-6xl font-black tabular-nums leading-none">{countdown}</span>
+          ) : (
+            <Siren size={44} strokeWidth={2} />
+          )}
+          <span className="text-xl font-black uppercase tracking-wide leading-none">
             Emergência
+          </span>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.28em] opacity-85">
+            {holding ? "Segure" : "Toque e segure"}
           </span>
         </div>
       </button>
-      <p className="max-w-xs text-center text-xs text-muted-foreground">
-        Pressione e segure por 3 segundos para ativar o alerta de demonstração.
+      <p className="max-w-[15rem] text-center text-xs text-muted-foreground">
+        Alerta será enviado para motoboys próximos e contatos de confiança.
       </p>
     </div>
   );

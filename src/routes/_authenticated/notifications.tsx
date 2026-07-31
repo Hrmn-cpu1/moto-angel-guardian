@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Bell, MapPin, Route as RouteIcon, Share2, ShieldCheck } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Header } from "@/components/Header";
-import { SOSFab } from "@/components/SOSFab";
 import type { LucideIcon } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/notifications")({
@@ -103,7 +102,6 @@ function Notifications() {
           })
         )}
       </div>
-      <SOSFab />
     </AppShell>
   );
 }

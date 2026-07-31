@@ -17,7 +17,6 @@ import { AppShell } from "@/components/AppShell";
 import { Header } from "@/components/Header";
 import { GoldButton } from "@/components/GoldButton";
 import { OutlineButton } from "@/components/OutlineButton";
-import { SOSFab } from "@/components/SOSFab";
 import { LocationPermissionGate } from "@/components/LocationPermissionGate";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useHistory } from "@/hooks/useHistory";
@@ -184,7 +183,7 @@ function MapPage() {
               onClick={() => setFollow((f) => !f)}
               className={`absolute right-3 top-3 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest transition ${
                 follow
-                  ? "border-gold bg-gold/15 text-gold shadow-[0_0_20px_-6px_oklch(0.78_0.13_84/0.6)]"
+                  ? "border-gold bg-gold/15 text-gold shadow-[0_0_20px_-6px_oklch(0.83_0.169_85/0.6)]"
                   : "border-white/10 bg-black/70 text-muted-foreground"
               }`}
               aria-pressed={follow}
@@ -225,7 +224,6 @@ function MapPage() {
         </div>
       )}
 
-      <SOSFab />
     </AppShell>
   );
 }

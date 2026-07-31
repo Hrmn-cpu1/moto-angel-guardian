@@ -3,7 +3,6 @@ import { AlertTriangle, History as HistoryIcon, MapPin, Share2 } from "lucide-re
 import { AppShell } from "@/components/AppShell";
 import { Header } from "@/components/Header";
 import { EmptyState } from "@/components/EmptyState";
-import { SOSFab } from "@/components/SOSFab";
 import { useHistory } from "@/hooks/useHistory";
 
 export const Route = createFileRoute("/_authenticated/history")({
@@ -73,7 +72,6 @@ function HistoryPage() {
           })
         )}
       </div>
-      <SOSFab />
     </AppShell>
   );
 }

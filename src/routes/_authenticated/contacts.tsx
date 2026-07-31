@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Contact as ContactIcon, Phone, Plus, Share2, Star, Trash2, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Header } from "@/components/Header";
-import { SOSFab } from "@/components/SOSFab";
 import { GoldButton } from "@/components/GoldButton";
 import { OutlineButton } from "@/components/OutlineButton";
 import { EmptyState } from "@/components/EmptyState";
@@ -143,7 +142,6 @@ function ContactsPage() {
         </div>
       )}
 
-      <SOSFab />
     </AppShell>
   );
 }

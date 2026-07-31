@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Mail, Lock, AlertCircle } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { GoldButton } from "@/components/GoldButton";
+import { OutlineButton } from "@/components/OutlineButton";
 import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/login")({
@@ -66,11 +67,10 @@ function Login() {
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col bg-background px-6 pt-14 pb-10">
       <div className="flex flex-col items-center text-center">
-        <BrandMark size={64} />
-        <h1 className="mt-5 text-2xl font-black tracking-tight text-foreground">
-          Bem-vindo de volta
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">Entre para continuar sua jornada.</p>
+        <BrandMark size={104} withWordmark />
+        <p className="mt-3 text-xs text-muted-foreground">
+          Cuidando do que realmente importa para você.
+        </p>
       </div>
 
       <div className="mt-8 space-y-3 animate-fade-up">
@@ -117,16 +117,15 @@ function Login() {
           </GoldButton>
         </div>
 
-        <div className="flex items-center justify-between pt-2 text-xs">
-          <span className="text-muted-foreground">Novo por aqui?</span>
-          <Link
-            to="/register"
-            search={{ next }}
-            className="font-semibold uppercase tracking-widest text-gold"
-          >
+        <Link to="/register" search={{ next }} className="block pt-1">
+          <OutlineButton type="button" size="lg">
             Criar conta
-          </Link>
-        </div>
+          </OutlineButton>
+        </Link>
+
+        <p className="pt-4 text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-gold/80">
+          Um por todos e todos por um.
+        </p>
       </form>
     </div>
   );

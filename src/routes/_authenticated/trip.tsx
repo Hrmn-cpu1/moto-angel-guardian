@@ -5,7 +5,6 @@ import { AppShell } from "@/components/AppShell";
 import { Header } from "@/components/Header";
 import { GoldButton } from "@/components/GoldButton";
 import { OutlineButton } from "@/components/OutlineButton";
-import { SOSFab } from "@/components/SOSFab";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useContacts } from "@/hooks/useContacts";
 import { useHistory } from "@/hooks/useHistory";
@@ -189,7 +188,6 @@ function TripPage() {
           </div>
         )}
       </div>
-      <SOSFab />
     </AppShell>
   );
 }
