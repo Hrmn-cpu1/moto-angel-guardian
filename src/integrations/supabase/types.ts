@@ -505,6 +505,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_trusted_contact: {
+        Args: { _owner: string; _viewer: string }
+        Returns: boolean
+      }
       nearby_alerts: {
         Args: {
           _hours?: number
@@ -526,6 +530,7 @@ export type Database = {
           type: string
         }[]
       }
+      normalize_phone: { Args: { _phone: string }; Returns: string }
       online_riders: {
         Args: {
           _lat: number
