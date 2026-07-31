@@ -25,9 +25,9 @@ export const Route = createFileRoute("/_authenticated/sos")({
   head: () => ({
     meta: [
       { title: "SOS — Moto Anjo" },
-      { name: "description", content: "Acionamento de emergência (demonstração)." },
+      { name: "description", content: "Acionamento de emergência com localização em tempo real." },
       { property: "og:title", content: "SOS — Moto Anjo" },
-      { property: "og:description", content: "Acionamento de emergência (demonstração)." },
+      { property: "og:description", content: "Acionamento de emergência com localização em tempo real." },
     ],
   }),
   component: SOS,
