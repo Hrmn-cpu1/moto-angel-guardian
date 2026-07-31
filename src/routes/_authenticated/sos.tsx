@@ -1,16 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Share2,
-  X,
-  MapPin,
-  MessageCircle,
-  Send,
-  RefreshCw,
-  CheckCircle2,
-  XCircle,
-  Loader2,
-} from "lucide-react";
+import { Share2, X, MapPin, MessageCircle, Send } from "lucide-react";
 import { Header } from "@/components/Header";
 import { EmergencyButton } from "@/components/EmergencyButton";
 import { OutlineButton } from "@/components/OutlineButton";
@@ -56,12 +46,7 @@ function SOS() {
     return `https://wa.me/${to}?text=${encodeURIComponent(text)}`;
   };
 
-  const summary = useMemo(() => {
-    const sent = notifications.filter((n) => n.status === "sent").length;
-    const failed = notifications.filter((n) => n.status === "failed").length;
-    const pending = notifications.filter((n) => n.status === "queued").length;
-    return { sent, failed, pending, total: notifications.length };
-  }, [notifications]);
+  const summary = useMemo(() => ({ total: notifications.length }), [notifications]);
 
   // Realtime subscription for progress of the current SOS event
   useEffect(() => {
@@ -283,28 +268,3 @@ type Notification = {
   sent_at: string | null;
 };
 
-function StatusPill({ status }: { status: string }) {
-  if (status === "sent")
-    return (
-      <span className="flex items-center gap-1 rounded-full bg-gold/20 px-3 py-1 text-[11px] font-semibold text-gold">
-        <CheckCircle2 size={12} /> Enviado
-      </span>
-    );
-  if (status === "failed")
-    return (
-      <span className="flex items-center gap-1 rounded-full bg-emergency/20 px-3 py-1 text-[11px] font-semibold text-emergency">
-        <XCircle size={12} /> Falhou
-      </span>
-    );
-  return (
-    <span className="flex items-center gap-1 rounded-full bg-white/5 px-3 py-1 text-[11px] font-semibold text-muted-foreground">
-      <Loader2 size={12} className="animate-spin" /> Enviando
-    </span>
-  );
-}
-
-function shortError(msg: string): string {
-  const m = msg.match(/"message"\s*:\s*"([^"]+)"/);
-  const raw = m ? m[1] : msg;
-  return raw.length > 60 ? `${raw.slice(0, 60)}…` : raw;
-}
