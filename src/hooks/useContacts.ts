@@ -120,7 +120,10 @@ export function useContacts() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
-      await supabase.from("emergency_contacts").update({ is_primary: false }).eq("user_id", user.id);
+      await supabase
+        .from("emergency_contacts")
+        .update({ is_primary: false })
+        .eq("user_id", user.id);
       const { error } = await supabase
         .from("emergency_contacts")
         .update({ is_primary: true })

@@ -52,9 +52,13 @@ function AdminPage() {
     queryFn: async () => {
       const [statsRes, profilesRes, activityRes] = await Promise.all([
         supabase.rpc("admin_stats"),
-        supabase.from("profiles").select("id,name,email,created_at").order("created_at", {
-          ascending: false,
-        }).limit(50),
+        supabase
+          .from("profiles")
+          .select("id,name,email,created_at")
+          .order("created_at", {
+            ascending: false,
+          })
+          .limit(50),
         supabase.rpc("admin_activity", { _days: 30 }),
       ]);
       if (statsRes.error) throw statsRes.error;
