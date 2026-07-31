@@ -210,9 +210,13 @@ export default function RealMap({
   const partnerOverlaysRef = useRef<Map<string, PartnerOverlay>>(new Map());
   const [state, setState] = useState<LoaderState>("idle");
 
-  const apiKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as
+  // Prefer the project's own Google Cloud key (works on custom domains and in
+  // the Android/Capacitor WebView); fall back to the Lovable-managed key.
+  const ownKey = import.meta.env.VITE_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
+  const managedKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as
     | string
     | undefined;
+  const apiKey = (ownKey && ownKey.trim()) || managedKey;
   const channel = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID as
     | string
     | undefined;
@@ -544,23 +548,13 @@ export default function RealMap({
     });
   }, [partners, onPartnerSelect, state]);
 
-  if (!apiKey) {
-    return (
-      <div
-        className={`flex items-center justify-center bg-black text-center text-xs text-muted-foreground ${className ?? ""}`}
-      >
-        Mapa indisponível — chave do Google Maps não configurada.
-      </div>
-    );
-  }
-
   return (
     <div className={`relative h-full w-full ${className ?? ""}`}>
       <div
         ref={containerRef}
-        className={`absolute inset-0 h-full w-full rounded-3xl ${state === "error" ? "invisible" : ""}`}
+        className={`absolute inset-0 h-full w-full rounded-3xl ${state === "error" || !apiKey ? "invisible" : ""}`}
       />
-      {state === "error" ? (
+      {state === "error" || !apiKey ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-3xl bg-[radial-gradient(circle_at_center,rgba(212,175,55,0.10),#050505_70%)] px-6 text-center">
           {center ? (
             <>
@@ -580,8 +574,9 @@ export default function RealMap({
             <p className="text-xs uppercase tracking-widest text-gold">Localizando...</p>
           )}
           <p className="text-[11px] leading-relaxed text-muted-foreground">
-            O mapa visual está indisponível neste endereço, mas seu GPS continua ativo em tempo
-            real.
+            {!apiKey
+              ? "Mapa visual indisponível — a chave do Google Maps ainda não foi configurada. Seu GPS continua ativo em tempo real."
+              : "Mapa visual indisponível neste endereço: a chave do Google Maps não autoriza este domínio/app. Seu GPS continua ativo em tempo real."}
           </p>
           <button
             type="button"
