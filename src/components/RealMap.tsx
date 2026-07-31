@@ -74,10 +74,22 @@ function loadGoogleMaps(apiKey: string, channel?: string): Promise<typeof google
 
 function pinSvg(color: string, glyphColor: string, glyph: "you" | POI["type"]): string {
   const paths: Record<string, string> = {
-    hospital: '<path d="M12 8v8M8 12h8" stroke="' + glyphColor + '" stroke-width="2.4" stroke-linecap="round"/>',
-    fuel: '<path d="M10 8h4v9h-4z M14 11h2v4a1 1 0 001 1" stroke="' + glyphColor + '" stroke-width="1.5" fill="none"/>',
-    shop: '<path d="M9 15l6-6M11 9h4v4" stroke="' + glyphColor + '" stroke-width="1.8" fill="none" stroke-linecap="round"/>',
-    anjo: '<path d="M12 8l2 3 3 .4-2.2 2.1.5 3-2.3-1.3-2.3 1.3.5-3L9 11.4l3-.4z" fill="' + glyphColor + '"/>',
+    hospital:
+      '<path d="M12 8v8M8 12h8" stroke="' +
+      glyphColor +
+      '" stroke-width="2.4" stroke-linecap="round"/>',
+    fuel:
+      '<path d="M10 8h4v9h-4z M14 11h2v4a1 1 0 001 1" stroke="' +
+      glyphColor +
+      '" stroke-width="1.5" fill="none"/>',
+    shop:
+      '<path d="M9 15l6-6M11 9h4v4" stroke="' +
+      glyphColor +
+      '" stroke-width="1.8" fill="none" stroke-linecap="round"/>',
+    anjo:
+      '<path d="M12 8l2 3 3 .4-2.2 2.1.5 3-2.3-1.3-2.3 1.3.5-3L9 11.4l3-.4z" fill="' +
+      glyphColor +
+      '"/>',
     you: '<circle cx="12" cy="12" r="4" fill="' + glyphColor + '"/>',
   };
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="34" height="42" viewBox="0 0 24 30">
@@ -179,7 +191,8 @@ export default function RealMap({
           const element = document.createElement("div");
           element.className = "moto-user-location-marker";
           element.setAttribute("aria-label", "Sua localização atual");
-          element.innerHTML = '<span class="moto-user-location-marker__pulse"></span><span class="moto-user-location-marker__pin"><span></span></span>';
+          element.innerHTML =
+            '<span class="moto-user-location-marker__pulse"></span><span class="moto-user-location-marker__pin"><span></span></span>';
           this.element = element;
           this.getPanes()?.overlayMouseTarget.appendChild(element);
         }
@@ -256,7 +269,9 @@ export default function RealMap({
 
   if (!apiKey) {
     return (
-      <div className={`flex items-center justify-center bg-black text-center text-xs text-muted-foreground ${className ?? ""}`}>
+      <div
+        className={`flex items-center justify-center bg-black text-center text-xs text-muted-foreground ${className ?? ""}`}
+      >
         Mapa indisponível — chave do Google Maps não configurada.
       </div>
     );

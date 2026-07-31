@@ -126,13 +126,25 @@ function Community() {
     };
     const ch = supabase
       .channel("community-feed")
-      .on("postgres_changes", { event: "*", schema: "public", table: "community_posts" }, scheduleLoad)
-      .on("postgres_changes", { event: "*", schema: "public", table: "community_likes" }, scheduleLoad)
-      .on("postgres_changes", { event: "*", schema: "public", table: "community_comments" }, (payload) => {
-        scheduleLoad();
-        const row = (payload.new || payload.old) as CommentRow | undefined;
-        if (row && openComments === row.post_id) void loadComments(row.post_id);
-      })
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "community_posts" },
+        scheduleLoad,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "community_likes" },
+        scheduleLoad,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "community_comments" },
+        (payload) => {
+          scheduleLoad();
+          const row = (payload.new || payload.old) as CommentRow | undefined;
+          if (row && openComments === row.post_id) void loadComments(row.post_id);
+        },
+      )
       .subscribe();
     return () => {
       if (timer) clearTimeout(timer);
@@ -150,7 +162,8 @@ function Community() {
   const filtered = useMemo(() => {
     return posts.filter((p) => {
       if (category !== "Geral" && p.category !== category) return false;
-      if (regionFilter && p.region.trim().toLowerCase() !== regionFilter.toLowerCase()) return false;
+      if (regionFilter && p.region.trim().toLowerCase() !== regionFilter.toLowerCase())
+        return false;
       return true;
     });
   }, [posts, category, regionFilter]);
@@ -176,9 +189,7 @@ function Community() {
     // optimistic
     setPosts((ps) =>
       ps.map((p) =>
-        p.id === post.id
-          ? { ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) }
-          : p,
+        p.id === post.id ? { ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) } : p,
       ),
     );
     if (post.liked) {
@@ -303,7 +314,9 @@ function Community() {
                 className="flex-1 rounded-lg border border-gold/25 bg-black/60 px-3 py-2 text-xs text-foreground outline-none focus:border-gold/60"
               >
                 {CATEGORIES.filter((c) => c !== "Geral").map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
                 ))}
                 <option value="Geral">Geral</option>
               </select>
@@ -315,7 +328,9 @@ function Community() {
               />
             </div>
             <div className="flex justify-end">
-              <GoldButton size="sm" onClick={publish}>Publicar</GoldButton>
+              <GoldButton size="sm" onClick={publish}>
+                Publicar
+              </GoldButton>
             </div>
             {!user && (
               <p className="text-[10px] uppercase tracking-widest text-emergency">
@@ -364,7 +379,9 @@ function Community() {
                   </button>
                 )}
               </header>
-              <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">{p.text}</p>
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+                {p.text}
+              </p>
               <footer className="mt-3 flex items-center gap-4 border-t border-white/5 pt-3 text-xs text-muted-foreground">
                 <button
                   onClick={() => toggleLike(p)}
@@ -402,7 +419,9 @@ function Community() {
                             {relTime(c.created_at)}
                           </span>
                         </div>
-                        <p className="mt-0.5 whitespace-pre-wrap text-xs text-foreground/90">{c.text}</p>
+                        <p className="mt-0.5 whitespace-pre-wrap text-xs text-foreground/90">
+                          {c.text}
+                        </p>
                       </div>
                       {user?.id === c.user_id && (
                         <button

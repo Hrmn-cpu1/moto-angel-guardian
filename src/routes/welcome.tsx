@@ -42,8 +42,7 @@ function Welcome() {
         <div className="space-y-6 animate-fade-up" style={{ animationDelay: "0.15s" }}>
           <div className="space-y-3">
             <h1 className="text-3xl font-black leading-tight text-foreground">
-              Sua jornada mais segura{" "}
-              <span className="gold-text">começa aqui.</span>
+              Sua jornada mais segura <span className="gold-text">começa aqui.</span>
             </h1>
             <p className="text-sm leading-relaxed text-muted-foreground">
               Proteção, localização e comunidade para quem vive sobre duas rodas.

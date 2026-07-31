@@ -111,12 +111,18 @@ function TripPage() {
                         <UserIcon size={14} />
                       </span>
                       <span>
-                        <span className="block text-sm font-semibold text-foreground">{c.name}</span>
-                        <span className="block text-[10px] text-muted-foreground">{c.relation}</span>
+                        <span className="block text-sm font-semibold text-foreground">
+                          {c.name}
+                        </span>
+                        <span className="block text-[10px] text-muted-foreground">
+                          {c.relation}
+                        </span>
                       </span>
                     </span>
                     {c.isPrimary && (
-                      <span className="text-[10px] uppercase tracking-widest text-gold">Principal</span>
+                      <span className="text-[10px] uppercase tracking-widest text-gold">
+                        Principal
+                      </span>
                     )}
                   </button>
                 ))}
@@ -143,7 +149,11 @@ function TripPage() {
                 Tempo em movimento
               </p>
               <div className="mt-6 grid grid-cols-2 gap-3">
-                <Metric icon={<MapPin size={14} />} label="Distância" value={`${distance.toFixed(1)} km`} />
+                <Metric
+                  icon={<MapPin size={14} />}
+                  label="Distância"
+                  value={`${distance.toFixed(1)} km`}
+                />
                 <Metric icon={<Gauge size={14} />} label="Velocidade" value={`${speed} km/h`} />
               </div>
             </div>
@@ -191,7 +201,9 @@ function Check({ label, ok, icon }: { label: string; ok?: boolean; icon?: React.
         {icon}
         {label}
       </span>
-      <span className={`text-[10px] font-semibold uppercase tracking-widest ${ok ? "text-success" : "text-emergency"}`}>
+      <span
+        className={`text-[10px] font-semibold uppercase tracking-widest ${ok ? "text-success" : "text-emergency"}`}
+      >
         {ok ? "OK" : "Verificar"}
       </span>
     </div>

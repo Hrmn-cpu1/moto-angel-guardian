@@ -53,8 +53,7 @@ export function EmergencyButton({ onActivate, disabled }: Props) {
           disabled && "opacity-50",
         )}
         style={{
-          background:
-            "radial-gradient(circle at 30% 30%, oklch(0.7 0.24 26), oklch(0.45 0.24 26))",
+          background: "radial-gradient(circle at 30% 30%, oklch(0.7 0.24 26), oklch(0.45 0.24 26))",
         }}
         aria-label="Botão de emergência"
       >

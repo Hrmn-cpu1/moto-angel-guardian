@@ -5,7 +5,10 @@ export const Route = createFileRoute("/privacy")({
   head: () => ({
     meta: [
       { title: "Política de Privacidade — Moto Anjo" },
-      { name: "description", content: "Como o Moto Anjo trata seus dados pessoais conforme a LGPD." },
+      {
+        name: "description",
+        content: "Como o Moto Anjo trata seus dados pessoais conforme a LGPD.",
+      },
       { property: "og:title", content: "Política de Privacidade — Moto Anjo" },
       { property: "og:description", content: "Política de Privacidade do Moto Anjo." },
     ],
@@ -39,9 +42,9 @@ function PrivacyPage() {
           comunidade) e dados de localização quando autorizado pelo dispositivo.
         </Section>
         <Section title="2. Finalidade da coleta">
-          Os dados são utilizados para: autenticação, prestação dos serviços do Moto Anjo,
-          envio de alertas de emergência, exibição de rotas e pontos de apoio, personalização de
-          experiência e cumprimento de obrigações legais.
+          Os dados são utilizados para: autenticação, prestação dos serviços do Moto Anjo, envio de
+          alertas de emergência, exibição de rotas e pontos de apoio, personalização de experiência
+          e cumprimento de obrigações legais.
         </Section>
         <Section title="3. Compartilhamento de informações">
           Não vendemos seus dados. Podemos compartilhá-los com: (a) contatos de emergência que você
@@ -54,8 +57,8 @@ function PrivacyPage() {
           permissão a qualquer momento nas configurações do sistema operacional.
         </Section>
         <Section title="5. Cookies e tecnologias utilizadas">
-          Utilizamos armazenamento local do dispositivo (localStorage / Preferences) para manter
-          sua sessão e preferências. Não utilizamos cookies de rastreamento publicitário.
+          Utilizamos armazenamento local do dispositivo (localStorage / Preferences) para manter sua
+          sessão e preferências. Não utilizamos cookies de rastreamento publicitário.
         </Section>
         <Section title="6. Segurança dos dados">
           Adotamos medidas técnicas e organizacionais para proteger seus dados contra acessos não
@@ -64,8 +67,8 @@ function PrivacyPage() {
         </Section>
         <Section title="7. Direitos do usuário conforme LGPD">
           Você pode, a qualquer momento, solicitar: confirmação de tratamento, acesso, correção,
-          anonimização, portabilidade, eliminação, informações sobre compartilhamento e revogação
-          do consentimento — nos termos dos artigos 18 e seguintes da LGPD.
+          anonimização, portabilidade, eliminação, informações sobre compartilhamento e revogação do
+          consentimento — nos termos dos artigos 18 e seguintes da LGPD.
         </Section>
         <Section title="8. Exclusão da conta">
           Você pode excluir sua conta pelo menu Perfil ou solicitando ao encarregado de dados. A
@@ -74,7 +77,10 @@ function PrivacyPage() {
         </Section>
         <Section title="9. Contato do responsável pelos dados">
           Encarregado (DPO): <span className="text-gold">dpo@motoanjo.app</span>. Consulte também os{" "}
-          <Link to="/terms" search={{ accept: false }} className="text-gold underline">Termos de Uso</Link>.
+          <Link to="/terms" search={{ accept: false }} className="text-gold underline">
+            Termos de Uso
+          </Link>
+          .
         </Section>
       </main>
     </div>

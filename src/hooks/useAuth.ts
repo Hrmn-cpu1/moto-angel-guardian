@@ -103,7 +103,10 @@ export function useAuth() {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
     if (error) throw new Error(mapAuthError(error.message));
     if (!data.user) throw new Error("Falha ao entrar.");
     const u = await loadProfile(data.user.id, data.user.email ?? "");
@@ -165,24 +168,27 @@ export function useAuth() {
     setState({ user: null, loading: false });
   }, []);
 
-  const updateUser = useCallback(async (patch: Partial<AppUser>) => {
-    if (!user) return;
-    const dbPatch = {
-      ...(patch.name !== undefined && { name: patch.name }),
-      ...(patch.phone !== undefined && { phone: patch.phone }),
-      ...(patch.bikeModel !== undefined && { bike_model: patch.bikeModel }),
-      ...(patch.plate !== undefined && { plate: patch.plate }),
-      ...(patch.bloodType !== undefined && { blood_type: patch.bloodType }),
-      ...(patch.emergencyContact !== undefined && { emergency_contact: patch.emergencyContact }),
-      ...(patch.emergencyPhone !== undefined && { emergency_phone: patch.emergencyPhone }),
-      ...(patch.termsAcceptedAt !== undefined && { terms_accepted_at: patch.termsAcceptedAt }),
-      ...(patch.termsVersion !== undefined && { terms_version: patch.termsVersion }),
-    };
-    if (Object.keys(dbPatch).length === 0) return;
-    const { error } = await supabase.from("profiles").update(dbPatch).eq("id", user.id);
-    if (error) throw new Error("Não foi possível salvar suas alterações.");
-    setState({ user: { ...user, ...patch } });
-  }, [user]);
+  const updateUser = useCallback(
+    async (patch: Partial<AppUser>) => {
+      if (!user) return;
+      const dbPatch = {
+        ...(patch.name !== undefined && { name: patch.name }),
+        ...(patch.phone !== undefined && { phone: patch.phone }),
+        ...(patch.bikeModel !== undefined && { bike_model: patch.bikeModel }),
+        ...(patch.plate !== undefined && { plate: patch.plate }),
+        ...(patch.bloodType !== undefined && { blood_type: patch.bloodType }),
+        ...(patch.emergencyContact !== undefined && { emergency_contact: patch.emergencyContact }),
+        ...(patch.emergencyPhone !== undefined && { emergency_phone: patch.emergencyPhone }),
+        ...(patch.termsAcceptedAt !== undefined && { terms_accepted_at: patch.termsAcceptedAt }),
+        ...(patch.termsVersion !== undefined && { terms_version: patch.termsVersion }),
+      };
+      if (Object.keys(dbPatch).length === 0) return;
+      const { error } = await supabase.from("profiles").update(dbPatch).eq("id", user.id);
+      if (error) throw new Error("Não foi possível salvar suas alterações.");
+      setState({ user: { ...user, ...patch } });
+    },
+    [user],
+  );
 
   return useMemo(
     () => ({ user, loading, login, register, logout, updateUser, loginWithGoogle }),
@@ -193,7 +199,8 @@ export function useAuth() {
 function mapAuthError(msg: string): string {
   const low = msg.toLowerCase();
   if (low.includes("invalid login")) return "E-mail ou senha inválidos.";
-  if (low.includes("already registered") || low.includes("user already")) return "Já existe uma conta com este e-mail.";
+  if (low.includes("already registered") || low.includes("user already"))
+    return "Já existe uma conta com este e-mail.";
   if (low.includes("password should be at least")) {
     const m = msg.match(/at least (\d+)/i);
     const n = m ? m[1] : "8";

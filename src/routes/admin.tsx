@@ -114,8 +114,13 @@ function AdminPage() {
         <div className="px-5 pt-8">
           <div className="glass-card rounded-2xl p-6 text-center">
             <ShieldCheck className="mx-auto mb-3 text-gold" size={32} />
-            <p className="text-sm text-foreground">Você não tem permissão para acessar esta área.</p>
-            <Link to="/dashboard" className="mt-4 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-gold">
+            <p className="text-sm text-foreground">
+              Você não tem permissão para acessar esta área.
+            </p>
+            <Link
+              to="/dashboard"
+              className="mt-4 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-gold"
+            >
               <ArrowLeft size={14} /> Voltar
             </Link>
           </div>
@@ -130,7 +135,11 @@ function AdminPage() {
       <div className="space-y-4 px-5 pt-5">
         <div className="grid grid-cols-2 gap-3">
           <StatCard icon={Users} label="Usuários cadastrados" value={stats?.total_users ?? 0} />
-          <StatCard icon={MailCheck} label="E-mails confirmados" value={stats?.confirmed_users ?? 0} />
+          <StatCard
+            icon={MailCheck}
+            label="E-mails confirmados"
+            value={stats?.confirmed_users ?? 0}
+          />
           <StatCard icon={UserPlus} label="Novos (7 dias)" value={stats?.new_last_7d ?? 0} />
           <StatCard icon={UserPlus} label="Novos (30 dias)" value={stats?.new_last_30d ?? 0} />
         </div>
@@ -145,10 +154,28 @@ function AdminPage() {
                 </linearGradient>
               </defs>
               <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />
-              <XAxis dataKey="day" tick={{ fill: "#8C8C8C", fontSize: 10 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-              <YAxis tick={{ fill: "#8C8C8C", fontSize: 10 }} tickLine={false} axisLine={false} allowDecimals={false} width={28} />
+              <XAxis
+                dataKey="day"
+                tick={{ fill: "#8C8C8C", fontSize: 10 }}
+                tickLine={false}
+                axisLine={false}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                tick={{ fill: "#8C8C8C", fontSize: 10 }}
+                tickLine={false}
+                axisLine={false}
+                allowDecimals={false}
+                width={28}
+              />
               <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: "#F3D675" }} />
-              <Area type="monotone" dataKey="new_users" stroke="#D4AF37" strokeWidth={2} fill="url(#gGold)" />
+              <Area
+                type="monotone"
+                dataKey="new_users"
+                stroke="#D4AF37"
+                strokeWidth={2}
+                fill="url(#gGold)"
+              />
             </AreaChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -157,10 +184,32 @@ function AdminPage() {
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={activity} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
               <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />
-              <XAxis dataKey="day" tick={{ fill: "#8C8C8C", fontSize: 10 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-              <YAxis tick={{ fill: "#8C8C8C", fontSize: 10 }} tickLine={false} axisLine={false} allowDecimals={false} width={28} />
-              <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: "#F3D675" }} cursor={{ fill: "rgba(212,175,55,0.06)" }} />
-              <Bar dataKey="trips" name="Viagens" stackId="a" fill="#D4AF37" radius={[0, 0, 0, 0]} />
+              <XAxis
+                dataKey="day"
+                tick={{ fill: "#8C8C8C", fontSize: 10 }}
+                tickLine={false}
+                axisLine={false}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                tick={{ fill: "#8C8C8C", fontSize: 10 }}
+                tickLine={false}
+                axisLine={false}
+                allowDecimals={false}
+                width={28}
+              />
+              <Tooltip
+                contentStyle={tooltipStyle}
+                labelStyle={{ color: "#F3D675" }}
+                cursor={{ fill: "rgba(212,175,55,0.06)" }}
+              />
+              <Bar
+                dataKey="trips"
+                name="Viagens"
+                stackId="a"
+                fill="#D4AF37"
+                radius={[0, 0, 0, 0]}
+              />
               <Bar dataKey="posts" name="Posts" stackId="a" fill="#F3D675" />
               <Bar dataKey="sos" name="SOS" stackId="a" fill="#D92323" radius={[4, 4, 0, 0]} />
             </BarChart>
@@ -181,7 +230,9 @@ function AdminPage() {
           </div>
           <div className="divide-y divide-white/5">
             {rows.length === 0 && (
-              <p className="py-6 text-center text-xs text-muted-foreground">Nenhum usuário ainda.</p>
+              <p className="py-6 text-center text-xs text-muted-foreground">
+                Nenhum usuário ainda.
+              </p>
             )}
             {rows.map((r) => (
               <div key={r.id} className="flex items-center justify-between gap-3 py-3">
@@ -240,7 +291,9 @@ const tooltipStyle = {
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="glass-card rounded-2xl p-4">
-      <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.28em] text-gold">{title}</p>
+      <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.28em] text-gold">
+        {title}
+      </p>
       {children}
     </div>
   );

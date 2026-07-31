@@ -86,15 +86,7 @@ export const searchPOIs = createServerFn({ method: "POST" })
       const [hospitals, fuel, shops] = await Promise.all([
         nearby(apiKey, lovableKey, data.lat, data.lng, data.radius, ["hospital"], "hospital"),
         nearby(apiKey, lovableKey, data.lat, data.lng, data.radius, ["gas_station"], "fuel"),
-        nearby(
-          apiKey,
-          lovableKey,
-          data.lat,
-          data.lng,
-          data.radius,
-          ["car_repair"],
-          "shop",
-        ),
+        nearby(apiKey, lovableKey, data.lat, data.lng, data.radius, ["car_repair"], "shop"),
       ]);
       return { pois: [...hospitals, ...fuel, ...shops], error: null as string | null };
     } catch (e) {

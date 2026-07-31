@@ -5,11 +5,29 @@ import { BrandMark } from "@/components/BrandMark";
 import { GoldButton } from "@/components/GoldButton";
 import { OutlineButton } from "@/components/OutlineButton";
 
-type OAuthClient = { authorization_id: string; client?: { name?: string; redirect_uri?: string }; scopes?: string[]; redirect_url?: string; redirect_to?: string };
+type OAuthClient = {
+  authorization_id: string;
+  client?: { name?: string; redirect_uri?: string };
+  scopes?: string[];
+  redirect_url?: string;
+  redirect_to?: string;
+};
 type OAuthApi = {
-  getAuthorizationDetails: (id: string) => Promise<{ data: OAuthClient | null; error: Error | null }>;
-  approveAuthorization: (id: string) => Promise<{ data: { redirect_url?: string; redirect_to?: string } | null; error: Error | null }>;
-  denyAuthorization: (id: string) => Promise<{ data: { redirect_url?: string; redirect_to?: string } | null; error: Error | null }>;
+  getAuthorizationDetails: (
+    id: string,
+  ) => Promise<{ data: OAuthClient | null; error: Error | null }>;
+  approveAuthorization: (
+    id: string,
+  ) => Promise<{
+    data: { redirect_url?: string; redirect_to?: string } | null;
+    error: Error | null;
+  }>;
+  denyAuthorization: (
+    id: string,
+  ) => Promise<{
+    data: { redirect_url?: string; redirect_to?: string } | null;
+    error: Error | null;
+  }>;
 };
 const oauth = () => (supabase.auth as unknown as { oauth: OAuthApi }).oauth;
 
@@ -35,7 +53,9 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
   component: Consent,
   errorComponent: ({ error }) => (
     <main className="mx-auto max-w-md p-8 text-foreground">
-      <p className="text-sm text-emergency">Não foi possível carregar esta autorização: {String((error as Error)?.message ?? error)}</p>
+      <p className="text-sm text-emergency">
+        Não foi possível carregar esta autorização: {String((error as Error)?.message ?? error)}
+      </p>
     </main>
   ),
 });
@@ -53,27 +73,45 @@ function Consent() {
     const { data, error } = approve
       ? await oauth().approveAuthorization(authorization_id)
       : await oauth().denyAuthorization(authorization_id);
-    if (error) { setBusy(false); setError(error.message); return; }
+    if (error) {
+      setBusy(false);
+      setError(error.message);
+      return;
+    }
     const target = data?.redirect_url ?? data?.redirect_to;
-    if (!target) { setBusy(false); setError("Nenhuma URL de retorno retornada."); return; }
+    if (!target) {
+      setBusy(false);
+      setError("Nenhuma URL de retorno retornada.");
+      return;
+    }
     window.location.href = target;
   }
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center bg-background px-6 py-10">
       <div className="glass-card w-full rounded-2xl p-6 text-center">
-        <div className="mx-auto mb-4"><BrandMark size={56} /></div>
-        <h1 className="text-xl font-black tracking-tight text-foreground">Conectar {clientName} ao Moto Anjo</h1>
+        <div className="mx-auto mb-4">
+          <BrandMark size={56} />
+        </div>
+        <h1 className="text-xl font-black tracking-tight text-foreground">
+          Conectar {clientName} ao Moto Anjo
+        </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Isso permite que {clientName} acesse ferramentas do Moto Anjo em seu nome (perfil, contatos e histórico).
-          Suas políticas de acesso continuam valendo.
+          Isso permite que {clientName} acesse ferramentas do Moto Anjo em seu nome (perfil,
+          contatos e histórico). Suas políticas de acesso continuam valendo.
         </p>
-        {error && <p role="alert" className="mt-3 text-xs text-emergency">{error}</p>}
+        {error && (
+          <p role="alert" className="mt-3 text-xs text-emergency">
+            {error}
+          </p>
+        )}
         <div className="mt-6 space-y-2">
           <GoldButton size="lg" disabled={busy} onClick={() => decide(true)}>
             {busy ? "Aguarde..." : "Aprovar"}
           </GoldButton>
-          <OutlineButton disabled={busy} onClick={() => decide(false)}>Recusar</OutlineButton>
+          <OutlineButton disabled={busy} onClick={() => decide(false)}>
+            Recusar
+          </OutlineButton>
         </div>
       </div>
     </main>

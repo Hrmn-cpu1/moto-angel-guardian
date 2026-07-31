@@ -48,17 +48,17 @@ function HistoryPage() {
           />
         ) : (
           items.map((it) => {
-            const Icon =
-              it.type === "trip"
-                ? MapPin
-                : it.type === "sos"
-                  ? AlertTriangle
-                  : Share2;
+            const Icon = it.type === "trip" ? MapPin : it.type === "sos" ? AlertTriangle : Share2;
             const accent =
               it.type === "sos" ? "border-emergency/40 text-emergency" : "border-gold/30 text-gold";
             return (
-              <div key={it.id} className="glass-card flex items-start gap-3 rounded-2xl p-4 animate-fade-up">
-                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-black/40 ${accent}`}>
+              <div
+                key={it.id}
+                className="glass-card flex items-start gap-3 rounded-2xl p-4 animate-fade-up"
+              >
+                <div
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-black/40 ${accent}`}
+                >
                   <Icon size={16} />
                 </div>
                 <div className="min-w-0 flex-1">

@@ -7,8 +7,7 @@ export function SOSFab() {
       to="/sos"
       className="fixed bottom-24 right-4 z-50 flex h-16 w-16 items-center justify-center rounded-full text-white animate-pulse-emergency"
       style={{
-        background:
-          "radial-gradient(circle at 30% 30%, oklch(0.7 0.24 26), oklch(0.45 0.24 26))",
+        background: "radial-gradient(circle at 30% 30%, oklch(0.7 0.24 26), oklch(0.45 0.24 26))",
       }}
       aria-label="SOS Emergência"
     >

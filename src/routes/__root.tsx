@@ -84,16 +84,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Moto Anjo — Proteção em cada caminho" },
       {
         name: "description",
-        content:
-          "Aplicativo premium de segurança, comunidade e emergência para motociclistas.",
+        content: "Aplicativo premium de segurança, comunidade e emergência para motociclistas.",
       },
       { name: "author", content: "Moto Anjo" },
       { name: "theme-color", content: "#050505" },
       { property: "og:title", content: "Moto Anjo — Proteção em cada caminho" },
       {
         property: "og:description",
-        content:
-          "Aplicativo premium de segurança, comunidade e emergência para motociclistas.",
+        content: "Aplicativo premium de segurança, comunidade e emergência para motociclistas.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

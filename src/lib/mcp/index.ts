@@ -11,7 +11,8 @@ export default defineMcp({
   name: "moto-anjo-mcp",
   title: "Moto Anjo",
   version: "0.1.0",
-  instructions: "Ferramentas do Moto Anjo: perfil, contatos de emergência e histórico de viagens/SOS do usuário autenticado.",
+  instructions:
+    "Ferramentas do Moto Anjo: perfil, contatos de emergência e histórico de viagens/SOS do usuário autenticado.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",

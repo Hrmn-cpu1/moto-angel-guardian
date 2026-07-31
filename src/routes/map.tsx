@@ -1,7 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { ClientOnly } from "@tanstack/react-router";
-import { Crosshair, Share2, Navigation, MapPin, Fuel, Wrench, Cross, Shield, LocateFixed, LocateOff } from "lucide-react";
+import {
+  Crosshair,
+  Share2,
+  Navigation,
+  MapPin,
+  Fuel,
+  Wrench,
+  Cross,
+  Shield,
+  LocateFixed,
+  LocateOff,
+} from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Header } from "@/components/Header";
 import { GoldButton } from "@/components/GoldButton";
@@ -94,104 +105,124 @@ function MapPage() {
       {!permissionGranted ? (
         <LocationPermissionGate onGranted={() => setPermissionGranted(true)} />
       ) : (
-      <div className="px-5 pt-4">
-        <div className="relative aspect-[4/5] overflow-hidden rounded-3xl glass-card">
-          <ClientOnly fallback={
-            <div className="absolute inset-0 flex items-center justify-center text-xs uppercase tracking-widest text-gold">
-              Preparando mapa...
-            </div>
-          }>
-            <Suspense fallback={
-              <div className="absolute inset-0 flex items-center justify-center text-xs uppercase tracking-widest text-gold">
-                Carregando mapa...
-              </div>
-            }>
-              <RealMap
-                center={position ? { lat: position.lat, lng: position.lng } : null}
-                accuracy={position?.accuracy ?? null}
-                follow={follow}
-                pois={pois}
-                onPoiSelect={setSelected}
-                className="absolute inset-0"
-              />
-            </Suspense>
-          </ClientOnly>
+        <div className="px-5 pt-4">
+          <div className="relative aspect-[4/5] overflow-hidden rounded-3xl glass-card">
+            <ClientOnly
+              fallback={
+                <div className="absolute inset-0 flex items-center justify-center text-xs uppercase tracking-widest text-gold">
+                  Preparando mapa...
+                </div>
+              }
+            >
+              <Suspense
+                fallback={
+                  <div className="absolute inset-0 flex items-center justify-center text-xs uppercase tracking-widest text-gold">
+                    Carregando mapa...
+                  </div>
+                }
+              >
+                <RealMap
+                  center={position ? { lat: position.lat, lng: position.lng } : null}
+                  accuracy={position?.accuracy ?? null}
+                  follow={follow}
+                  pois={pois}
+                  onPoiSelect={setSelected}
+                  className="absolute inset-0"
+                />
+              </Suspense>
+            </ClientOnly>
 
-          {position && follow && (
-            <div className="moto-user-location-marker left-1/2 top-1/2" aria-label="Sua localização atual">
-              <span className="moto-user-location-marker__pulse" />
-              <span className="moto-user-location-marker__pin">
-                <span />
+            {position && follow && (
+              <div
+                className="moto-user-location-marker left-1/2 top-1/2"
+                aria-label="Sua localização atual"
+              >
+                <span className="moto-user-location-marker__pulse" />
+                <span className="moto-user-location-marker__pin">
+                  <span />
+                </span>
+              </div>
+            )}
+
+            {selected && (
+              <div className="absolute inset-x-3 bottom-3 rounded-2xl glass-card p-3 animate-fade-up">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-gold">
+                      {(() => {
+                        const Ic = iconFor[selected.type];
+                        return <Ic size={12} />;
+                      })()}
+                      {labelFor[selected.type]}
+                    </p>
+                    <p className="mt-0.5 truncate text-sm font-semibold text-foreground">
+                      {selected.name}
+                    </p>
+                    {selected.address && (
+                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                        {selected.address}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => openRoute(selected)}
+                    className="flex items-center gap-1 rounded-full gold-gradient px-3 py-1.5 text-[11px] font-semibold text-black"
+                  >
+                    <Navigation size={12} /> Rota
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {loadingPois && !selected && (
+              <div className="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-[10px] uppercase tracking-widest text-gold">
+                Buscando pontos...
+              </div>
+            )}
+
+            <button
+              onClick={() => setFollow((f) => !f)}
+              className={`absolute right-3 top-3 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest transition ${
+                follow
+                  ? "border-gold bg-gold/15 text-gold shadow-[0_0_20px_-6px_oklch(0.78_0.13_84/0.6)]"
+                  : "border-white/10 bg-black/70 text-muted-foreground"
+              }`}
+              aria-pressed={follow}
+            >
+              {follow ? <LocateFixed size={12} /> : <LocateOff size={12} />}
+              {follow ? "Seguindo" : "Livre"}
+            </button>
+          </div>
+
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center gap-2 rounded-xl border border-white/5 bg-black/40 px-4 py-3">
+              <MapPin size={14} className="text-gold" />
+              <span className="font-mono text-xs text-muted-foreground">
+                {position
+                  ? `${position.lat.toFixed(5)}, ${position.lng.toFixed(5)}${position.accuracy ? ` · ±${Math.round(position.accuracy)}m` : ""}${position.simulated ? " (sim)" : ""}${watching ? " · ao vivo" : ""}`
+                  : "Localizando..."}
               </span>
             </div>
-          )}
 
-          {selected && (
-            <div className="absolute inset-x-3 bottom-3 rounded-2xl glass-card p-3 animate-fade-up">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-gold">
-                    {(() => { const Ic = iconFor[selected.type]; return <Ic size={12} />; })()}
-                    {labelFor[selected.type]}
-                  </p>
-                  <p className="mt-0.5 truncate text-sm font-semibold text-foreground">{selected.name}</p>
-                  {selected.address && (
-                    <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{selected.address}</p>
-                  )}
-                </div>
-                <button
-                  onClick={() => openRoute(selected)}
-                  className="flex items-center gap-1 rounded-full gold-gradient px-3 py-1.5 text-[11px] font-semibold text-black"
-                >
-                  <Navigation size={12} /> Rota
-                </button>
-              </div>
+            <div className="grid grid-cols-2 gap-2">
+              <OutlineButton
+                onClick={() => {
+                  setFollow(true);
+                  void capture();
+                }}
+                size="sm"
+              >
+                <Crosshair size={14} /> Centralizar
+              </OutlineButton>
+              <OutlineButton onClick={doShare} size="sm">
+                <Share2 size={14} /> Compartilhar
+              </OutlineButton>
             </div>
-          )}
-
-          {loadingPois && !selected && (
-            <div className="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-[10px] uppercase tracking-widest text-gold">
-              Buscando pontos...
-            </div>
-          )}
-
-          <button
-            onClick={() => setFollow((f) => !f)}
-            className={`absolute right-3 top-3 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest transition ${
-              follow
-                ? "border-gold bg-gold/15 text-gold shadow-[0_0_20px_-6px_oklch(0.78_0.13_84/0.6)]"
-                : "border-white/10 bg-black/70 text-muted-foreground"
-            }`}
-            aria-pressed={follow}
-          >
-            {follow ? <LocateFixed size={12} /> : <LocateOff size={12} />}
-            {follow ? "Seguindo" : "Livre"}
-          </button>
-        </div>
-
-        <div className="mt-4 space-y-2">
-          <div className="flex items-center gap-2 rounded-xl border border-white/5 bg-black/40 px-4 py-3">
-            <MapPin size={14} className="text-gold" />
-            <span className="font-mono text-xs text-muted-foreground">
-              {position
-                ? `${position.lat.toFixed(5)}, ${position.lng.toFixed(5)}${position.accuracy ? ` · ±${Math.round(position.accuracy)}m` : ""}${position.simulated ? " (sim)" : ""}${watching ? " · ao vivo" : ""}`
-                : "Localizando..."}
-            </span>
+            <GoldButton size="md" onClick={() => openRoute()}>
+              <Navigation size={14} /> Abrir no Google Maps
+            </GoldButton>
           </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <OutlineButton onClick={() => { setFollow(true); void capture(); }} size="sm">
-              <Crosshair size={14} /> Centralizar
-            </OutlineButton>
-            <OutlineButton onClick={doShare} size="sm">
-              <Share2 size={14} /> Compartilhar
-            </OutlineButton>
-          </div>
-          <GoldButton size="md" onClick={() => openRoute()}>
-            <Navigation size={14} /> Abrir no Google Maps
-          </GoldButton>
         </div>
-      </div>
       )}
 
       <SOSFab />

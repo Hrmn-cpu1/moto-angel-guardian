@@ -44,7 +44,9 @@ function TermsPage() {
           <ArrowLeft size={16} />
         </button>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-gold">Documento legal</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-gold">
+            Documento legal
+          </p>
           <h1 className="truncate text-lg font-black text-foreground">Termos de Uso</h1>
         </div>
         <ShieldCheck size={20} className="text-gold" />
@@ -56,24 +58,26 @@ function TermsPage() {
         </p>
 
         <Section title="1. Aceitação dos Termos">
-          Ao criar sua conta e utilizar o Moto Anjo, você declara ter lido, compreendido e concordado
-          integralmente com estes Termos de Uso e com nossa{" "}
-          <Link to="/privacy" className="text-gold underline">Política de Privacidade</Link>. Caso
-          não concorde, você deve interromper imediatamente o uso do aplicativo.
+          Ao criar sua conta e utilizar o Moto Anjo, você declara ter lido, compreendido e
+          concordado integralmente com estes Termos de Uso e com nossa{" "}
+          <Link to="/privacy" className="text-gold underline">
+            Política de Privacidade
+          </Link>
+          . Caso não concorde, você deve interromper imediatamente o uso do aplicativo.
         </Section>
 
         <Section title="2. Descrição do Moto Anjo">
           O Moto Anjo é uma plataforma voltada a motociclistas, oferecendo comunidade, rastreamento
           de viagens, compartilhamento de localização, chat entre usuários e acionamento de
-          emergência (SOS). O aplicativo é uma ferramenta auxiliar e não substitui serviços
-          oficiais de emergência (SAMU 192, Polícia 190, Bombeiros 193).
+          emergência (SOS). O aplicativo é uma ferramenta auxiliar e não substitui serviços oficiais
+          de emergência (SAMU 192, Polícia 190, Bombeiros 193).
         </Section>
 
         <Section title="3. Cadastro e Conta do Usuário">
-          Para utilizar o Moto Anjo é necessário fornecer dados verdadeiros, completos e atualizados.
-          Você é o único responsável pela guarda de suas credenciais e por toda atividade realizada
-          em sua conta. Menores de 18 anos só poderão utilizar o app com consentimento e supervisão
-          do responsável legal.
+          Para utilizar o Moto Anjo é necessário fornecer dados verdadeiros, completos e
+          atualizados. Você é o único responsável pela guarda de suas credenciais e por toda
+          atividade realizada em sua conta. Menores de 18 anos só poderão utilizar o app com
+          consentimento e supervisão do responsável legal.
         </Section>
 
         <Section title="4. Responsabilidades do Usuário">
@@ -84,24 +88,25 @@ function TermsPage() {
         </Section>
 
         <Section title="5. Uso adequado da plataforma">
-          É vedado utilizar o Moto Anjo para: (a) divulgar conteúdo ilícito, ofensivo, discriminatório
-          ou que incite violência; (b) praticar spam ou publicidade não autorizada; (c) tentar
-          burlar mecanismos de segurança; (d) coletar dados de outros usuários sem autorização.
+          É vedado utilizar o Moto Anjo para: (a) divulgar conteúdo ilícito, ofensivo,
+          discriminatório ou que incite violência; (b) praticar spam ou publicidade não autorizada;
+          (c) tentar burlar mecanismos de segurança; (d) coletar dados de outros usuários sem
+          autorização.
         </Section>
 
         <Section title="6. Sistema SOS e Emergências">
           O botão SOS envia sua localização e um alerta aos contatos de confiança cadastrados. O
           Moto Anjo empenha esforços razoáveis para entrega dos alertas, mas não garante o
-          recebimento pelos destinatários, tampouco a atuação de serviços públicos de emergência.
-          O uso indevido ou trote configura violação destes Termos e pode acarretar suspensão
-          imediata da conta e responsabilização legal.
+          recebimento pelos destinatários, tampouco a atuação de serviços públicos de emergência. O
+          uso indevido ou trote configura violação destes Termos e pode acarretar suspensão imediata
+          da conta e responsabilização legal.
         </Section>
 
         <Section title="7. Compartilhamento de localização">
           O compartilhamento de localização é opcional e depende de sua permissão explícita. Você
-          pode revogar essa permissão a qualquer momento nas configurações do dispositivo. Os
-          links de localização gerados podem ser acessados por quem os receber — compartilhe apenas
-          com pessoas de confiança.
+          pode revogar essa permissão a qualquer momento nas configurações do dispositivo. Os links
+          de localização gerados podem ser acessados por quem os receber — compartilhe apenas com
+          pessoas de confiança.
         </Section>
 
         <Section title="8. Chat entre usuários">
@@ -112,14 +117,16 @@ function TermsPage() {
 
         <Section title="9. Privacidade e tratamento de dados (LGPD)">
           O tratamento de dados pessoais segue a Lei nº 13.709/2018 (LGPD) e está detalhado em nossa{" "}
-          <Link to="/privacy" className="text-gold underline">Política de Privacidade</Link>.
+          <Link to="/privacy" className="text-gold underline">
+            Política de Privacidade
+          </Link>
+          .
         </Section>
 
         <Section title="10. Limitação de responsabilidade">
           O Moto Anjo é fornecido "como está". Não nos responsabilizamos por danos decorrentes de:
-          indisponibilidade temporária do serviço; falhas de conectividade, GPS ou de terceiros;
-          uso incorreto do aplicativo; ou de decisões tomadas com base em informações exibidas
-          no app.
+          indisponibilidade temporária do serviço; falhas de conectividade, GPS ou de terceiros; uso
+          incorreto do aplicativo; ou de decisões tomadas com base em informações exibidas no app.
         </Section>
 
         <Section title="11. Suspensão ou encerramento da conta">

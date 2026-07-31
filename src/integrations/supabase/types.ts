@@ -1,504 +1,496 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
+    PostgrestVersion: "14.5";
+  };
   public: {
     Tables: {
       community_comments: {
         Row: {
-          author_name: string
-          created_at: string
-          id: string
-          post_id: string
-          text: string
-          user_id: string
-        }
+          author_name: string;
+          created_at: string;
+          id: string;
+          post_id: string;
+          text: string;
+          user_id: string;
+        };
         Insert: {
-          author_name?: string
-          created_at?: string
-          id?: string
-          post_id: string
-          text: string
-          user_id: string
-        }
+          author_name?: string;
+          created_at?: string;
+          id?: string;
+          post_id: string;
+          text: string;
+          user_id: string;
+        };
         Update: {
-          author_name?: string
-          created_at?: string
-          id?: string
-          post_id?: string
-          text?: string
-          user_id?: string
-        }
+          author_name?: string;
+          created_at?: string;
+          id?: string;
+          post_id?: string;
+          text?: string;
+          user_id?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "community_comments_post_id_fkey"
-            columns: ["post_id"]
-            isOneToOne: false
-            referencedRelation: "community_posts"
-            referencedColumns: ["id"]
+            foreignKeyName: "community_comments_post_id_fkey";
+            columns: ["post_id"];
+            isOneToOne: false;
+            referencedRelation: "community_posts";
+            referencedColumns: ["id"];
           },
-        ]
-      }
+        ];
+      };
       community_likes: {
         Row: {
-          created_at: string
-          post_id: string
-          user_id: string
-        }
+          created_at: string;
+          post_id: string;
+          user_id: string;
+        };
         Insert: {
-          created_at?: string
-          post_id: string
-          user_id: string
-        }
+          created_at?: string;
+          post_id: string;
+          user_id: string;
+        };
         Update: {
-          created_at?: string
-          post_id?: string
-          user_id?: string
-        }
+          created_at?: string;
+          post_id?: string;
+          user_id?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "community_likes_post_id_fkey"
-            columns: ["post_id"]
-            isOneToOne: false
-            referencedRelation: "community_posts"
-            referencedColumns: ["id"]
+            foreignKeyName: "community_likes_post_id_fkey";
+            columns: ["post_id"];
+            isOneToOne: false;
+            referencedRelation: "community_posts";
+            referencedColumns: ["id"];
           },
-        ]
-      }
+        ];
+      };
       community_posts: {
         Row: {
-          author_name: string
-          category: string
-          created_at: string
-          id: string
-          region: string
-          text: string
-          user_id: string
-        }
+          author_name: string;
+          category: string;
+          created_at: string;
+          id: string;
+          region: string;
+          text: string;
+          user_id: string;
+        };
         Insert: {
-          author_name?: string
-          category?: string
-          created_at?: string
-          id?: string
-          region?: string
-          text: string
-          user_id: string
-        }
+          author_name?: string;
+          category?: string;
+          created_at?: string;
+          id?: string;
+          region?: string;
+          text: string;
+          user_id: string;
+        };
         Update: {
-          author_name?: string
-          category?: string
-          created_at?: string
-          id?: string
-          region?: string
-          text?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
+          author_name?: string;
+          category?: string;
+          created_at?: string;
+          id?: string;
+          region?: string;
+          text?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       emergency_contacts: {
         Row: {
-          created_at: string
-          id: string
-          is_primary: boolean
-          name: string
-          phone: string
-          relation: string
-          updated_at: string
-          user_id: string
-        }
+          created_at: string;
+          id: string;
+          is_primary: boolean;
+          name: string;
+          phone: string;
+          relation: string;
+          updated_at: string;
+          user_id: string;
+        };
         Insert: {
-          created_at?: string
-          id?: string
-          is_primary?: boolean
-          name: string
-          phone: string
-          relation?: string
-          updated_at?: string
-          user_id: string
-        }
+          created_at?: string;
+          id?: string;
+          is_primary?: boolean;
+          name: string;
+          phone: string;
+          relation?: string;
+          updated_at?: string;
+          user_id: string;
+        };
         Update: {
-          created_at?: string
-          id?: string
-          is_primary?: boolean
-          name?: string
-          phone?: string
-          relation?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
+          created_at?: string;
+          id?: string;
+          is_primary?: boolean;
+          name?: string;
+          phone?: string;
+          relation?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       profiles: {
         Row: {
-          avatar_url: string | null
-          bike_model: string
-          blood_type: string
-          created_at: string
-          email: string
-          emergency_contact: string
-          emergency_phone: string
-          id: string
-          name: string
-          phone: string
-          plate: string
-          terms_accepted_at: string | null
-          terms_version: string | null
-          updated_at: string
-        }
+          avatar_url: string | null;
+          bike_model: string;
+          blood_type: string;
+          created_at: string;
+          email: string;
+          emergency_contact: string;
+          emergency_phone: string;
+          id: string;
+          name: string;
+          phone: string;
+          plate: string;
+          terms_accepted_at: string | null;
+          terms_version: string | null;
+          updated_at: string;
+        };
         Insert: {
-          avatar_url?: string | null
-          bike_model?: string
-          blood_type?: string
-          created_at?: string
-          email?: string
-          emergency_contact?: string
-          emergency_phone?: string
-          id: string
-          name?: string
-          phone?: string
-          plate?: string
-          terms_accepted_at?: string | null
-          terms_version?: string | null
-          updated_at?: string
-        }
+          avatar_url?: string | null;
+          bike_model?: string;
+          blood_type?: string;
+          created_at?: string;
+          email?: string;
+          emergency_contact?: string;
+          emergency_phone?: string;
+          id: string;
+          name?: string;
+          phone?: string;
+          plate?: string;
+          terms_accepted_at?: string | null;
+          terms_version?: string | null;
+          updated_at?: string;
+        };
         Update: {
-          avatar_url?: string | null
-          bike_model?: string
-          blood_type?: string
-          created_at?: string
-          email?: string
-          emergency_contact?: string
-          emergency_phone?: string
-          id?: string
-          name?: string
-          phone?: string
-          plate?: string
-          terms_accepted_at?: string | null
-          terms_version?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
+          avatar_url?: string | null;
+          bike_model?: string;
+          blood_type?: string;
+          created_at?: string;
+          email?: string;
+          emergency_contact?: string;
+          emergency_phone?: string;
+          id?: string;
+          name?: string;
+          phone?: string;
+          plate?: string;
+          terms_accepted_at?: string | null;
+          terms_version?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       sos_events: {
         Row: {
-          address: string | null
-          id: string
-          latitude: number | null
-          longitude: number | null
-          note: string | null
-          status: string
-          triggered_at: string
-          user_id: string
-        }
+          address: string | null;
+          id: string;
+          latitude: number | null;
+          longitude: number | null;
+          note: string | null;
+          status: string;
+          triggered_at: string;
+          user_id: string;
+        };
         Insert: {
-          address?: string | null
-          id?: string
-          latitude?: number | null
-          longitude?: number | null
-          note?: string | null
-          status?: string
-          triggered_at?: string
-          user_id: string
-        }
+          address?: string | null;
+          id?: string;
+          latitude?: number | null;
+          longitude?: number | null;
+          note?: string | null;
+          status?: string;
+          triggered_at?: string;
+          user_id: string;
+        };
         Update: {
-          address?: string | null
-          id?: string
-          latitude?: number | null
-          longitude?: number | null
-          note?: string | null
-          status?: string
-          triggered_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
+          address?: string | null;
+          id?: string;
+          latitude?: number | null;
+          longitude?: number | null;
+          note?: string | null;
+          status?: string;
+          triggered_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       trips: {
         Row: {
-          avg_speed: number
-          companion: string | null
-          created_at: string
-          distance_km: number
-          duration_seconds: number
-          ended_at: string
-          id: string
-          started_at: string
-          user_id: string
-        }
+          avg_speed: number;
+          companion: string | null;
+          created_at: string;
+          distance_km: number;
+          duration_seconds: number;
+          ended_at: string;
+          id: string;
+          started_at: string;
+          user_id: string;
+        };
         Insert: {
-          avg_speed?: number
-          companion?: string | null
-          created_at?: string
-          distance_km?: number
-          duration_seconds?: number
-          ended_at: string
-          id?: string
-          started_at: string
-          user_id: string
-        }
+          avg_speed?: number;
+          companion?: string | null;
+          created_at?: string;
+          distance_km?: number;
+          duration_seconds?: number;
+          ended_at: string;
+          id?: string;
+          started_at: string;
+          user_id: string;
+        };
         Update: {
-          avg_speed?: number
-          companion?: string | null
-          created_at?: string
-          distance_km?: number
-          duration_seconds?: number
-          ended_at?: string
-          id?: string
-          started_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
+          avg_speed?: number;
+          companion?: string | null;
+          created_at?: string;
+          distance_km?: number;
+          duration_seconds?: number;
+          ended_at?: string;
+          id?: string;
+          started_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       user_roles: {
         Row: {
-          created_at: string
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
+          created_at: string;
+          id: string;
+          role: Database["public"]["Enums"]["app_role"];
+          user_id: string;
+        };
         Insert: {
-          created_at?: string
-          id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
+          created_at?: string;
+          id?: string;
+          role: Database["public"]["Enums"]["app_role"];
+          user_id: string;
+        };
         Update: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
-      }
+          created_at?: string;
+          id?: string;
+          role?: Database["public"]["Enums"]["app_role"];
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       whatsapp_notifications: {
         Row: {
-          attempts: number
-          created_at: string
-          emergency_contact_id: string | null
-          error_message: string | null
-          id: string
-          provider: string
-          provider_message_id: string | null
-          recipient_name: string
-          recipient_phone: string
-          sent_at: string | null
-          sos_event_id: string
-          status: string
-          user_id: string
-        }
+          attempts: number;
+          created_at: string;
+          emergency_contact_id: string | null;
+          error_message: string | null;
+          id: string;
+          provider: string;
+          provider_message_id: string | null;
+          recipient_name: string;
+          recipient_phone: string;
+          sent_at: string | null;
+          sos_event_id: string;
+          status: string;
+          user_id: string;
+        };
         Insert: {
-          attempts?: number
-          created_at?: string
-          emergency_contact_id?: string | null
-          error_message?: string | null
-          id?: string
-          provider?: string
-          provider_message_id?: string | null
-          recipient_name?: string
-          recipient_phone: string
-          sent_at?: string | null
-          sos_event_id: string
-          status?: string
-          user_id: string
-        }
+          attempts?: number;
+          created_at?: string;
+          emergency_contact_id?: string | null;
+          error_message?: string | null;
+          id?: string;
+          provider?: string;
+          provider_message_id?: string | null;
+          recipient_name?: string;
+          recipient_phone: string;
+          sent_at?: string | null;
+          sos_event_id: string;
+          status?: string;
+          user_id: string;
+        };
         Update: {
-          attempts?: number
-          created_at?: string
-          emergency_contact_id?: string | null
-          error_message?: string | null
-          id?: string
-          provider?: string
-          provider_message_id?: string | null
-          recipient_name?: string
-          recipient_phone?: string
-          sent_at?: string | null
-          sos_event_id?: string
-          status?: string
-          user_id?: string
-        }
+          attempts?: number;
+          created_at?: string;
+          emergency_contact_id?: string | null;
+          error_message?: string | null;
+          id?: string;
+          provider?: string;
+          provider_message_id?: string | null;
+          recipient_name?: string;
+          recipient_phone?: string;
+          sent_at?: string | null;
+          sos_event_id?: string;
+          status?: string;
+          user_id?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "whatsapp_notifications_emergency_contact_id_fkey"
-            columns: ["emergency_contact_id"]
-            isOneToOne: false
-            referencedRelation: "emergency_contacts"
-            referencedColumns: ["id"]
+            foreignKeyName: "whatsapp_notifications_emergency_contact_id_fkey";
+            columns: ["emergency_contact_id"];
+            isOneToOne: false;
+            referencedRelation: "emergency_contacts";
+            referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "whatsapp_notifications_sos_event_id_fkey"
-            columns: ["sos_event_id"]
-            isOneToOne: false
-            referencedRelation: "sos_events"
-            referencedColumns: ["id"]
+            foreignKeyName: "whatsapp_notifications_sos_event_id_fkey";
+            columns: ["sos_event_id"];
+            isOneToOne: false;
+            referencedRelation: "sos_events";
+            referencedColumns: ["id"];
           },
-        ]
-      }
-    }
+        ];
+      };
+    };
     Views: {
-      [_ in never]: never
-    }
+      [_ in never]: never;
+    };
     Functions: {
       admin_activity: {
-        Args: { _days?: number }
+        Args: { _days?: number };
         Returns: {
-          day: string
-          new_users: number
-          posts: number
-          sos: number
-          trips: number
-        }[]
-      }
+          day: string;
+          new_users: number;
+          posts: number;
+          sos: number;
+          trips: number;
+        }[];
+      };
       admin_stats: {
-        Args: never
+        Args: never;
         Returns: {
-          confirmed_users: number
-          new_last_30d: number
-          new_last_7d: number
-          total_users: number
-        }[]
-      }
+          confirmed_users: number;
+          new_last_30d: number;
+          new_last_7d: number;
+          total_users: number;
+        }[];
+      };
       has_role: {
         Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
-    }
+          _role: Database["public"]["Enums"]["app_role"];
+          _user_id: string;
+        };
+        Returns: boolean;
+      };
+    };
     Enums: {
-      app_role: "admin" | "user"
-    }
+      app_role: "admin" | "user";
+    };
     CompositeTypes: {
-      [_ in never]: never
-    }
-  }
-}
+      [_ in never]: never;
+    };
+  };
+};
 
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">];
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    schema: keyof DatabaseWithoutInternals;
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
+  schema: keyof DatabaseWithoutInternals;
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
       DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R
+      Row: infer R;
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R;
       }
       ? R
       : never
-    : never
+    : never;
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
+  schema: keyof DatabaseWithoutInternals;
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
+      Insert: infer I;
     }
     ? I
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
     ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
+        Insert: infer I;
       }
       ? I
       : never
-    : never
+    : never;
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
+  schema: keyof DatabaseWithoutInternals;
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
+      Update: infer U;
     }
     ? U
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
     ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
+        Update: infer U;
       }
       ? U
       : never
-    : never
+    : never;
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
+  schema: keyof DatabaseWithoutInternals;
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never
+    : never;
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
+  schema: keyof DatabaseWithoutInternals;
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
+    : never;
 
 export const Constants = {
   public: {
@@ -506,4 +498,4 @@ export const Constants = {
       app_role: ["admin", "user"],
     },
   },
-} as const
+} as const;

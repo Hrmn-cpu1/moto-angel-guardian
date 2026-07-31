@@ -140,18 +140,49 @@ function ProfilePage() {
         <nav className="glass-card divide-y divide-white/5 rounded-2xl">
           <Row icon={UserIcon} label="Dados pessoais" onClick={startEdit} />
           <Row icon={Bike} label="Minha motocicleta" onClick={startEdit} />
-          <Row icon={ContactIcon} label="Contatos de confiança" onClick={() => navigate({ to: "/contacts" })} />
-          <Row icon={Lock} label="Privacidade" onClick={() => toast("Configurações de privacidade em breve.")} />
-          <Row icon={Shield} label="Permissões" onClick={() => toast("Gerenciar permissões do sistema.")} />
-          <Row icon={FileText} label="Termos de Uso" onClick={() => navigate({ to: "/terms", search: { accept: false } })} />
-          <Row icon={ShieldCheck} label="Política de Privacidade" onClick={() => navigate({ to: "/privacy" })} />
-          <Row icon={InfoIcon} label="Sobre o Moto Anjo" onClick={() => toast("Moto Anjo v1.0 — MVP demonstração.")} />
+          <Row
+            icon={ContactIcon}
+            label="Contatos de confiança"
+            onClick={() => navigate({ to: "/contacts" })}
+          />
+          <Row
+            icon={Lock}
+            label="Privacidade"
+            onClick={() => toast("Configurações de privacidade em breve.")}
+          />
+          <Row
+            icon={Shield}
+            label="Permissões"
+            onClick={() => toast("Gerenciar permissões do sistema.")}
+          />
+          <Row
+            icon={FileText}
+            label="Termos de Uso"
+            onClick={() => navigate({ to: "/terms", search: { accept: false } })}
+          />
+          <Row
+            icon={ShieldCheck}
+            label="Política de Privacidade"
+            onClick={() => navigate({ to: "/privacy" })}
+          />
+          <Row
+            icon={InfoIcon}
+            label="Sobre o Moto Anjo"
+            onClick={() => toast("Moto Anjo v1.0 — MVP demonstração.")}
+          />
           {isAdmin && (
-            <Row icon={ShieldCheck} label="Painel Admin" onClick={() => navigate({ to: "/admin" })} />
+            <Row
+              icon={ShieldCheck}
+              label="Painel Admin"
+              onClick={() => navigate({ to: "/admin" })}
+            />
           )}
         </nav>
 
-        <OutlineButton onClick={doLogout} className="!border-emergency/40 !text-emergency hover:!bg-emergency/10">
+        <OutlineButton
+          onClick={doLogout}
+          className="!border-emergency/40 !text-emergency hover:!bg-emergency/10"
+        >
           <LogOut size={14} /> Sair
         </OutlineButton>
       </div>
@@ -169,7 +200,15 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Row({ icon: Icon, label, onClick }: { icon: LucideIcon; label: string; onClick: () => void }) {
+function Row({
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  icon: LucideIcon;
+  label: string;
+  onClick: () => void;
+}) {
   return (
     <button
       onClick={onClick}

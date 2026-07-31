@@ -1,6 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Share2, X, MapPin, MessageCircle, Send, RefreshCw, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import {
+  Share2,
+  X,
+  MapPin,
+  MessageCircle,
+  Send,
+  RefreshCw,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+} from "lucide-react";
 import { Header } from "@/components/Header";
 import { EmergencyButton } from "@/components/EmergencyButton";
 import { OutlineButton } from "@/components/OutlineButton";
@@ -57,11 +67,20 @@ function SOS() {
       .channel(`wn:${sosEventId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "whatsapp_notifications", filter: `sos_event_id=eq.${sosEventId}` },
-        () => { void load(); },
+        {
+          event: "*",
+          schema: "public",
+          table: "whatsapp_notifications",
+          filter: `sos_event_id=eq.${sosEventId}`,
+        },
+        () => {
+          void load();
+        },
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [sosEventId]);
 
   const runDispatch = async (onlyFailed: boolean) => {
@@ -150,9 +169,7 @@ function SOS() {
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emergency/20 text-emergency">
                 <MapPin size={28} />
               </div>
-              <h2 className="mt-4 text-xl font-black text-foreground">
-                Alerta SOS ativado
-              </h2>
+              <h2 className="mt-4 text-xl font-black text-foreground">Alerta SOS ativado</h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 Notifique seus contatos de emergência via WhatsApp.
               </p>
@@ -189,7 +206,9 @@ function SOS() {
                       <div className="truncate text-xs text-muted-foreground">
                         {n.recipient_phone}
                         {n.status === "failed" && n.error_message && (
-                          <span className="ml-2 text-emergency">· {shortError(n.error_message)}</span>
+                          <span className="ml-2 text-emergency">
+                            · {shortError(n.error_message)}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -239,11 +258,7 @@ function SOS() {
       <p className="px-6 pb-8 text-center text-[10px] uppercase tracking-widest text-muted-foreground">
         Esta é uma demonstração. Em uma emergência real, ligue 190 / 193 / 192.
       </p>
-      <button
-        onClick={() => navigate({ to: "/dashboard" })}
-        className="hidden"
-        aria-hidden
-      />
+      <button onClick={() => navigate({ to: "/dashboard" })} className="hidden" aria-hidden />
     </div>
   );
 }
