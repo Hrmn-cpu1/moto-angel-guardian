@@ -22,7 +22,8 @@ import { useGeolocation } from "@/hooks/useGeolocation";
 import { useHistory } from "@/hooks/useHistory";
 import { useAlerts } from "@/hooks/useAlerts";
 import { useOnlineRiders } from "@/hooks/useOnlineRiders";
-import { Users } from "lucide-react";
+import { Users, BadgePercent, Phone } from "lucide-react";
+import { usePartners, filterPartners, BENEFIT_FILTERS, type Partner } from "@/hooks/usePartners";
 import { useServerFn } from "@tanstack/react-start";
 import { searchPOIs, type POI } from "@/lib/pois.functions";
 
@@ -66,6 +67,10 @@ function MapPage() {
   const { alerts } = useAlerts(position);
   const { riders } = useOnlineRiders(position);
   const [selectedRider, setSelectedRider] = useState<{ name: string } | null>(null);
+  const { located: locatedPartners } = usePartners();
+  const [benefitFilter, setBenefitFilter] = useState("todos");
+  const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
+  const visiblePartners = filterPartners(locatedPartners, benefitFilter);
 
   useEffect(() => {
     if (!permissionGranted) return;
@@ -147,6 +152,20 @@ function MapPage() {
                     lng: r.lng,
                   }))}
                   onRiderSelect={(r) => setSelectedRider({ name: r.name })}
+                  partners={visiblePartners.map((p) => ({
+                    id: p.id,
+                    name: p.name,
+                    benefit: p.benefit,
+                    logoUrl: p.logo_url,
+                    featured: p.featured,
+                    lat: p.lat as number,
+                    lng: p.lng as number,
+                  }))}
+                  onPartnerSelect={(p) => {
+                    const full = locatedPartners.find((x) => x.id === p.id) ?? null;
+                    setSelectedPartner(full);
+                    setSelected(null);
+                  }}
                   className="absolute inset-0"
                 />
               </Suspense>
