@@ -43,6 +43,16 @@ function SOS() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [dispatching, setDispatching] = useState(false);
   const dispatchedOnce = useRef(false);
+  const [gpsFailed, setGpsFailed] = useState(false);
+  const [manualFallback, setManualFallback] = useState(false);
+
+  const whatsappLink = (phone: string) => {
+    const digits = (phone || "").replace(/\D/g, "");
+    const to = digits.length === 10 || digits.length === 11 ? `55${digits}` : digits;
+    const url = pos ? `https://www.google.com/maps?q=${pos.lat},${pos.lng}` : "";
+    const text = `🚨 MOTO ANJO — Acionei um SOS. Preciso de ajuda.${url ? `\n📍 ${url}` : ""}`;
+    return `https://wa.me/${to}?text=${encodeURIComponent(text)}`;
+  };
 
   const summary = useMemo(() => {
     const sent = notifications.filter((n) => n.status === "sent").length;
@@ -89,12 +99,16 @@ function SOS() {
     try {
       const res = await dispatchSosNotifications({ data: { sosEventId, onlyFailed } });
       if (res.failed > 0) {
+        // Automatic delivery unavailable (e.g. provider not configured):
+        // fall back to manual WhatsApp links so the alert still goes out.
+        setManualFallback(true);
         toast.warning(`${res.sent} enviados · ${res.failed} falharam`);
       } else if (res.sent > 0) {
         toast.success("Todos os contatos foram notificados.");
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Falha ao enviar alertas.";
+      setManualFallback(true);
       toast.error(msg);
     } finally {
       setDispatching(false);
@@ -103,6 +117,15 @@ function SOS() {
 
   const activate = async () => {
     const p = await capture();
+    if (p.simulated) {
+      // Never register or transmit a fabricated position in an emergency.
+      setGpsFailed(true);
+      setActivated(true);
+      setPos(null);
+      toast.error("GPS indisponível. Ative a localização e toque em tentar novamente.");
+      return;
+    }
+    setGpsFailed(false);
     setPos(p);
     setActivated(true);
     add({
@@ -113,7 +136,7 @@ function SOS() {
 
     try {
       const res = await triggerSos({
-        data: { lat: p.lat, lng: p.lng, note: p.simulated ? "Localização simulada" : null },
+        data: { lat: p.lat, lng: p.lng, note: null },
       });
       setSosEventId(res.sosEventId);
       if (res.queued === 0) {
@@ -149,6 +172,8 @@ function SOS() {
     setSosEventId(null);
     setNotifications([]);
     dispatchedOnce.current = false;
+    setGpsFailed(false);
+    setManualFallback(false);
   };
 
   return (
@@ -182,6 +207,17 @@ function SOS() {
                   {pos.simulated && (
                     <span className="ml-2 text-[10px] text-muted-foreground">(simulado)</span>
                   )}
+                </div>
+              )}
+              {gpsFailed && (
+                <div className="mt-4 space-y-3">
+                  <p className="rounded-xl border border-emergency/40 bg-emergency/10 p-3 text-xs text-emergency">
+                    Não foi possível obter sua localização real. O SOS não será registrado com uma
+                    posição incorreta.
+                  </p>
+                  <GoldButton onClick={activate} size="lg">
+                    Tentar novamente
+                  </GoldButton>
                 </div>
               )}
             </div>
