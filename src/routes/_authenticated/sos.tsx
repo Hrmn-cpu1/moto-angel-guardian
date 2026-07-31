@@ -97,11 +97,14 @@ function SOS() {
     };
   }, [sosEventId]);
 
-  const runDispatch = async (onlyFailed: boolean) => {
-    if (!sosEventId) return;
+  const runDispatch = async (onlyFailed: boolean, eventId?: string) => {
+    // The id must be passed explicitly right after activation: at that point the
+    // `sosEventId` state update has not been applied to this closure yet.
+    const id = eventId ?? sosEventId;
+    if (!id) return;
     setDispatching(true);
     try {
-      const res = await dispatchSosNotifications({ data: { sosEventId, onlyFailed } });
+      const res = await dispatchSosNotifications({ data: { sosEventId: id, onlyFailed } });
       if (res.failed > 0) {
         // Automatic delivery unavailable (e.g. provider not configured):
         // fall back to manual WhatsApp links so the alert still goes out.
@@ -148,7 +151,7 @@ function SOS() {
       toast.success(`SOS registrado — enviando ${res.queued} alerta(s)...`);
       if (!dispatchedOnce.current) {
         dispatchedOnce.current = true;
-        void runDispatch(false);
+        void runDispatch(false, res.sosEventId);
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Falha ao registrar SOS.";

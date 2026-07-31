@@ -104,9 +104,11 @@ function BenefitsPage() {
                     <p className="text-[9px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
                       {p.category}
                     </p>
-                    <h2 className="mt-0.5 truncate text-sm font-bold text-foreground">{p.name}</h2>
+                    <h2 className="mt-0.5 text-sm font-bold break-words text-foreground">
+                      {p.name}
+                    </h2>
                     {p.address && (
-                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                      <p className="mt-0.5 text-[11px] break-words text-muted-foreground">
                         {p.address}
                       </p>
                     )}
