@@ -18,6 +18,7 @@ import { Header } from "@/components/Header";
 import { GoldButton } from "@/components/GoldButton";
 import { OutlineButton } from "@/components/OutlineButton";
 import { LocationPermissionGate } from "@/components/LocationPermissionGate";
+import { MapSosButton } from "@/components/MapSosButton";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useHistory } from "@/hooks/useHistory";
 import { useAlerts } from "@/hooks/useAlerts";
@@ -182,6 +183,14 @@ function MapPage() {
                 </span>
               </div>
             )}
+
+            <MapSosButton
+              position={
+                position
+                  ? { lat: position.lat, lng: position.lng, accuracy: position.accuracy ?? null }
+                  : null
+              }
+            />
 
             {selected && (
               <div className="absolute inset-x-3 bottom-3 rounded-2xl glass-card p-3 animate-fade-up">
