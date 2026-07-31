@@ -57,9 +57,9 @@ function Splash() {
         alt="Moto Anjo — um por todos, todos por um"
         width={895}
         height={1180}
-        className="absolute inset-0 h-full w-full object-cover object-top animate-scale-in"
+        className="absolute inset-x-0 top-0 h-[68%] w-full object-cover object-top animate-scale-in"
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-black/45 to-black" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/35 to-black" />
 
       <div className="relative z-10 mt-auto w-full px-5 pb-8 text-center animate-fade-up">
         <h1 className="text-base font-black uppercase tracking-[0.14em] text-foreground">
