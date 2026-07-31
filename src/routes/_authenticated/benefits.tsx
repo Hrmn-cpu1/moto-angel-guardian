@@ -85,8 +85,7 @@ function BenefitsPage() {
                 p.featured ? "border-gold/45" : ""
               }`}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-start gap-3">
+              <div className="flex items-start gap-3">
                   {p.logo_url ? (
                     <img
                       src={p.logo_url}
@@ -112,11 +111,10 @@ function BenefitsPage() {
                       </p>
                     )}
                   </div>
-                </div>
-                <span className="shrink-0 rounded-full border border-gold/40 bg-gold/10 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-gold">
-                  {p.benefit}
-                </span>
               </div>
+              <p className="mt-3 rounded-full border border-gold/40 bg-gold/10 px-3 py-1 text-center text-[10px] font-black uppercase tracking-wider text-gold">
+                {p.benefit}
+              </p>
               {p.detail && (
                 <p className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
                   <MapPin size={12} className="mt-0.5 shrink-0 text-gold" /> {p.detail}
