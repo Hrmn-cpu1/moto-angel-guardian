@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useContacts } from "@/hooks/useContacts";
 import { historyKey } from "@/hooks/useHistory";
 import { waLink } from "@/lib/phone";
-import { triggerSos, dispatchSosNotifications } from "@/lib/sos.functions";
+import { triggerSos } from "@/lib/sos.functions";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -62,21 +62,12 @@ export function MapSosButton({ position, className }: Props) {
     try {
       const res = await triggerSos({ data: { lat: position.lat, lng: position.lng, note: null } });
       void qc.invalidateQueries({ queryKey: historyKey });
+      setResult({ sent: 0, failed: 0, queued: res.queued });
+      setManual(true);
       if (res.queued === 0) {
-        setResult({ sent: 0, failed: 0, queued: 0 });
-        setManual(true);
-        toast.info("SOS registrado — nenhum contato de emergência cadastrado.");
-        return;
-      }
-      const disp = await dispatchSosNotifications({
-        data: { sosEventId: res.sosEventId, onlyFailed: false },
-      });
-      setResult({ sent: disp.sent, failed: disp.failed, queued: res.queued });
-      if (disp.failed > 0) {
-        setManual(true);
-        toast.warning(`${disp.sent} enviados · ${disp.failed} falharam`);
+        toast.info("SOS registrado — nenhum contato cadastrado. Use o compartilhamento.");
       } else {
-        toast.success("Contatos notificados com sua localização.");
+        toast.success("SOS registrado. Envie o alerta pelo WhatsApp.");
       }
     } catch (e) {
       // Automatic delivery unavailable — keep the manual WhatsApp path open.
