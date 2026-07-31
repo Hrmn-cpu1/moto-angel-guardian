@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { ShieldPlus, Users, MapPin, ShieldCheck, Clock } from "lucide-react";
 import poster from "@/assets/moto-anjo-hero.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
+import { isIntroHidden } from "@/lib/intro";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -41,7 +42,7 @@ function Splash() {
       if (data.session?.user) {
         navigate({ to: next && next.startsWith("/") ? next : "/dashboard" });
       } else {
-        navigate({ to: "/welcome" });
+        navigate({ to: isIntroHidden() ? "/welcome" : "/intro" });
       }
     }, 2600);
     return () => {
