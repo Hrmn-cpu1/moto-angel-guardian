@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const InputSchema = z.object({
   lat: z.number().min(-90).max(90),
@@ -73,6 +74,7 @@ async function nearby(
 }
 
 export const searchPOIs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .validator((input: unknown) => InputSchema.parse(input))
   .handler(async ({ data }) => {
     const lovableKey = process.env.LOVABLE_API_KEY;
