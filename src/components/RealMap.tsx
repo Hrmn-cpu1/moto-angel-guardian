@@ -561,11 +561,37 @@ export default function RealMap({
         className={`absolute inset-0 h-full w-full rounded-3xl ${state === "error" ? "invisible" : ""}`}
       />
       {state === "error" ? (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-3xl bg-black/90 px-6 text-center">
-          <p className="text-xs uppercase tracking-widest text-gold">Mapa indisponível</p>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-3xl bg-[radial-gradient(circle_at_center,rgba(212,175,55,0.10),#050505_70%)] px-6 text-center">
+          {center ? (
+            <>
+              <div
+                className="moto-user-location-marker relative"
+                aria-label="Sua localização atual"
+                style={{ transform: "none" }}
+              >
+                <span className="moto-user-location-marker__pulse" />
+                <span className="moto-user-location-marker__pin">
+                  <span />
+                </span>
+              </div>
+              <p className="mt-6 text-[10px] uppercase tracking-widest text-gold">
+                Você está aqui
+              </p>
+              <p className="font-mono text-xs text-foreground">
+                {center.lat.toFixed(5)}, {center.lng.toFixed(5)}
+              </p>
+              {accuracy != null && (
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                  precisão ±{Math.round(accuracy)} m
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="text-xs uppercase tracking-widest text-gold">Localizando...</p>
+          )}
           <p className="text-[11px] leading-relaxed text-muted-foreground">
-            O mapa não pôde ser carregado neste endereço. Sua localização continua ativa e você
-            pode abrir a rota no Google Maps.
+            O mapa visual está indisponível neste endereço, mas seu GPS continua ativo em tempo
+            real.
           </p>
           <button
             type="button"
@@ -578,7 +604,8 @@ export default function RealMap({
                 "noopener,noreferrer",
               )
             }
-            className="rounded-full gold-gradient px-4 py-2 text-[11px] font-semibold text-black"
+            disabled={!center}
+            className="rounded-full gold-gradient px-4 py-2 text-[11px] font-semibold text-black disabled:opacity-40"
           >
             Abrir no Google Maps
           </button>
