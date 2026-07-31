@@ -204,6 +204,33 @@ export type Database = {
         }
         Relationships: []
       }
+      location_shares: {
+        Row: {
+          created_at: string
+          id: string
+          owner_id: string
+          status: string
+          updated_at: string
+          viewer_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          owner_id: string
+          status?: string
+          updated_at?: string
+          viewer_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          owner_id?: string
+          status?: string
+          updated_at?: string
+          viewer_id?: string
+        }
+        Relationships: []
+      }
       partners: {
         Row: {
           active: boolean
@@ -509,6 +536,17 @@ export type Database = {
         Args: { _owner: string; _viewer: string }
         Returns: boolean
       }
+      location_share_inbox: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: string
+          status: string
+          viewer_avatar: string
+          viewer_id: string
+          viewer_name: string
+        }[]
+      }
       nearby_alerts: {
         Args: {
           _hours?: number
@@ -550,6 +588,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      request_location_access: { Args: { _phone: string }; Returns: string }
       user_history: {
         Args: { _limit?: number }
         Returns: {
