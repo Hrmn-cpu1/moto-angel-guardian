@@ -4,7 +4,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Heart, MapPin, MessageCircle, Plus, Send, Trash2, Users } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Header } from "@/components/Header";
-import { SOSFab } from "@/components/SOSFab";
 import { GoldButton } from "@/components/GoldButton";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -458,7 +457,6 @@ function Community() {
         )}
       </div>
 
-      <SOSFab />
     </AppShell>
   );
 }

@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Header } from "@/components/Header";
-import { SOSFab } from "@/components/SOSFab";
 import { LocationCard } from "@/components/LocationCard";
 import { ShareLocationButton } from "@/components/ShareLocationButton";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -128,7 +127,6 @@ function Dashboard() {
         </Link>
       </div>
 
-      <SOSFab />
     </AppShell>
   );
 }

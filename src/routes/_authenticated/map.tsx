@@ -17,7 +17,6 @@ import { AppShell } from "@/components/AppShell";
 import { Header } from "@/components/Header";
 import { GoldButton } from "@/components/GoldButton";
 import { OutlineButton } from "@/components/OutlineButton";
-import { SOSFab } from "@/components/SOSFab";
 import { LocationPermissionGate } from "@/components/LocationPermissionGate";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useHistory } from "@/hooks/useHistory";
@@ -225,7 +224,6 @@ function MapPage() {
         </div>
       )}
 
-      <SOSFab />
     </AppShell>
   );
 }
