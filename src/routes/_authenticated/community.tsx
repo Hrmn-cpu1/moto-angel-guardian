@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Heart, MapPin, MessageCircle, Plus, Send, Trash2, Users } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Header } from "@/components/Header";
@@ -41,11 +42,38 @@ type CommentRow = {
   created_at: string;
 };
 
+type FeedRow = PostRow & {
+  likes_count: number;
+  comments_count: number;
+  liked: boolean;
+};
+
 type FeedPost = PostRow & {
   likes: number;
   liked: boolean;
   commentsCount: number;
 };
+
+const feedKey = ["community", "feed"] as const;
+
+// One aggregated RPC replaces three unbounded table reads (posts + all likes
+// + all comments) that previously ran on every feed refresh.
+async function fetchFeed(): Promise<FeedPost[]> {
+  const { data, error } = await supabase.rpc("community_feed", { _limit: 100 });
+  if (error) throw error;
+  return ((data ?? []) as FeedRow[]).map((r) => ({
+    id: r.id,
+    user_id: r.user_id,
+    author_name: r.author_name,
+    category: r.category,
+    region: r.region,
+    text: r.text,
+    created_at: r.created_at,
+    likes: Number(r.likes_count),
+    liked: !!r.liked,
+    commentsCount: Number(r.comments_count),
+  }));
+}
 
 function relTime(iso: string): string {
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -61,10 +89,9 @@ function initialOf(name: string) {
 
 function Community() {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const [category, setCategory] = useState<(typeof CATEGORIES)[number]>("Geral");
   const [regionFilter, setRegionFilter] = useState("");
-  const [posts, setPosts] = useState<FeedPost[]>([]);
-  const [loading, setLoading] = useState(true);
   const [composing, setComposing] = useState(false);
   const [text, setText] = useState("");
   const [postRegion, setPostRegion] = useState("");
@@ -73,47 +100,22 @@ function Community() {
   const [comments, setComments] = useState<Record<string, CommentRow[]>>({});
   const [commentDraft, setCommentDraft] = useState("");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const { data: rows } = await supabase
-      .from("community_posts")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(200);
-    const list = (rows ?? []) as PostRow[];
-    const ids = list.map((p) => p.id);
-    let likes: { post_id: string; user_id: string }[] = [];
-    let cCounts: { post_id: string }[] = [];
-    if (ids.length) {
-      const [{ data: lk }, { data: cm }] = await Promise.all([
-        supabase.from("community_likes").select("post_id,user_id").in("post_id", ids),
-        supabase.from("community_comments").select("post_id").in("post_id", ids),
-      ]);
-      likes = (lk ?? []) as typeof likes;
-      cCounts = (cm ?? []) as typeof cCounts;
-    }
-    const likeMap = new Map<string, { count: number; mine: boolean }>();
-    likes.forEach((l) => {
-      const entry = likeMap.get(l.post_id) ?? { count: 0, mine: false };
-      entry.count += 1;
-      if (user && l.user_id === user.id) entry.mine = true;
-      likeMap.set(l.post_id, entry);
-    });
-    const cMap = new Map<string, number>();
-    cCounts.forEach((c) => cMap.set(c.post_id, (cMap.get(c.post_id) ?? 0) + 1));
-    setPosts(
-      list.map((p) => ({
-        ...p,
-        likes: likeMap.get(p.id)?.count ?? 0,
-        liked: likeMap.get(p.id)?.mine ?? false,
-        commentsCount: cMap.get(p.id) ?? 0,
-      })),
-    );
-    setLoading(false);
-  }, [user]);
+  const {
+    data: posts = [],
+    isLoading: loading,
+    refetch,
+  } = useQuery({
+    queryKey: feedKey,
+    queryFn: fetchFeed,
+    staleTime: 15_000,
+    retry: 2,
+  });
+
+  const load = useCallback(() => {
+    void refetch();
+  }, [refetch]);
 
   useEffect(() => {
-    void load();
     // Realtime bursts (a post + its likes/comments) are coalesced so the feed
     // is refetched once instead of on every single row event.
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -121,7 +123,7 @@ function Community() {
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => {
         timer = null;
-        void load();
+        void qc.invalidateQueries({ queryKey: feedKey });
       }, 400);
     };
     const ch = supabase
@@ -151,7 +153,7 @@ function Community() {
       void supabase.removeChannel(ch);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [load]);
+  }, [qc]);
 
   const regions = useMemo(() => {
     const set = new Set<string>();
@@ -186,9 +188,9 @@ function Community() {
 
   const toggleLike = async (post: FeedPost) => {
     if (!user) return;
-    // optimistic
-    setPosts((ps) =>
-      ps.map((p) =>
+    // Optimistic cache update; realtime/invalidations reconcile the truth.
+    qc.setQueryData<FeedPost[]>(feedKey, (ps) =>
+      (ps ?? []).map((p) =>
         p.id === post.id ? { ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) } : p,
       ),
     );
