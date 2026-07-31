@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
-import { Mail, Lock, AlertCircle } from "lucide-react";
+import { Mail, Lock, AlertCircle, MessageCircle } from "lucide-react";
+import { toast } from "sonner";
 import { BrandMark } from "@/components/BrandMark";
 import { GoldButton } from "@/components/GoldButton";
 import { OutlineButton } from "@/components/OutlineButton";
@@ -67,9 +68,9 @@ function Login() {
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col bg-background px-6 pt-14 pb-10">
       <div className="flex flex-col items-center text-center">
-        <BrandMark size={104} withWordmark />
+        <BrandMark size={92} withWordmark />
         <p className="mt-3 text-xs text-muted-foreground">
-          Cuidando do que realmente importa para você.
+          Porque o mais importante é <span className="gold-text">voltar para casa.</span>
         </p>
       </div>
 
@@ -81,8 +82,21 @@ function Login() {
         >
           <GoogleG /> Continuar com Google
         </button>
+        <button
+          type="button"
+          onClick={() =>
+            toast("Entrar com WhatsApp", {
+              description:
+                "A autenticação por WhatsApp está em preparação. Use Google ou e-mail por enquanto.",
+            })
+          }
+          className="glass-card flex w-full items-center justify-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-foreground transition hover:border-gold"
+        >
+          <MessageCircle size={18} className="text-success" /> Continuar com WhatsApp
+        </button>
         <div className="flex items-center gap-3 py-1 text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
-          <span className="h-px flex-1 bg-border" /> ou <span className="h-px flex-1 bg-border" />
+          <span className="h-px flex-1 bg-border" /> ou com e-mail{" "}
+          <span className="h-px flex-1 bg-border" />
         </div>
       </div>
 
@@ -112,7 +126,7 @@ function Login() {
         )}
 
         <div className="pt-2">
-          <GoldButton size="lg" type="submit" disabled={loading}>
+          <GoldButton size="lg" type="submit" disabled={loading} className="animate-gold-glow">
             {loading ? "Entrando..." : "Entrar"}
           </GoldButton>
         </div>
