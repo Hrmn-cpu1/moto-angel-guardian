@@ -68,6 +68,10 @@ export function MapSosButton({ position, className }: Props) {
         toast.info("SOS registrado — nenhum contato cadastrado. Use o compartilhamento.");
       } else {
         toast.success("SOS registrado. Envie o alerta pelo WhatsApp.");
+        const withPhone = contacts.filter((c) => c.phone && c.phone.trim().length > 0);
+        if (withPhone.length === 1) {
+          window.open(waLink(withPhone[0].phone, message), "_blank", "noopener,noreferrer");
+        }
       }
     } catch (e) {
       // Automatic delivery unavailable — keep the manual WhatsApp path open.
@@ -76,7 +80,7 @@ export function MapSosButton({ position, className }: Props) {
     } finally {
       setSending(false);
     }
-  }, [position, qc]);
+  }, [position, qc, contacts, message]);
 
   const start = useCallback(() => {
     setHolding(true);
