@@ -3,7 +3,7 @@ import { ArrowRight, BadgeCheck } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { GoldButton } from "@/components/GoldButton";
 import { OutlineButton } from "@/components/OutlineButton";
-import poster from "@/assets/moto-anjo-poster.png.asset.json";
+import poster from "@/assets/moto-anjo-hero.png.asset.json";
 
 export const Route = createFileRoute("/welcome")({
   head: () => ({
@@ -31,8 +31,8 @@ function Welcome() {
         alt=""
         aria-hidden="true"
         width={895}
-        height={1180}
-        className="absolute inset-x-0 bottom-0 h-[62%] w-full object-cover object-bottom opacity-45"
+        height={930}
+        className="absolute inset-x-0 bottom-0 h-[62%] w-full object-cover object-bottom opacity-40"
       />
       <div className="absolute inset-0 bg-gradient-to-b from-black via-black/85 to-black/95" />
       <div className="relative z-10 flex flex-1 flex-col justify-between px-6 pt-14 pb-8">
