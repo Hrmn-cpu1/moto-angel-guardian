@@ -328,6 +328,88 @@
   border: 2px solid oklch(0.06 0 0);
 }
 
+.moto-partner-marker {
+  position: absolute;
+  z-index: 80000;
+  width: 0;
+  height: 0;
+  will-change: transform;
+}
+
+.moto-partner-marker__badge {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.3rem;
+  height: 2.3rem;
+  overflow: hidden;
+  border-radius: 0.85rem;
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: linear-gradient(150deg, oklch(0.18 0.02 85), oklch(0.1 0 0));
+  border: 1px solid oklch(0.83 0.169 85 / 0.75);
+  box-shadow:
+    0 0 0 2px oklch(0.06 0 0 / 0.9),
+    0 6px 18px oklch(0 0 0 / 0.6),
+    0 0 20px oklch(0.83 0.169 85 / 0.25);
+  cursor: pointer;
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.moto-partner-marker__badge.is-featured {
+  border-color: oklch(0.89 0.14 88);
+  box-shadow:
+    0 0 0 2px oklch(0.06 0 0 / 0.9),
+    0 6px 18px oklch(0 0 0 / 0.6),
+    0 0 26px oklch(0.83 0.169 85 / 0.55);
+}
+
+.moto-partner-marker__badge:hover {
+  transform: translate(-50%, -50%) rotate(45deg) scale(1.1);
+}
+
+.moto-partner-marker__badge img,
+.moto-partner-marker__initial {
+  transform: rotate(-45deg);
+}
+
+.moto-partner-marker__badge img {
+  width: 1.55rem;
+  height: 1.55rem;
+  object-fit: contain;
+}
+
+.moto-partner-marker__initial {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: oklch(0.89 0.14 88);
+}
+
+.moto-partner-marker__tag {
+  position: absolute;
+  left: 50%;
+  top: 1.35rem;
+  max-width: 8.5rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  transform: translateX(-50%);
+  border-radius: 9999px;
+  border: 1px solid oklch(0.83 0.169 85 / 0.35);
+  background: oklch(0.06 0 0 / 0.85);
+  padding: 0.1rem 0.45rem;
+  font-size: 0.53rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: oklch(0.89 0.14 88);
+  pointer-events: none;
+}
+
 @utility animate-fade-up {
   animation: fade-up 0.5s ease-out;
 }
