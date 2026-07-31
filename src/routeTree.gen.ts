@@ -16,6 +16,7 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as IntroRouteImport } from './routes/intro'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -71,6 +72,11 @@ const McpRoute = McpRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IntroRoute = IntroRouteImport.update({
+  id: '/intro',
+  path: '/intro',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -185,6 +191,7 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/intro': typeof IntroRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/privacy': typeof PrivacyRoute
@@ -214,6 +221,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/intro': typeof IntroRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/privacy': typeof PrivacyRoute
@@ -245,6 +253,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
+  '/intro': typeof IntroRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/privacy': typeof PrivacyRoute
@@ -276,6 +285,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/forgot-password'
+    | '/intro'
     | '/login'
     | '/mcp'
     | '/privacy'
@@ -305,6 +315,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/forgot-password'
+    | '/intro'
     | '/login'
     | '/mcp'
     | '/privacy'
@@ -335,6 +346,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/forgot-password'
+    | '/intro'
     | '/login'
     | '/mcp'
     | '/privacy'
@@ -366,6 +378,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  IntroRoute: typeof IntroRoute
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -428,6 +441,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/intro': {
+      id: '/intro'
+      path: '/intro'
+      fullPath: '/intro'
+      preLoaderRoute: typeof IntroRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -621,6 +641,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  IntroRoute: IntroRoute,
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,
   PrivacyRoute: PrivacyRoute,
