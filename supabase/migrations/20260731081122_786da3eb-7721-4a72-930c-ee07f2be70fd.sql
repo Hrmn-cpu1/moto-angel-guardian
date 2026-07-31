@@ -1,0 +1,1 @@
+CREATE POLICY "sos_delete_own" ON public.sos_events FOR DELETE TO authenticated USING (auth.uid() = user_id);
