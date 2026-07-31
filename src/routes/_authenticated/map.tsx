@@ -20,6 +20,7 @@ import { OutlineButton } from "@/components/OutlineButton";
 import { LocationPermissionGate } from "@/components/LocationPermissionGate";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useHistory } from "@/hooks/useHistory";
+import { useAlerts } from "@/hooks/useAlerts";
 import { useServerFn } from "@tanstack/react-start";
 import { searchPOIs, type POI } from "@/lib/pois.functions";
 
@@ -60,6 +61,7 @@ function MapPage() {
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [follow, setFollow] = useState(true);
   const fetchPOIs = useServerFn(searchPOIs);
+  const { alerts } = useAlerts(position);
 
   useEffect(() => {
     if (!permissionGranted) return;
@@ -126,6 +128,13 @@ function MapPage() {
                   follow={follow}
                   pois={pois}
                   onPoiSelect={setSelected}
+                  alerts={alerts.map((a) => ({
+                    id: a.id,
+                    type: a.type,
+                    title: a.title,
+                    lat: a.lat,
+                    lng: a.lng,
+                  }))}
                   className="absolute inset-0"
                 />
               </Suspense>

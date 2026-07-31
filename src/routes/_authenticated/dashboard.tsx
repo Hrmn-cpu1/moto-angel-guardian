@@ -4,7 +4,9 @@ import {
   Shield,
   Navigation,
   Share2,
-  Route as RouteIcon,
+  Gauge,
+  AlertTriangle,
+  BadgePercent,
   Users,
   Contact,
   History,
@@ -105,11 +107,14 @@ function Dashboard() {
           </p>
           <div className="grid grid-cols-3 gap-3">
             <Shortcut to="/trip" icon={Navigation} label="Iniciar viagem" />
-            <Shortcut to="/map" icon={Share2} label="Compartilhar" />
-            <Shortcut to="/map" icon={RouteIcon} label="Rotas seguras" />
+            <Shortcut to="/ride" icon={Gauge} label="Velocímetro" />
+            <Shortcut to="/sharing" icon={Share2} label="Compartilhar" />
+            <Shortcut to="/alerts" icon={AlertTriangle} label="Alertas próximos" />
+            <Shortcut to="/benefits" icon={BadgePercent} label="Benefícios" />
             <Shortcut to="/community" icon={Users} label="Comunidade" />
             <Shortcut to="/contacts" icon={Contact} label="Meus contatos" />
             <Shortcut to="/history" icon={History} label="Histórico" />
+            <Shortcut to="/map" icon={Shield} label="Mapa seguro" />
           </div>
         </div>
 

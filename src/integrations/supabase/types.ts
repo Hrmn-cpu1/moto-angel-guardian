@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      community_alerts: {
+        Row: {
+          address: string | null
+          created_at: string
+          description: string | null
+          id: string
+          lat: number
+          lng: number
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          lat: number
+          lng: number
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          lat?: number
+          lng?: number
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       community_comments: {
         Row: {
           author_name: string
@@ -135,6 +171,72 @@ export type Database = {
           relation?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      live_locations: {
+        Row: {
+          heading: number | null
+          lat: number
+          lng: number
+          sharing: boolean
+          speed_kmh: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          heading?: number | null
+          lat: number
+          lng: number
+          sharing?: boolean
+          speed_kmh?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          heading?: number | null
+          lat?: number
+          lng?: number
+          sharing?: boolean
+          speed_kmh?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      partners: {
+        Row: {
+          active: boolean
+          benefit: string
+          category: string
+          created_at: string
+          detail: string | null
+          featured: boolean
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          benefit: string
+          category: string
+          created_at?: string
+          detail?: string | null
+          featured?: boolean
+          id?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          active?: boolean
+          benefit?: string
+          category?: string
+          created_at?: string
+          detail?: string | null
+          featured?: boolean
+          id?: string
+          name?: string
+          sort_order?: number
         }
         Relationships: []
       }
@@ -387,6 +489,27 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      nearby_alerts: {
+        Args: {
+          _hours?: number
+          _lat: number
+          _lng: number
+          _radius_km?: number
+        }
+        Returns: {
+          address: string
+          author_name: string
+          created_at: string
+          description: string
+          distance_km: number
+          id: string
+          is_mine: boolean
+          lat: number
+          lng: number
+          title: string
+          type: string
+        }[]
       }
       user_history: {
         Args: { _limit?: number }

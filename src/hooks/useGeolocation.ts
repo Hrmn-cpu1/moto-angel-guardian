@@ -4,6 +4,10 @@ export interface GeoPosition {
   lat: number;
   lng: number;
   accuracy?: number;
+  /** metres per second, when the device reports it */
+  speed?: number | null;
+  /** degrees clockwise from north, when the device reports it */
+  heading?: number | null;
   simulated: boolean;
 }
 
@@ -37,6 +41,8 @@ export function useGeolocation() {
             lat: pos.coords.latitude,
             lng: pos.coords.longitude,
             accuracy: pos.coords.accuracy,
+            speed: pos.coords.speed,
+            heading: pos.coords.heading,
             simulated: false,
           };
           setPosition(p);
@@ -87,6 +93,8 @@ export function useGeolocation() {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
           accuracy: pos.coords.accuracy,
+          speed: pos.coords.speed,
+          heading: pos.coords.heading,
           simulated: false,
         });
         setError(null);

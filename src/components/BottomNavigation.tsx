@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 const left = [
   { to: "/dashboard", label: "Início", icon: Home },
-  { to: "/notifications", label: "Alertas", icon: Bell },
+  { to: "/alerts", label: "Alertas", icon: Bell },
 ] as const;
 
 const right = [
