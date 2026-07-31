@@ -373,6 +373,17 @@ export type Database = {
         }
         Returns: boolean
       }
+      user_history: {
+        Args: { _limit?: number }
+        Returns: {
+          description: string
+          id: string
+          kind: string
+          meta: Json
+          title: string
+          ts: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "user"
