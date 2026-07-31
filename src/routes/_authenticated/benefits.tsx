@@ -30,9 +30,8 @@ interface Partner {
   name: string;
   category: string;
   benefit: string;
-  address: string | null;
-  phone: string | null;
-  website: string | null;
+  detail: string | null;
+  featured: boolean;
 }
 
 function BenefitsPage() {
@@ -42,8 +41,9 @@ function BenefitsPage() {
     queryFn: async (): Promise<Partner[]> => {
       const { data, error } = await supabase
         .from("partners")
-        .select("id,name,category,benefit,address,phone,website")
+        .select("id,name,category,benefit,detail,featured")
         .eq("active", true)
+        .order("sort_order")
         .order("name");
       if (error) throw error;
       return (data ?? []) as Partner[];
@@ -77,7 +77,12 @@ function BenefitsPage() {
 
         <div className="space-y-3 pb-4">
           {partners.map((p) => (
-            <article key={p.id} className="glass-card rounded-xl p-4 animate-fade-up">
+            <article
+              key={p.id}
+              className={`glass-card rounded-xl p-4 animate-fade-up ${
+                p.featured ? "border-gold/45" : ""
+              }`}
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-[9px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
@@ -89,28 +94,16 @@ function BenefitsPage() {
                   {p.benefit}
                 </span>
               </div>
-              <div className="mt-3 space-y-1 text-xs text-muted-foreground">
-                {p.address && (
-                  <p className="flex items-center gap-2">
-                    <MapPin size={12} className="text-gold" /> {p.address}
-                  </p>
-                )}
-                {p.phone && (
-                  <a href={`tel:${p.phone}`} className="flex items-center gap-2">
-                    <Phone size={12} className="text-gold" /> {p.phone}
-                  </a>
-                )}
-                {p.website && (
-                  <a
-                    href={p.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-gold"
-                  >
-                    <ExternalLink size={12} /> Ver site
-                  </a>
-                )}
-              </div>
+              {p.detail && (
+                <p className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
+                  <MapPin size={12} className="mt-0.5 shrink-0 text-gold" /> {p.detail}
+                </p>
+              )}
+              {p.featured && (
+                <p className="mt-2 text-[9px] font-semibold uppercase tracking-[0.24em] text-gold">
+                  Parceiro destaque
+                </p>
+              )}
             </article>
           ))}
 
