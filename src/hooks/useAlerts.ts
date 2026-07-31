@@ -51,7 +51,7 @@ export function useAlerts(pos: { lat: number; lng: number } | null, radiusKm = 2
         _hours: 24,
       });
       if (error) throw error;
-      return (data ?? []) as NearbyAlert[];
+      return (data ?? []) as unknown as NearbyAlert[];
     },
   });
 
