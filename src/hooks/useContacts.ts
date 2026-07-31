@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Contact } from "@/types";
 
@@ -18,26 +19,37 @@ const toContact = (r: Row): Contact => ({
   isPrimary: r.is_primary,
 });
 
+export const contactsKey = ["contacts"] as const;
+
+async function fetchContacts(): Promise<Contact[]> {
+  const { data, error } = await supabase
+    .from("emergency_contacts")
+    .select("id,name,phone,relation,is_primary")
+    .order("is_primary", { ascending: false })
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return ((data ?? []) as Row[]).map(toContact);
+}
+
 export function useContacts() {
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  const qc = useQueryClient();
 
-  const reload = useCallback(async () => {
-    const { data } = await supabase
-      .from("emergency_contacts")
-      .select("*")
-      .order("is_primary", { ascending: false })
-      .order("created_at", { ascending: true });
-    setContacts(((data ?? []) as Row[]).map(toContact));
-  }, []);
+  const { data, isLoading } = useQuery({
+    queryKey: contactsKey,
+    queryFn: fetchContacts,
+    staleTime: 60_000,
+    retry: 2,
+  });
 
-  useEffect(() => {
-    void reload();
-  }, [reload]);
+  const invalidate = useCallback(() => {
+    void qc.invalidateQueries({ queryKey: contactsKey });
+  }, [qc]);
 
+  // Realtime keeps the cache fresh across devices without polling.
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
     let cancelled = false;
-    (async () => {
+    void (async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -52,9 +64,7 @@ export function useContacts() {
             table: "emergency_contacts",
             filter: `user_id=eq.${user.id}`,
           },
-          () => {
-            void reload();
-          },
+          invalidate,
         )
         .subscribe();
     })();
@@ -62,63 +72,74 @@ export function useContacts() {
       cancelled = true;
       if (channel) supabase.removeChannel(channel);
     };
-  }, [reload]);
+  }, [invalidate]);
 
-  const add = useCallback(
-    async (c: Omit<Contact, "id">) => {
+  const addMutation = useMutation({
+    mutationFn: async (c: Omit<Contact, "id">) => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
-      await supabase.from("emergency_contacts").insert({
+      const { error } = await supabase.from("emergency_contacts").insert({
         user_id: user.id,
         name: c.name,
         phone: c.phone,
         relation: c.relation,
         is_primary: c.isPrimary,
       });
-      await reload();
+      if (error) throw error;
     },
-    [reload],
-  );
+    onSuccess: invalidate,
+  });
 
-  const update = useCallback(
-    async (id: string, patch: Partial<Contact>) => {
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, patch }: { id: string; patch: Partial<Contact> }) => {
       const dbPatch = {
         ...(patch.name !== undefined && { name: patch.name }),
         ...(patch.phone !== undefined && { phone: patch.phone }),
         ...(patch.relation !== undefined && { relation: patch.relation }),
         ...(patch.isPrimary !== undefined && { is_primary: patch.isPrimary }),
       };
-      await supabase.from("emergency_contacts").update(dbPatch).eq("id", id);
-      await reload();
+      const { error } = await supabase.from("emergency_contacts").update(dbPatch).eq("id", id);
+      if (error) throw error;
     },
-    [reload],
-  );
+    onSuccess: invalidate,
+  });
 
-  const remove = useCallback(
-    async (id: string) => {
-      await supabase.from("emergency_contacts").delete().eq("id", id);
-      await reload();
+  const removeMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("emergency_contacts").delete().eq("id", id);
+      if (error) throw error;
     },
-    [reload],
-  );
+    onSuccess: invalidate,
+  });
 
-  const setPrimary = useCallback(
-    async (id: string) => {
+  const setPrimaryMutation = useMutation({
+    mutationFn: async (id: string) => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
-      await supabase
+      await supabase.from("emergency_contacts").update({ is_primary: false }).eq("user_id", user.id);
+      const { error } = await supabase
         .from("emergency_contacts")
-        .update({ is_primary: false })
-        .eq("user_id", user.id);
-      await supabase.from("emergency_contacts").update({ is_primary: true }).eq("id", id);
-      await reload();
+        .update({ is_primary: true })
+        .eq("id", id);
+      if (error) throw error;
     },
-    [reload],
+    onSuccess: invalidate,
+  });
+
+  const add = useCallback((c: Omit<Contact, "id">) => addMutation.mutateAsync(c), [addMutation]);
+  const update = useCallback(
+    (id: string, patch: Partial<Contact>) => updateMutation.mutateAsync({ id, patch }),
+    [updateMutation],
+  );
+  const remove = useCallback((id: string) => removeMutation.mutateAsync(id), [removeMutation]);
+  const setPrimary = useCallback(
+    (id: string) => setPrimaryMutation.mutateAsync(id),
+    [setPrimaryMutation],
   );
 
-  return { contacts, add, update, remove, setPrimary };
+  return { contacts: data ?? [], loading: isLoading, add, update, remove, setPrimary, invalidate };
 }
