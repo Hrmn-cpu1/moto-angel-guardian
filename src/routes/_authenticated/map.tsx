@@ -21,6 +21,8 @@ import { LocationPermissionGate } from "@/components/LocationPermissionGate";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useHistory } from "@/hooks/useHistory";
 import { useAlerts } from "@/hooks/useAlerts";
+import { useOnlineRiders } from "@/hooks/useOnlineRiders";
+import { Users } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { searchPOIs, type POI } from "@/lib/pois.functions";
 
@@ -62,6 +64,8 @@ function MapPage() {
   const [follow, setFollow] = useState(true);
   const fetchPOIs = useServerFn(searchPOIs);
   const { alerts } = useAlerts(position);
+  const { riders } = useOnlineRiders(position);
+  const [selectedRider, setSelectedRider] = useState<{ name: string } | null>(null);
 
   useEffect(() => {
     if (!permissionGranted) return;
@@ -135,6 +139,14 @@ function MapPage() {
                     lat: a.lat,
                     lng: a.lng,
                   }))}
+                  riders={riders.map((r) => ({
+                    id: r.user_id,
+                    name: r.name,
+                    avatarUrl: r.avatar_url,
+                    lat: r.lat,
+                    lng: r.lng,
+                  }))}
+                  onRiderSelect={(r) => setSelectedRider({ name: r.name })}
                   className="absolute inset-0"
                 />
               </Suspense>
@@ -185,6 +197,15 @@ function MapPage() {
             {loadingPois && !selected && (
               <div className="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-[10px] uppercase tracking-widest text-gold">
                 Buscando pontos...
+              </div>
+            )}
+
+            {riders.length > 0 && !selected && (
+              <div className="absolute left-3 bottom-3 flex items-center gap-1.5 rounded-full border border-gold/30 bg-black/75 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-gold">
+                <Users size={12} />
+                {selectedRider
+                  ? selectedRider.name
+                  : `${riders.length} ${riders.length === 1 ? "amigo online" : "amigos online"}`}
               </div>
             )}
 

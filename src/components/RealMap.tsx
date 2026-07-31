@@ -80,6 +80,18 @@ export interface MapAlert {
   lng: number;
 }
 
+export interface MapRider {
+  id: string;
+  name: string;
+  avatarUrl?: string | null;
+  lat: number;
+  lng: number;
+}
+
+type RiderOverlay = google.maps.OverlayView & {
+  update: (rider: MapRider) => void;
+};
+
 function pinSvg(color: string, glyphColor: string, glyph: string): string {
   const paths: Record<string, string> = {
     hospital:
@@ -131,6 +143,8 @@ interface Props {
   onPoiSelect?: (poi: POI) => void;
   alerts?: MapAlert[];
   onAlertSelect?: (alert: MapAlert) => void;
+  riders?: MapRider[];
+  onRiderSelect?: (rider: MapRider) => void;
   interactive?: boolean;
   className?: string;
 }
@@ -143,6 +157,8 @@ export default function RealMap({
   onPoiSelect,
   alerts = [],
   onAlertSelect,
+  riders = [],
+  onRiderSelect,
   interactive = true,
   className,
 }: Props) {
@@ -152,6 +168,7 @@ export default function RealMap({
   const accuracyCircleRef = useRef<google.maps.Circle | null>(null);
   const poiMarkersRef = useRef<google.maps.Marker[]>([]);
   const alertMarkersRef = useRef<google.maps.Marker[]>([]);
+  const riderOverlaysRef = useRef<Map<string, RiderOverlay>>(new Map());
   const [state, setState] = useState<LoaderState>("idle");
 
   const apiKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as
@@ -198,6 +215,8 @@ export default function RealMap({
       poiMarkersRef.current = [];
       alertMarkersRef.current.forEach((m) => m.setMap(null));
       alertMarkersRef.current = [];
+      riderOverlaysRef.current.forEach((o) => o.setMap(null));
+      riderOverlaysRef.current.clear();
     };
   }, [apiKey, channel, fallbackCenter, interactive]);
 
@@ -320,6 +339,82 @@ export default function RealMap({
       return m;
     });
   }, [alerts, onAlertSelect, state]);
+
+  // Sync online rider avatars (live_locations)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (state !== "ready" || !map) return;
+    const g = (window as unknown as { google: typeof google }).google;
+
+    class RiderAvatarOverlay extends g.maps.OverlayView {
+      private rider: MapRider;
+      private element: HTMLDivElement | null = null;
+
+      constructor(rider: MapRider) {
+        super();
+        this.rider = rider;
+      }
+
+      private render() {
+        if (!this.element) return;
+        const initials = (this.rider.name || "?").trim().charAt(0).toUpperCase();
+        const inner = this.rider.avatarUrl
+          ? `<img src="${this.rider.avatarUrl}" alt="${this.rider.name}" referrerpolicy="no-referrer" />`
+          : initials;
+        this.element.innerHTML = `<span class="moto-rider-marker__avatar" title="${this.rider.name}">${inner}</span><span class="moto-rider-marker__dot"></span>`;
+      }
+
+      onAdd() {
+        const element = document.createElement("div");
+        element.className = "moto-rider-marker";
+        element.setAttribute("aria-label", `Motociclista online: ${this.rider.name}`);
+        this.element = element;
+        this.render();
+        element.addEventListener("click", () => onRiderSelect?.(this.rider));
+        this.getPanes()?.overlayMouseTarget.appendChild(element);
+      }
+
+      draw() {
+        const projection = this.getProjection();
+        if (!projection || !this.element) return;
+        const point = projection.fromLatLngToDivPixel(
+          new g.maps.LatLng(this.rider.lat, this.rider.lng),
+        );
+        if (!point) return;
+        this.element.style.transform = `translate3d(${point.x}px, ${point.y}px, 0)`;
+      }
+
+      onRemove() {
+        this.element?.remove();
+        this.element = null;
+      }
+
+      update(rider: MapRider) {
+        this.rider = rider;
+        this.render();
+        this.draw();
+      }
+    }
+
+    const seen = new Set<string>();
+    riders.forEach((r) => {
+      seen.add(r.id);
+      const existing = riderOverlaysRef.current.get(r.id);
+      if (existing) {
+        existing.update(r);
+      } else {
+        const overlay = new RiderAvatarOverlay(r);
+        overlay.setMap(map);
+        riderOverlaysRef.current.set(r.id, overlay);
+      }
+    });
+    riderOverlaysRef.current.forEach((overlay, id) => {
+      if (!seen.has(id)) {
+        overlay.setMap(null);
+        riderOverlaysRef.current.delete(id);
+      }
+    });
+  }, [riders, onRiderSelect, state]);
 
   if (!apiKey) {
     return (
