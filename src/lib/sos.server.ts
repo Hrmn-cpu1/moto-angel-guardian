@@ -49,17 +49,15 @@ export type SendResult =
   | { ok: true; providerMessageId: string | null; httpStatus: number; latencyMs: number }
   | { ok: false; error: string; httpStatus: number; latencyMs: number };
 
-export async function sendWhatsAppText(
-  recipientPhone: string,
-  body: string,
-): Promise<SendResult> {
+export async function sendWhatsAppText(recipientPhone: string, body: string): Promise<SendResult> {
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const started = Date.now();
   if (!token || !phoneNumberId) {
     return {
       ok: false,
-      error: "WhatsApp credentials not configured (WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID).",
+      error:
+        "WhatsApp credentials not configured (WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID).",
       httpStatus: 0,
       latencyMs: 0,
     };

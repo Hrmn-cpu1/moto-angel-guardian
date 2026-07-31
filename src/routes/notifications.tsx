@@ -17,7 +17,14 @@ export const Route = createFileRoute("/notifications")({
   component: Notifications,
 });
 
-type Note = { id: string; icon: LucideIcon; title: string; body: string; time: string; tone: "gold" | "danger" | "success" };
+type Note = {
+  id: string;
+  icon: LucideIcon;
+  title: string;
+  body: string;
+  time: string;
+  tone: "gold" | "danger" | "success";
+};
 
 const NOTES: Note[] = [
   {
@@ -75,14 +82,21 @@ function Notifications() {
           NOTES.map((n) => {
             const Icon = n.icon;
             return (
-              <div key={n.id} className="glass-card flex items-start gap-3 rounded-2xl p-4 animate-fade-up">
-                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${toneClass(n.tone)}`}>
+              <div
+                key={n.id}
+                className="glass-card flex items-start gap-3 rounded-2xl p-4 animate-fade-up"
+              >
+                <div
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${toneClass(n.tone)}`}
+                >
                   <Icon size={16} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-foreground">{n.title}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">{n.body}</p>
-                  <p className="mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">{n.time}</p>
+                  <p className="mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+                    {n.time}
+                  </p>
                 </div>
               </div>
             );

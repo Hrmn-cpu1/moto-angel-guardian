@@ -152,10 +152,7 @@ export const dispatchSosNotifications = createServerFn({ method: "POST" })
     );
 
     const finalStatus = failed === 0 ? "notified" : sent === 0 ? "failed" : "partial";
-    await supabaseAdmin
-      .from("sos_events")
-      .update({ status: finalStatus })
-      .eq("id", sos.id);
+    await supabaseAdmin.from("sos_events").update({ status: finalStatus }).eq("id", sos.id);
 
     return { sosEventId: sos.id, dispatched: toSend.length, sent, failed };
   });

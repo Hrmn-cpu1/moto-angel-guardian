@@ -61,7 +61,9 @@ export function useHistory() {
 
   const add = useCallback(
     async (item: Omit<HistoryItem, "id" | "timestamp">) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
       if (item.type === "trip") {
         const meta = item.meta ?? {};
@@ -75,7 +77,7 @@ export function useHistory() {
           ended_at: now.toISOString(),
           duration_seconds: duration,
           distance_km: distance,
-          avg_speed: duration > 0 ? (distance / (duration / 3600)) : 0,
+          avg_speed: duration > 0 ? distance / (duration / 3600) : 0,
           companion: (meta.companion as string) || null,
         });
       } else if (item.type === "sos") {
@@ -96,7 +98,9 @@ export function useHistory() {
   );
 
   const clear = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
     await Promise.all([
       supabase.from("trips").delete().eq("user_id", user.id),

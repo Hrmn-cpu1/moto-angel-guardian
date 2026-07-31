@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { Toaster } from "../components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -76,20 +77,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      {
+        name: "viewport",
+        content: "width=device-width, initial-scale=1, viewport-fit=cover",
+      },
       { title: "Moto Anjo — Proteção em cada caminho" },
       {
         name: "description",
-        content:
-          "Aplicativo premium de segurança, comunidade e emergência para motociclistas.",
+        content: "Aplicativo premium de segurança, comunidade e emergência para motociclistas.",
       },
       { name: "author", content: "Moto Anjo" },
       { name: "theme-color", content: "#050505" },
       { property: "og:title", content: "Moto Anjo — Proteção em cada caminho" },
       {
         property: "og:description",
-        content:
-          "Aplicativo premium de segurança, comunidade e emergência para motociclistas.",
+        content: "Aplicativo premium de segurança, comunidade e emergência para motociclistas.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -114,7 +116,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="pt-BR">
       <head>
         <HeadContent />
       </head>
@@ -133,6 +135,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
+      <Toaster />
     </QueryClientProvider>
   );
 }

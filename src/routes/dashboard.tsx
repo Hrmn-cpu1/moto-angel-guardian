@@ -47,7 +47,7 @@ function Dashboard() {
   const [sync, setSync] = useState<string>();
 
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/login" });
+    if (!loading && !user) navigate({ to: "/login", search: { next: undefined } });
   }, [loading, user, navigate]);
 
   useEffect(() => {
@@ -75,8 +75,7 @@ function Dashboard() {
           <div
             className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full"
             style={{
-              background:
-                "radial-gradient(circle, oklch(0.78 0.13 84 / 0.25), transparent 70%)",
+              background: "radial-gradient(circle, oklch(0.78 0.13 84 / 0.25), transparent 70%)",
             }}
           />
           <div className="flex items-start justify-between">
@@ -128,9 +127,7 @@ function Dashboard() {
             <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-emergency">
               Emergência
             </p>
-            <p className="text-sm font-semibold text-foreground">
-              Ativar alerta SOS
-            </p>
+            <p className="text-sm font-semibold text-foreground">Ativar alerta SOS</p>
           </div>
           <ChevronRight size={18} className="text-emergency" />
         </Link>

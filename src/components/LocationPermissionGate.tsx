@@ -84,13 +84,15 @@ export function LocationPermissionGate({ onGranted }: Props) {
             >
               {isDenied ? <ShieldAlert size={32} /> : <MapPin size={32} />}
             </div>
-            {!isDenied && (
-              <div className="absolute inset-0 animate-ping rounded-full bg-gold/10" />
-            )}
+            {!isDenied && <div className="absolute inset-0 animate-ping rounded-full bg-gold/10" />}
           </div>
 
           <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-            {isDenied ? "Permissão bloqueada" : isUnsupported ? "Não suportado" : "Localização precisa"}
+            {isDenied
+              ? "Permissão bloqueada"
+              : isUnsupported
+                ? "Não suportado"
+                : "Localização precisa"}
           </p>
           <h2 className="mt-1 text-xl font-bold tracking-tight text-foreground">
             {isDenied
@@ -108,7 +110,9 @@ export function LocationPermissionGate({ onGranted }: Props) {
           </p>
 
           {accuracy != null && (
-            <p className="mt-2 text-[11px] text-gold">Precisão detectada: ±{Math.round(accuracy)}m</p>
+            <p className="mt-2 text-[11px] text-gold">
+              Precisão detectada: ±{Math.round(accuracy)}m
+            </p>
           )}
           {error && <p className="mt-2 text-[11px] text-emergency">{error}</p>}
 

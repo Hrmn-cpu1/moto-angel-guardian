@@ -31,9 +31,7 @@ export function Header({ title, subtitle, back, right, showBell }: Props) {
               </p>
             )}
             {title && (
-              <h1 className="truncate text-lg font-bold tracking-tight text-foreground">
-                {title}
-              </h1>
+              <h1 className="truncate text-lg font-bold tracking-tight text-foreground">{title}</h1>
             )}
           </div>
         </div>

@@ -4,6 +4,21 @@ import { BrandMark } from "@/components/BrandMark";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Moto Anjo — Segurança e SOS para motociclistas" },
+      {
+        name: "description",
+        content:
+          "Moto Anjo: SOS com localização, mapa em tempo real, contatos de emergência e comunidade para motociclistas.",
+      },
+      { property: "og:title", content: "Moto Anjo — Segurança e SOS para motociclistas" },
+      {
+        property: "og:description",
+        content: "SOS com localização, mapa em tempo real e comunidade para motociclistas.",
+      },
+    ],
+  }),
   component: Splash,
 });
 

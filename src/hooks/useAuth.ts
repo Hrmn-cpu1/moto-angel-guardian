@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import type { User as AppUser } from "@/types";
@@ -47,47 +47,70 @@ async function loadProfile(userId: string, email: string): Promise<AppUser | nul
   return row ? toAppUser(row as ProfileRow) : null;
 }
 
+// Single shared auth store: one session bootstrap and one auth listener for the
+// whole app, instead of one per mounted component.
+type AuthState = { user: AppUser | null; loading: boolean };
+
+const SERVER_STATE: AuthState = { user: null, loading: true };
+let state: AuthState = SERVER_STATE;
+const listeners = new Set<() => void>();
+let started = false;
+
+function setState(patch: Partial<AuthState>) {
+  state = { ...state, ...patch };
+  listeners.forEach((l) => l());
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function startAuthStore() {
+  if (started || typeof window === "undefined") return;
+  started = true;
+
+  void (async () => {
+    const { data } = await supabase.auth.getSession();
+    const sessionUser = data.session?.user;
+    const u = sessionUser ? await loadProfile(sessionUser.id, sessionUser.email ?? "") : null;
+    setState({ user: u, loading: false });
+  })();
+
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+    if (session?.user) {
+      void loadProfile(session.user.id, session.user.email ?? "").then((u) =>
+        setState({ user: u, loading: false }),
+      );
+    } else {
+      setState({ user: null, loading: false });
+    }
+  });
+}
+
 export function useAuth() {
-  const [user, setUser] = useState<AppUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading } = useSyncExternalStore(
+    subscribe,
+    () => state,
+    () => SERVER_STATE,
+  );
 
   useEffect(() => {
-    let mounted = true;
-
-    const bootstrap = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!mounted) return;
-      if (data.session?.user) {
-        const u = await loadProfile(data.session.user.id, data.session.user.email ?? "");
-        if (mounted) setUser(u);
-      }
-      if (mounted) setLoading(false);
-    };
-    bootstrap();
-
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
-      if (session?.user) {
-        void loadProfile(session.user.id, session.user.email ?? "").then((u) => {
-          if (mounted) setUser(u);
-        });
-      } else {
-        if (mounted) setUser(null);
-      }
-    });
-
-    return () => {
-      mounted = false;
-      sub.subscription.unsubscribe();
-    };
+    startAuthStore();
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
     if (error) throw new Error(mapAuthError(error.message));
     if (!data.user) throw new Error("Falha ao entrar.");
     const u = await loadProfile(data.user.id, data.user.email ?? "");
-    if (u) setUser(u);
+    setState({ user: u, loading: false });
     return u;
   }, []);
 
@@ -119,7 +142,7 @@ export function useAuth() {
         terms_version: CURRENT_TERMS_VERSION,
       });
       const u = await loadProfile(data.user.id, data.user.email ?? "");
-      if (u) setUser(u);
+      setState({ user: u, loading: false });
       return u;
     },
     [],
@@ -142,26 +165,30 @@ export function useAuth() {
 
   const logout = useCallback(async () => {
     await supabase.auth.signOut();
-    setUser(null);
+    setState({ user: null, loading: false });
   }, []);
 
-  const updateUser = useCallback(async (patch: Partial<AppUser>) => {
-    if (!user) return;
-    const dbPatch = {
-      ...(patch.name !== undefined && { name: patch.name }),
-      ...(patch.phone !== undefined && { phone: patch.phone }),
-      ...(patch.bikeModel !== undefined && { bike_model: patch.bikeModel }),
-      ...(patch.plate !== undefined && { plate: patch.plate }),
-      ...(patch.bloodType !== undefined && { blood_type: patch.bloodType }),
-      ...(patch.emergencyContact !== undefined && { emergency_contact: patch.emergencyContact }),
-      ...(patch.emergencyPhone !== undefined && { emergency_phone: patch.emergencyPhone }),
-      ...(patch.termsAcceptedAt !== undefined && { terms_accepted_at: patch.termsAcceptedAt }),
-      ...(patch.termsVersion !== undefined && { terms_version: patch.termsVersion }),
-    };
-    if (Object.keys(dbPatch).length === 0) return;
-    await supabase.from("profiles").update(dbPatch).eq("id", user.id);
-    setUser({ ...user, ...patch });
-  }, [user]);
+  const updateUser = useCallback(
+    async (patch: Partial<AppUser>) => {
+      if (!user) return;
+      const dbPatch = {
+        ...(patch.name !== undefined && { name: patch.name }),
+        ...(patch.phone !== undefined && { phone: patch.phone }),
+        ...(patch.bikeModel !== undefined && { bike_model: patch.bikeModel }),
+        ...(patch.plate !== undefined && { plate: patch.plate }),
+        ...(patch.bloodType !== undefined && { blood_type: patch.bloodType }),
+        ...(patch.emergencyContact !== undefined && { emergency_contact: patch.emergencyContact }),
+        ...(patch.emergencyPhone !== undefined && { emergency_phone: patch.emergencyPhone }),
+        ...(patch.termsAcceptedAt !== undefined && { terms_accepted_at: patch.termsAcceptedAt }),
+        ...(patch.termsVersion !== undefined && { terms_version: patch.termsVersion }),
+      };
+      if (Object.keys(dbPatch).length === 0) return;
+      const { error } = await supabase.from("profiles").update(dbPatch).eq("id", user.id);
+      if (error) throw new Error("Não foi possível salvar suas alterações.");
+      setState({ user: { ...user, ...patch } });
+    },
+    [user],
+  );
 
   return useMemo(
     () => ({ user, loading, login, register, logout, updateUser, loginWithGoogle }),
@@ -172,7 +199,8 @@ export function useAuth() {
 function mapAuthError(msg: string): string {
   const low = msg.toLowerCase();
   if (low.includes("invalid login")) return "E-mail ou senha inválidos.";
-  if (low.includes("already registered") || low.includes("user already")) return "Já existe uma conta com este e-mail.";
+  if (low.includes("already registered") || low.includes("user already"))
+    return "Já existe uma conta com este e-mail.";
   if (low.includes("password should be at least")) {
     const m = msg.match(/at least (\d+)/i);
     const n = m ? m[1] : "8";

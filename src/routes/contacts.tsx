@@ -38,7 +38,10 @@ function ContactsPage() {
   const doShare = async (name: string, phone: string) => {
     const pos = await capture();
     const url = `https://www.google.com/maps?q=${pos.lat},${pos.lng}`;
-    await share(`Olá ${name}, estou em ${pos.lat.toFixed(4)}, ${pos.lng.toFixed(4)}. Contato: ${phone}`, url);
+    await share(
+      `Olá ${name}, estou em ${pos.lat.toFixed(4)}, ${pos.lng.toFixed(4)}. Contato: ${phone}`,
+      url,
+    );
   };
 
   return (
@@ -64,11 +67,18 @@ function ContactsPage() {
             icon={ContactIcon}
             title="Nenhum contato ainda"
             description="Adicione pessoas de confiança para acompanhar suas viagens."
-            action={<GoldButton size="sm" onClick={() => setOpen(true)}>Adicionar contato</GoldButton>}
+            action={
+              <GoldButton size="sm" onClick={() => setOpen(true)}>
+                Adicionar contato
+              </GoldButton>
+            }
           />
         ) : (
           contacts.map((c) => (
-            <div key={c.id} className="glass-card flex items-center gap-3 rounded-2xl p-4 animate-fade-up">
+            <div
+              key={c.id}
+              className="glass-card flex items-center gap-3 rounded-2xl p-4 animate-fade-up"
+            >
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full gold-gradient text-black font-black">
                 {c.name.slice(0, 1).toUpperCase()}
               </div>
@@ -77,7 +87,9 @@ function ContactsPage() {
                   <p className="truncate text-sm font-semibold text-foreground">{c.name}</p>
                   {c.isPrimary && <Star size={12} className="text-gold" fill="currentColor" />}
                 </div>
-                <p className="truncate text-xs text-muted-foreground">{c.phone} · {c.relation}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {c.phone} · {c.relation}
+                </p>
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 <IconBtn onClick={() => setPrimary(c.id)} title="Definir principal">
@@ -105,9 +117,23 @@ function ContactsPage() {
               </button>
             </div>
             <div className="space-y-3">
-              <ModalField label="Nome" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
-              <ModalField label="Telefone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} icon={<Phone size={14} />} />
-              <ModalField label="Relação" value={form.relation} onChange={(v) => setForm({ ...form, relation: v })} placeholder="Ex.: Esposa, Amigo..." />
+              <ModalField
+                label="Nome"
+                value={form.name}
+                onChange={(v) => setForm({ ...form, name: v })}
+              />
+              <ModalField
+                label="Telefone"
+                value={form.phone}
+                onChange={(v) => setForm({ ...form, phone: v })}
+                icon={<Phone size={14} />}
+              />
+              <ModalField
+                label="Relação"
+                value={form.relation}
+                onChange={(v) => setForm({ ...form, relation: v })}
+                placeholder="Ex.: Esposa, Amigo..."
+              />
               <div className="grid grid-cols-2 gap-2 pt-2">
                 <OutlineButton onClick={() => setOpen(false)}>Cancelar</OutlineButton>
                 <GoldButton onClick={submit}>Salvar</GoldButton>
@@ -122,7 +148,15 @@ function ContactsPage() {
   );
 }
 
-function IconBtn({ children, onClick, title }: { children: React.ReactNode; onClick: () => void; title?: string }) {
+function IconBtn({
+  children,
+  onClick,
+  title,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  title?: string;
+}) {
   return (
     <button
       onClick={onClick}

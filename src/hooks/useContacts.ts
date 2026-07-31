@@ -38,14 +38,23 @@ export function useContacts() {
     let channel: ReturnType<typeof supabase.channel> | null = null;
     let cancelled = false;
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user || cancelled) return;
       channel = supabase
         .channel(`emergency_contacts:${user.id}`)
         .on(
           "postgres_changes",
-          { event: "*", schema: "public", table: "emergency_contacts", filter: `user_id=eq.${user.id}` },
-          () => { void reload(); },
+          {
+            event: "*",
+            schema: "public",
+            table: "emergency_contacts",
+            filter: `user_id=eq.${user.id}`,
+          },
+          () => {
+            void reload();
+          },
         )
         .subscribe();
     })();
@@ -57,7 +66,9 @@ export function useContacts() {
 
   const add = useCallback(
     async (c: Omit<Contact, "id">) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
       await supabase.from("emergency_contacts").insert({
         user_id: user.id,
@@ -95,9 +106,14 @@ export function useContacts() {
 
   const setPrimary = useCallback(
     async (id: string) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
-      await supabase.from("emergency_contacts").update({ is_primary: false }).eq("user_id", user.id);
+      await supabase
+        .from("emergency_contacts")
+        .update({ is_primary: false })
+        .eq("user_id", user.id);
       await supabase.from("emergency_contacts").update({ is_primary: true }).eq("id", id);
       await reload();
     },

@@ -67,7 +67,9 @@ function Login() {
     <div className="mx-auto flex min-h-screen max-w-md flex-col bg-background px-6 pt-14 pb-10">
       <div className="flex flex-col items-center text-center">
         <BrandMark size={64} />
-        <h1 className="mt-5 text-2xl font-black tracking-tight text-foreground">Bem-vindo de volta</h1>
+        <h1 className="mt-5 text-2xl font-black tracking-tight text-foreground">
+          Bem-vindo de volta
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">Entre para continuar sua jornada.</p>
       </div>
 
@@ -85,8 +87,22 @@ function Login() {
       </div>
 
       <form onSubmit={onSubmit} className="mt-2 space-y-4 animate-fade-up">
-        <Field icon={<Mail size={16} />} label="E-mail" type="email" value={email} onChange={setEmail} placeholder="voce@motoanjo.com" />
-        <Field icon={<Lock size={16} />} label="Senha" type="password" value={password} onChange={setPassword} placeholder="••••••••" />
+        <Field
+          icon={<Mail size={16} />}
+          label="E-mail"
+          type="email"
+          value={email}
+          onChange={setEmail}
+          placeholder="voce@motoanjo.com"
+        />
+        <Field
+          icon={<Lock size={16} />}
+          label="Senha"
+          type="password"
+          value={password}
+          onChange={setPassword}
+          placeholder="••••••••"
+        />
 
         {error && (
           <div className="flex items-start gap-2 rounded-xl border border-emergency/40 bg-emergency/10 px-3 py-2 text-xs text-emergency">
@@ -103,7 +119,11 @@ function Login() {
 
         <div className="flex items-center justify-between pt-2 text-xs">
           <span className="text-muted-foreground">Novo por aqui?</span>
-          <Link to="/register" search={{ next }} className="font-semibold uppercase tracking-widest text-gold">
+          <Link
+            to="/register"
+            search={{ next }}
+            className="font-semibold uppercase tracking-widest text-gold"
+          >
             Criar conta
           </Link>
         </div>
@@ -112,16 +132,36 @@ function Login() {
   );
 }
 
-function Field({ icon, label, type, value, onChange, placeholder }: {
-  icon: React.ReactNode; label: string; type: string; value: string; onChange: (v: string) => void; placeholder?: string;
+function Field({
+  icon,
+  label,
+  type,
+  value,
+  onChange,
+  placeholder,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  type: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">{label}</span>
+      <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+        {label}
+      </span>
       <div className="glass-card flex items-center gap-3 rounded-xl px-4 py-3 focus-within:border-gold">
         <span className="text-gold">{icon}</span>
-        <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-          className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/60" required />
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/60"
+          required
+        />
       </div>
     </label>
   );
@@ -130,10 +170,22 @@ function Field({ icon, label, type, value, onChange, placeholder }: {
 function GoogleG() {
   return (
     <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
-      <path fill="#EA4335" d="M24 9.5c3.9 0 7.4 1.4 10.2 3.7l7.6-7.6C37.4 1.5 31.1-1 24 -1 14.6-1 6.5 4.4 2.7 12.3l8.9 6.9C13.4 13.1 18.2 9.5 24 9.5z"/>
-      <path fill="#4285F4" d="M46.9 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.9c-.6 3-2.3 5.5-4.9 7.2l7.6 5.9c4.4-4.1 7.3-10.1 7.3-17.6z"/>
-      <path fill="#FBBC05" d="M11.6 28.8c-.5-1.4-.8-2.9-.8-4.3s.3-2.9.8-4.3l-8.9-6.9C1 16.7 0 20.2 0 24s1 7.3 2.7 10.7l8.9-5.9z"/>
-      <path fill="#34A853" d="M24 47c6.5 0 12-2.1 16-5.8l-7.6-5.9c-2.1 1.4-4.8 2.2-8.4 2.2-5.8 0-10.6-3.9-12.4-9.1l-8.9 5.9C6.5 41.6 14.6 47 24 47z"/>
+      <path
+        fill="#EA4335"
+        d="M24 9.5c3.9 0 7.4 1.4 10.2 3.7l7.6-7.6C37.4 1.5 31.1-1 24 -1 14.6-1 6.5 4.4 2.7 12.3l8.9 6.9C13.4 13.1 18.2 9.5 24 9.5z"
+      />
+      <path
+        fill="#4285F4"
+        d="M46.9 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.9c-.6 3-2.3 5.5-4.9 7.2l7.6 5.9c4.4-4.1 7.3-10.1 7.3-17.6z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M11.6 28.8c-.5-1.4-.8-2.9-.8-4.3s.3-2.9.8-4.3l-8.9-6.9C1 16.7 0 20.2 0 24s1 7.3 2.7 10.7l8.9-5.9z"
+      />
+      <path
+        fill="#34A853"
+        d="M24 47c6.5 0 12-2.1 16-5.8l-7.6-5.9c-2.1 1.4-4.8 2.2-8.4 2.2-5.8 0-10.6-3.9-12.4-9.1l-8.9 5.9C6.5 41.6 14.6 47 24 47z"
+      />
     </svg>
   );
 }

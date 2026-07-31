@@ -8,13 +8,20 @@ export default defineTool({
   inputSchema: {},
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (_input, ctx) => {
-    if (!ctx.isAuthenticated()) return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
+    if (!ctx.isAuthenticated())
+      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
     const sb = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_PUBLISHABLE_KEY!, {
       global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    const { data, error } = await sb.from("emergency_contacts").select("*").order("is_primary", { ascending: false });
+    const { data, error } = await sb
+      .from("emergency_contacts")
+      .select("*")
+      .order("is_primary", { ascending: false });
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
-    return { content: [{ type: "text", text: JSON.stringify(data) }], structuredContent: { contacts: data } };
+    return {
+      content: [{ type: "text", text: JSON.stringify(data) }],
+      structuredContent: { contacts: data },
+    };
   },
 });
