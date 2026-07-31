@@ -59,7 +59,7 @@ function Splash() {
         }}
       />
       <div className="animate-scale-in">
-        <BrandMark size={104} />
+        <BrandMark size={104} withWordmark />
       </div>
       <h1 className="mt-8 text-4xl font-black tracking-[0.32em] gold-text animate-fade-up">
         MOTO ANJO

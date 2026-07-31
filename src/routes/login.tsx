@@ -67,7 +67,7 @@ function Login() {
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col bg-background px-6 pt-14 pb-10">
       <div className="flex flex-col items-center text-center">
-        <BrandMark size={104} />
+        <BrandMark size={104} withWordmark />
         <p className="mt-3 text-xs text-muted-foreground">
           Cuidando do que realmente importa para você.
         </p>

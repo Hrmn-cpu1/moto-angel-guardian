@@ -122,7 +122,7 @@ function Register() {
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col bg-background px-6 pt-10 pb-10">
       <div className="flex flex-col items-center text-center">
-        <BrandMark size={56} />
+        <BrandMark size={56} withWordmark />
         <h1 className="mt-4 text-2xl font-black tracking-tight text-foreground">Criar conta</h1>
         <p className="mt-1 text-xs text-muted-foreground">Junte-se à comunidade Moto Anjo.</p>
       </div>
