@@ -556,12 +556,38 @@ export default function RealMap({
 
   return (
     <div className={`relative h-full w-full ${className ?? ""}`}>
-      <div ref={containerRef} className="absolute inset-0 h-full w-full rounded-3xl" />
-      {state !== "ready" && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-3xl bg-black/80 text-xs uppercase tracking-widest text-gold">
-          {state === "error" ? "Erro ao carregar mapa" : "Carregando mapa..."}
+      <div
+        ref={containerRef}
+        className={`absolute inset-0 h-full w-full rounded-3xl ${state === "error" ? "invisible" : ""}`}
+      />
+      {state === "error" ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-3xl bg-black/90 px-6 text-center">
+          <p className="text-xs uppercase tracking-widest text-gold">Mapa indisponível</p>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            O mapa não pôde ser carregado neste endereço. Sua localização continua ativa e você
+            pode abrir a rota no Google Maps.
+          </p>
+          <button
+            type="button"
+            onClick={() =>
+              window.open(
+                center
+                  ? `https://www.google.com/maps?q=${center.lat},${center.lng}`
+                  : "https://www.google.com/maps",
+                "_blank",
+                "noopener,noreferrer",
+              )
+            }
+            className="rounded-full gold-gradient px-4 py-2 text-[11px] font-semibold text-black"
+          >
+            Abrir no Google Maps
+          </button>
         </div>
-      )}
+      ) : state !== "ready" ? (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-3xl bg-black/80 text-xs uppercase tracking-widest text-gold">
+          Carregando mapa...
+        </div>
+      ) : null}
     </div>
   );
 }
