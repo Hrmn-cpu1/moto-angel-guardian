@@ -1,23 +1,17 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { lazy, Suspense } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ShieldCheck, Users, UserPlus, MailCheck, ArrowLeft } from "lucide-react";
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
 import { AppShell } from "@/components/AppShell";
 import { Header } from "@/components/Header";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
+import type { Activity } from "@/components/AdminCharts";
+
+// Recharts (~90kB gzip) only ships when an admin actually opens this screen.
+const AdminCharts = lazy(() => import("@/components/AdminCharts"));
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -37,13 +31,6 @@ type Stats = {
 };
 
 type Row = { id: string; name: string; email: string; created_at: string };
-type Activity = {
-  day: string;
-  new_users: number;
-  trips: number;
-  sos: number;
-  posts: number;
-};
 
 type ActivityRow = {
   day: string;
@@ -54,58 +41,40 @@ type ActivityRow = {
 };
 
 function AdminPage() {
-  const { user, loading } = useAuth();
-  const navigate = useNavigate();
-  const [checking, setChecking] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [rows, setRows] = useState<Row[]>([]);
-  const [activity, setActivity] = useState<Activity[]>([]);
+  const { user } = useAuth();
+  const { isAdmin, checking } = useIsAdmin(user?.id);
 
-  useEffect(() => {
-    if (!loading && !user) navigate({ to: "/login", search: { next: undefined } });
-  }, [loading, user, navigate]);
+  const { data } = useQuery({
+    queryKey: ["admin", "overview"],
+    enabled: isAdmin,
+    staleTime: 60_000,
+    retry: 1,
+    queryFn: async () => {
+      const [statsRes, profilesRes, activityRes] = await Promise.all([
+        supabase.rpc("admin_stats"),
+        supabase.from("profiles").select("id,name,email,created_at").order("created_at", {
+          ascending: false,
+        }).limit(50),
+        supabase.rpc("admin_activity", { _days: 30 }),
+      ]);
+      if (statsRes.error) throw statsRes.error;
+      if (activityRes.error) throw activityRes.error;
+      const activity: Activity[] = ((activityRes.data ?? []) as ActivityRow[]).map((r) => ({
+        day: new Date(r.day).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
+        new_users: Number(r.new_users),
+        trips: Number(r.trips),
+        sos: Number(r.sos),
+        posts: Number(r.posts),
+      }));
+      return {
+        stats: (statsRes.data?.[0] ?? null) as Stats | null,
+        rows: (profilesRes.data ?? []) as Row[],
+        activity,
+      };
+    },
+  });
 
-  useEffect(() => {
-    if (!user) return;
-    (async () => {
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "admin");
-      const admin = !!roles && roles.length > 0;
-      setIsAdmin(admin);
-      setChecking(false);
-      if (!admin) return;
-
-      const { data: s, error: se } = await supabase.rpc("admin_stats");
-      if (se) toast.error("Falha ao carregar estatísticas");
-      else if (s && s[0]) setStats(s[0] as Stats);
-
-      const { data: p } = await supabase
-        .from("profiles")
-        .select("id,name,email,created_at")
-        .order("created_at", { ascending: false })
-        .limit(50);
-      if (p) setRows(p as Row[]);
-
-      const { data: a, error: ae } = await supabase.rpc("admin_activity", { _days: 30 });
-      if (ae) toast.error("Falha ao carregar atividade");
-      else if (a)
-        setActivity(
-          (a as ActivityRow[]).map((r) => ({
-            day: new Date(r.day).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
-            new_users: Number(r.new_users),
-            trips: Number(r.trips),
-            sos: Number(r.sos),
-            posts: Number(r.posts),
-          })),
-        );
-    })();
-  }, [user]);
-
-  if (loading || checking || !user) return <LoadingScreen />;
+  if (checking) return <LoadingScreen />;
 
   if (!isAdmin) {
     return (
@@ -129,6 +98,10 @@ function AdminPage() {
     );
   }
 
+  const stats = data?.stats ?? null;
+  const rows = data?.rows ?? [];
+  const activity = data?.activity ?? [];
+
   return (
     <AppShell>
       <Header title="Admin" subtitle="Visão geral do Moto Anjo" />
@@ -144,82 +117,13 @@ function AdminPage() {
           <StatCard icon={UserPlus} label="Novos (30 dias)" value={stats?.new_last_30d ?? 0} />
         </div>
 
-        <ChartCard title="Novos cadastros — últimos 30 dias">
-          <ResponsiveContainer width="100%" height={180}>
-            <AreaChart data={activity} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="gGold" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#D4AF37" stopOpacity={0.55} />
-                  <stop offset="100%" stopColor="#D4AF37" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />
-              <XAxis
-                dataKey="day"
-                tick={{ fill: "#8C8C8C", fontSize: 10 }}
-                tickLine={false}
-                axisLine={false}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                tick={{ fill: "#8C8C8C", fontSize: 10 }}
-                tickLine={false}
-                axisLine={false}
-                allowDecimals={false}
-                width={28}
-              />
-              <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: "#F3D675" }} />
-              <Area
-                type="monotone"
-                dataKey="new_users"
-                stroke="#D4AF37"
-                strokeWidth={2}
-                fill="url(#gGold)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard title="Atividade — viagens, SOS e posts">
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={activity} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-              <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />
-              <XAxis
-                dataKey="day"
-                tick={{ fill: "#8C8C8C", fontSize: 10 }}
-                tickLine={false}
-                axisLine={false}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                tick={{ fill: "#8C8C8C", fontSize: 10 }}
-                tickLine={false}
-                axisLine={false}
-                allowDecimals={false}
-                width={28}
-              />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                labelStyle={{ color: "#F3D675" }}
-                cursor={{ fill: "rgba(212,175,55,0.06)" }}
-              />
-              <Bar
-                dataKey="trips"
-                name="Viagens"
-                stackId="a"
-                fill="#D4AF37"
-                radius={[0, 0, 0, 0]}
-              />
-              <Bar dataKey="posts" name="Posts" stackId="a" fill="#F3D675" />
-              <Bar dataKey="sos" name="SOS" stackId="a" fill="#D92323" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-          <div className="mt-3 flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-            <LegendDot color="#D4AF37" label="Viagens" />
-            <LegendDot color="#F3D675" label="Posts" />
-            <LegendDot color="#D92323" label="SOS" />
-          </div>
-        </ChartCard>
+        <Suspense
+          fallback={
+            <div className="glass-card h-[220px] animate-pulse rounded-2xl" aria-hidden="true" />
+          }
+        >
+          <AdminCharts activity={activity} />
+        </Suspense>
 
         <div className="glass-card rounded-2xl p-4">
           <div className="mb-3 flex items-center justify-between">
@@ -277,33 +181,5 @@ function StatCard({
         {label}
       </p>
     </div>
-  );
-}
-
-const tooltipStyle = {
-  background: "rgba(17,17,17,0.95)",
-  border: "1px solid rgba(212,175,55,0.25)",
-  borderRadius: 12,
-  fontSize: 11,
-  color: "#F5F5F5",
-} as const;
-
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="glass-card rounded-2xl p-4">
-      <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.28em] text-gold">
-        {title}
-      </p>
-      {children}
-    </div>
-  );
-}
-
-function LegendDot({ color, label }: { color: string; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className="h-2 w-2 rounded-full" style={{ background: color }} />
-      {label}
-    </span>
   );
 }
