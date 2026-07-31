@@ -44,10 +44,6 @@ function ProfilePage() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/welcome" });
-  }, [loading, user, navigate]);
-
-  useEffect(() => {
     if (!user) return;
     supabase
       .from("user_roles")
