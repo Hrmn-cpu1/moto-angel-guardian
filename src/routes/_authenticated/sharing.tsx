@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { Copy, Radio, Share2, Users } from "lucide-react";
+import { Check, Copy, Radio, Share2, ShieldCheck, UserPlus, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Header } from "@/components/Header";
@@ -9,6 +9,7 @@ import { OutlineButton } from "@/components/OutlineButton";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useLiveShare } from "@/hooks/useLiveShare";
 import { useContacts } from "@/hooks/useContacts";
+import { useLocationShares } from "@/hooks/useLocationShares";
 
 export const Route = createFileRoute("/_authenticated/sharing")({
   head: () => ({
@@ -34,6 +35,7 @@ function SharingPage() {
   const { position, capture, share } = useGeolocation();
   const { sharing, toggle, lastSync, error } = useLiveShare();
   const { contacts } = useContacts();
+  const { pending, approved, approve, revoke, requestAccess, requesting } = useLocationShares();
 
   useEffect(() => {
     void capture();
@@ -58,6 +60,18 @@ function SharingPage() {
       "_blank",
       "noopener,noreferrer",
     );
+  };
+
+  const askAccess = async (phone: string, name: string) => {
+    try {
+      const result = await requestAccess(phone);
+      if (result === "requested") toast.success(`Pedido enviado para ${name}.`);
+      else if (result === "not_a_contact") toast.error("Salve o contato antes de pedir acesso.");
+      else if (result === "no_account") toast.error(`${name} ainda não tem conta no Moto Anjo.`);
+      else toast.error("Telefone inválido.");
+    } catch {
+      toast.error("Não foi possível enviar o pedido.");
+    }
   };
 
   return (
