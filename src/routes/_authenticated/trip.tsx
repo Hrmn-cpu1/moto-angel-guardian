@@ -10,6 +10,7 @@ import { useContacts } from "@/hooks/useContacts";
 import { useHistory } from "@/hooks/useHistory";
 import { useRideTelemetry } from "@/hooks/useRideTelemetry";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/trip")({
   head: () => ({
@@ -253,4 +254,30 @@ function formatDuration(sec: number) {
   const m = Math.floor((sec % 3600) / 60);
   const s = sec % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+type BatteryManager = { level: number; addEventListener: (t: string, l: () => void) => void; removeEventListener: (t: string, l: () => void) => void };
+
+/** Real battery level when the browser exposes it; null when unsupported. */
+function useBatteryLevel(): number | null {
+  const [level, setLevel] = useState<number | null>(null);
+  useEffect(() => {
+    let battery: BatteryManager | null = null;
+    let onChange: (() => void) | null = null;
+    const nav = navigator as Navigator & { getBattery?: () => Promise<BatteryManager> };
+    if (typeof nav.getBattery !== "function") return;
+    void nav
+      .getBattery()
+      .then((b) => {
+        battery = b;
+        onChange = () => setLevel(Math.round(b.level * 100));
+        onChange();
+        b.addEventListener("levelchange", onChange);
+      })
+      .catch(() => setLevel(null));
+    return () => {
+      if (battery && onChange) battery.removeEventListener("levelchange", onChange);
+    };
+  }, []);
+  return level;
 }
