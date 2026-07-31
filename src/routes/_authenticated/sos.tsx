@@ -254,6 +254,26 @@ function SOS() {
                     <StatusPill status={n.status} />
                   </div>
                 ))}
+                {manualFallback && (
+                  <div className="mt-2 space-y-2 rounded-2xl border border-gold/25 bg-gold/5 p-3">
+                    <p className="text-[11px] text-muted-foreground">
+                      Envio automático indisponível. Toque para enviar pelo seu WhatsApp:
+                    </p>
+                    {notifications
+                      .filter((n) => n.status !== "sent")
+                      .map((n) => (
+                        <a
+                          key={`wa-${n.id}`}
+                          href={whatsappLink(n.recipient_phone)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-2 rounded-2xl border border-gold/40 bg-black/40 px-4 py-3 text-xs font-semibold uppercase tracking-widest text-gold transition hover:bg-gold/10"
+                        >
+                          <Send size={14} /> {n.recipient_name || n.recipient_phone}
+                        </a>
+                      ))}
+                  </div>
+                )}
                 {summary.failed > 0 && (
                   <button
                     onClick={() => runDispatch(true)}
