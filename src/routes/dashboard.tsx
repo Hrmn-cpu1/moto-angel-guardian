@@ -47,7 +47,7 @@ function Dashboard() {
   const [sync, setSync] = useState<string>();
 
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/login" });
+    if (!loading && !user) navigate({ to: "/login", search: { next: undefined } });
   }, [loading, user, navigate]);
 
   useEffect(() => {

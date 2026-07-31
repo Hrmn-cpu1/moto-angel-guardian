@@ -50,7 +50,7 @@ function Welcome() {
             </p>
           </div>
           <div className="space-y-3">
-            <Link to="/login" className="block">
+            <Link to="/login" search={{ next: undefined }} className="block">
               <GoldButton size="lg">Entrar</GoldButton>
             </Link>
             <Link to="/register" className="block">

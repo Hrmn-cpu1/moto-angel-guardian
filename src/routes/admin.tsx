@@ -55,7 +55,7 @@ function AdminPage() {
   const [activity, setActivity] = useState<Activity[]>([]);
 
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/login" });
+    if (!loading && !user) navigate({ to: "/login", search: { next: undefined } });
   }, [loading, user, navigate]);
 
   useEffect(() => {
@@ -86,7 +86,7 @@ function AdminPage() {
       if (ae) toast.error("Falha ao carregar atividade");
       else if (a)
         setActivity(
-          (a as any[]).map((r) => ({
+          (a as ActivityRow[]).map((r) => ({
             day: new Date(r.day).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
             new_users: Number(r.new_users),
             trips: Number(r.trips),

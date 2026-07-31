@@ -74,7 +74,7 @@ function PrivacyPage() {
         </Section>
         <Section title="9. Contato do responsável pelos dados">
           Encarregado (DPO): <span className="text-gold">dpo@motoanjo.app</span>. Consulte também os{" "}
-          <Link to="/terms" className="text-gold underline">Termos de Uso</Link>.
+          <Link to="/terms" search={{ accept: false }} className="text-gold underline">Termos de Uso</Link>.
         </Section>
       </main>
     </div>

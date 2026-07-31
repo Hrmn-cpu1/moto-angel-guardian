@@ -143,7 +143,7 @@ function ProfilePage() {
           <Row icon={ContactIcon} label="Contatos de confiança" onClick={() => navigate({ to: "/contacts" })} />
           <Row icon={Lock} label="Privacidade" onClick={() => toast("Configurações de privacidade em breve.")} />
           <Row icon={Shield} label="Permissões" onClick={() => toast("Gerenciar permissões do sistema.")} />
-          <Row icon={FileText} label="Termos de Uso" onClick={() => navigate({ to: "/terms" })} />
+          <Row icon={FileText} label="Termos de Uso" onClick={() => navigate({ to: "/terms", search: { accept: false } })} />
           <Row icon={ShieldCheck} label="Política de Privacidade" onClick={() => navigate({ to: "/privacy" })} />
           <Row icon={InfoIcon} label="Sobre o Moto Anjo" onClick={() => toast("Moto Anjo v1.0 — MVP demonstração.")} />
           {isAdmin && (

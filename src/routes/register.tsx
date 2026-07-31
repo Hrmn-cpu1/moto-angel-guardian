@@ -153,7 +153,7 @@ function Register() {
           />
           <span>
             Li e aceito os{" "}
-            <Link to="/terms" className="font-semibold text-gold underline">
+            <Link to="/terms" search={{ accept: false }} className="font-semibold text-gold underline">
               Termos de Uso
             </Link>{" "}
             e a{" "}
@@ -179,7 +179,7 @@ function Register() {
 
         <p className="text-center text-xs text-muted-foreground">
           Já tem uma conta?{" "}
-          <Link to="/login" className="font-semibold text-gold">Entrar</Link>
+          <Link to="/login" search={{ next: undefined }} className="font-semibold text-gold">Entrar</Link>
         </p>
       </form>
     </div>
