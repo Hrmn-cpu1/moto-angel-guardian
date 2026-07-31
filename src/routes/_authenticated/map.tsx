@@ -128,6 +128,13 @@ function MapPage() {
                   follow={follow}
                   pois={pois}
                   onPoiSelect={setSelected}
+                  alerts={alerts.map((a) => ({
+                    id: a.id,
+                    type: a.type,
+                    title: a.title,
+                    lat: a.lat,
+                    lng: a.lng,
+                  }))}
                   className="absolute inset-0"
                 />
               </Suspense>
