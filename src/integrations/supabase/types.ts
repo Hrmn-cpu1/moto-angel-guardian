@@ -207,35 +207,50 @@ export type Database = {
       partners: {
         Row: {
           active: boolean
+          address: string | null
           benefit: string
           category: string
           created_at: string
           detail: string | null
           featured: boolean
           id: string
+          lat: number | null
+          lng: number | null
+          logo_url: string | null
           name: string
+          phone: string | null
           sort_order: number
         }
         Insert: {
           active?: boolean
+          address?: string | null
           benefit: string
           category: string
           created_at?: string
           detail?: string | null
           featured?: boolean
           id?: string
+          lat?: number | null
+          lng?: number | null
+          logo_url?: string | null
           name: string
+          phone?: string | null
           sort_order?: number
         }
         Update: {
           active?: boolean
+          address?: string | null
           benefit?: string
           category?: string
           created_at?: string
           detail?: string | null
           featured?: boolean
           id?: string
+          lat?: number | null
+          lng?: number | null
+          logo_url?: string | null
           name?: string
+          phone?: string | null
           sort_order?: number
         }
         Relationships: []
