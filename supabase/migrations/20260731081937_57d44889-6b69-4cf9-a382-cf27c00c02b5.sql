@@ -1,0 +1,1 @@
+DELETE FROM public.sos_events WHERE triggered_at > now() - interval '2 hours';

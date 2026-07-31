@@ -96,9 +96,6 @@ export async function sendWhatsAppText(recipientPhone: string, body: string): Pr
     } catch {
       // ignore parse error, still success
     }
-    console.log(
-      `[whatsapp] sent to=${to} id=${providerMessageId ?? "?"} status=${res.status} latency=${latencyMs}ms`,
-    );
     return { ok: true, providerMessageId, httpStatus: res.status, latencyMs };
   } catch (e) {
     const latencyMs = Date.now() - started;

@@ -153,7 +153,7 @@ function ProfilePage() {
           <Row
             icon={InfoIcon}
             label="Sobre o Moto Anjo"
-            onClick={() => toast("Moto Anjo v1.0 — MVP demonstração.")}
+            onClick={() => toast("Moto Anjo v1.0")}
           />
           {isAdmin && (
             <Row

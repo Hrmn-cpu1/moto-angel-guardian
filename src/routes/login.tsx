@@ -123,6 +123,13 @@ function Login() {
           </OutlineButton>
         </Link>
 
+        <Link
+          to="/forgot-password"
+          className="block pt-1 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground transition hover:text-gold"
+        >
+          Esqueci minha senha
+        </Link>
+
         <p className="pt-4 text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-gold/80">
           Um por todos e todos por um.
         </p>

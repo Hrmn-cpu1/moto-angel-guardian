@@ -16,7 +16,8 @@ import { EmergencyButton } from "@/components/EmergencyButton";
 import { OutlineButton } from "@/components/OutlineButton";
 import { GoldButton } from "@/components/GoldButton";
 import { useGeolocation, type GeoPosition } from "@/hooks/useGeolocation";
-import { useHistory } from "@/hooks/useHistory";
+import { historyKey } from "@/hooks/useHistory";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { triggerSos, dispatchSosNotifications } from "@/lib/sos.functions";
 import { toast } from "sonner";
@@ -25,9 +26,9 @@ export const Route = createFileRoute("/_authenticated/sos")({
   head: () => ({
     meta: [
       { title: "SOS — Moto Anjo" },
-      { name: "description", content: "Acionamento de emergência (demonstração)." },
+      { name: "description", content: "Acionamento de emergência com localização em tempo real." },
       { property: "og:title", content: "SOS — Moto Anjo" },
-      { property: "og:description", content: "Acionamento de emergência (demonstração)." },
+      { property: "og:description", content: "Acionamento de emergência com localização em tempo real." },
     ],
   }),
   component: SOS,
@@ -36,13 +37,26 @@ export const Route = createFileRoute("/_authenticated/sos")({
 function SOS() {
   const navigate = useNavigate();
   const { capture, share } = useGeolocation();
-  const { add } = useHistory();
+  const queryClient = useQueryClient();
+  const refreshHistory = () => {
+    void queryClient.invalidateQueries({ queryKey: historyKey });
+  };
   const [pos, setPos] = useState<GeoPosition | null>(null);
   const [activated, setActivated] = useState(false);
   const [sosEventId, setSosEventId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [dispatching, setDispatching] = useState(false);
   const dispatchedOnce = useRef(false);
+  const [gpsFailed, setGpsFailed] = useState(false);
+  const [manualFallback, setManualFallback] = useState(false);
+
+  const whatsappLink = (phone: string) => {
+    const digits = (phone || "").replace(/\D/g, "");
+    const to = digits.length === 10 || digits.length === 11 ? `55${digits}` : digits;
+    const url = pos ? `https://www.google.com/maps?q=${pos.lat},${pos.lng}` : "";
+    const text = `🚨 MOTO ANJO — Acionei um SOS. Preciso de ajuda.${url ? `\n📍 ${url}` : ""}`;
+    return `https://wa.me/${to}?text=${encodeURIComponent(text)}`;
+  };
 
   const summary = useMemo(() => {
     const sent = notifications.filter((n) => n.status === "sent").length;
@@ -89,12 +103,16 @@ function SOS() {
     try {
       const res = await dispatchSosNotifications({ data: { sosEventId, onlyFailed } });
       if (res.failed > 0) {
+        // Automatic delivery unavailable (e.g. provider not configured):
+        // fall back to manual WhatsApp links so the alert still goes out.
+        setManualFallback(true);
         toast.warning(`${res.sent} enviados · ${res.failed} falharam`);
       } else if (res.sent > 0) {
         toast.success("Todos os contatos foram notificados.");
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Falha ao enviar alertas.";
+      setManualFallback(true);
       toast.error(msg);
     } finally {
       setDispatching(false);
@@ -103,19 +121,26 @@ function SOS() {
 
   const activate = async () => {
     const p = await capture();
+    if (p.simulated) {
+      // Never register or transmit a fabricated position in an emergency.
+      setGpsFailed(true);
+      setActivated(true);
+      setPos(null);
+      toast.error("GPS indisponível. Ative a localização e toque em tentar novamente.");
+      return;
+    }
+    setGpsFailed(false);
     setPos(p);
     setActivated(true);
-    add({
-      type: "sos",
-      title: "Alerta SOS ativado",
-      description: `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`,
-    });
 
     try {
       const res = await triggerSos({
-        data: { lat: p.lat, lng: p.lng, note: p.simulated ? "Localização simulada" : null },
+        data: { lat: p.lat, lng: p.lng, note: null },
       });
       setSosEventId(res.sosEventId);
+      // The server function is the single writer of the SOS record; just refresh
+      // the local history cache so the event shows up without duplicating rows.
+      refreshHistory();
       if (res.queued === 0) {
         toast.info("SOS registrado — nenhum contato de emergência cadastrado.");
         return;
@@ -136,11 +161,9 @@ function SOS() {
     const url = `https://www.google.com/maps?q=${pos.lat},${pos.lng}`;
     const msg = `🚨 MOTO ANJO — Preciso de ajuda.\n📍 ${url}`;
     const ok = await share(msg, url);
-    add({
-      type: "share",
-      title: "Alerta compartilhado",
-      description: ok ? "Compartilhado com sucesso" : "Copiado / falha no envio",
-    });
+    toast[ok ? "success" : "error"](
+      ok ? "Alerta compartilhado." : "Não foi possível compartilhar o alerta.",
+    );
   };
 
   const cancel = () => {
@@ -149,6 +172,8 @@ function SOS() {
     setSosEventId(null);
     setNotifications([]);
     dispatchedOnce.current = false;
+    setGpsFailed(false);
+    setManualFallback(false);
   };
 
   return (
@@ -182,6 +207,17 @@ function SOS() {
                   {pos.simulated && (
                     <span className="ml-2 text-[10px] text-muted-foreground">(simulado)</span>
                   )}
+                </div>
+              )}
+              {gpsFailed && (
+                <div className="mt-4 space-y-3">
+                  <p className="rounded-xl border border-emergency/40 bg-emergency/10 p-3 text-xs text-emergency">
+                    Não foi possível obter sua localização real. O SOS não será registrado com uma
+                    posição incorreta.
+                  </p>
+                  <GoldButton onClick={activate} size="lg">
+                    Tentar novamente
+                  </GoldButton>
                 </div>
               )}
             </div>
@@ -218,6 +254,26 @@ function SOS() {
                     <StatusPill status={n.status} />
                   </div>
                 ))}
+                {manualFallback && (
+                  <div className="mt-2 space-y-2 rounded-2xl border border-gold/25 bg-gold/5 p-3">
+                    <p className="text-[11px] text-muted-foreground">
+                      Envio automático indisponível. Toque para enviar pelo seu WhatsApp:
+                    </p>
+                    {notifications
+                      .filter((n) => n.status !== "sent")
+                      .map((n) => (
+                        <a
+                          key={`wa-${n.id}`}
+                          href={whatsappLink(n.recipient_phone)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-2 rounded-2xl border border-gold/40 bg-black/40 px-4 py-3 text-xs font-semibold uppercase tracking-widest text-gold transition hover:bg-gold/10"
+                        >
+                          <Send size={14} /> {n.recipient_name || n.recipient_phone}
+                        </a>
+                      ))}
+                  </div>
+                )}
                 {summary.failed > 0 && (
                   <button
                     onClick={() => runDispatch(true)}
@@ -248,7 +304,7 @@ function SOS() {
             )}
 
             <div className="space-y-3">
-              <GoldButton onClick={shareAlert} size="lg">
+              <GoldButton onClick={shareAlert} size="lg" disabled={!pos}>
                 <Share2 size={16} /> Compartilhar alerta
               </GoldButton>
               <OutlineButton onClick={cancel} size="lg">
@@ -259,7 +315,7 @@ function SOS() {
         )}
       </div>
       <p className="px-6 pb-8 text-center text-[10px] uppercase tracking-widest text-muted-foreground">
-        Esta é uma demonstração. Em uma emergência real, ligue 190 / 193 / 192.
+        Em uma emergência com risco de vida, ligue também 190 / 193 / 192.
       </p>
       <button onClick={() => navigate({ to: "/dashboard" })} className="hidden" aria-hidden />
     </div>

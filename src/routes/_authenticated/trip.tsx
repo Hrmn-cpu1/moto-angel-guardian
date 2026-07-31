@@ -8,6 +8,9 @@ import { OutlineButton } from "@/components/OutlineButton";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useContacts } from "@/hooks/useContacts";
 import { useHistory } from "@/hooks/useHistory";
+import { useRideTelemetry } from "@/hooks/useRideTelemetry";
+import { useGeolocation } from "@/hooks/useGeolocation";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/trip")({
   head: () => ({
@@ -30,42 +33,61 @@ function TripPage() {
   const [companion, setCompanion] = useState<string>(contacts[0]?.name ?? "");
   const [elapsed, setElapsed] = useState(0);
   const [paused, setPaused] = useState(false);
-  const [distance, setDistance] = useState(0);
-  const [speed, setSpeed] = useState(0);
   const timerRef = useRef<number | null>(null);
+  const running = phase === "running" && !paused;
+  // Real GPS telemetry — no simulated values are ever recorded.
+  const telemetry = useRideTelemetry(running);
+  const { distance, speed, average } = telemetry;
+  const { error: gpsError, position, startWatch, stopWatch } = useGeolocation();
+  const battery = useBatteryLevel();
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (phase !== "running" || paused) return;
+    if (!running) return;
     timerRef.current = window.setInterval(() => {
       setElapsed((e) => e + 1);
-      setDistance((d) => d + Math.random() * 0.02);
-      setSpeed(Math.round(45 + Math.random() * 30));
     }, 1000);
     return () => {
       if (timerRef.current !== null) window.clearInterval(timerRef.current);
     };
-  }, [phase, paused]);
+  }, [running]);
+
+  // Keep a GPS fix alive during preparation so "GPS ativo" reflects reality.
+  useEffect(() => {
+    startWatch();
+    return () => stopWatch();
+  }, [startWatch, stopWatch]);
 
   useEffect(() => {
     if (!companion && contacts[0]) setCompanion(contacts[0].name);
   }, [contacts, companion]);
 
-  const finish = () => {
-    add({
-      type: "trip",
-      title: `Viagem concluída`,
-      description: `${distance.toFixed(1)} km em ${formatDuration(elapsed)}`,
-      meta: { distance: Number(distance.toFixed(1)), duration: elapsed },
-    });
-    setPhase("summary");
+  const finish = async () => {
+    setSaving(true);
+    try {
+      await add({
+        type: "trip",
+        title: `Viagem concluída`,
+        description: `${distance.toFixed(1)} km em ${formatDuration(elapsed)}`,
+        meta: {
+          distance: Number(distance.toFixed(1)),
+          duration: elapsed,
+          companion: companion || "",
+        },
+      });
+    } catch {
+      toast.error("Não foi possível salvar a viagem. Verifique sua conexão.");
+    } finally {
+      setSaving(false);
+      setPhase("summary");
+    }
   };
 
   const reset = () => {
     setPhase("prepare");
     setElapsed(0);
-    setDistance(0);
-    setSpeed(0);
     setPaused(false);
+    telemetry.reset();
   };
 
   return (
@@ -81,8 +103,17 @@ function TripPage() {
                 Antes de sair, confirme os itens de segurança.
               </p>
               <div className="mt-4 space-y-2">
-                <Check label="GPS ativo" ok />
-                <Check label="Bateria: 87%" ok icon={<Battery size={14} />} />
+                <Check
+                  label={position ? "GPS ativo" : gpsError ? "GPS indisponível" : "Obtendo GPS..."}
+                  ok={Boolean(position && !position.simulated)}
+                />
+                {battery !== null && (
+                  <Check
+                    label={`Bateria: ${battery}%`}
+                    ok={battery >= 20}
+                    icon={<Battery size={14} />}
+                  />
+                )}
                 <Check label="Escudo Moto Anjo" ok />
               </div>
             </div>
@@ -165,7 +196,7 @@ function TripPage() {
                 {paused ? "Retomar" : "Pausar"}
               </OutlineButton>
               <OutlineButton onClick={finish}>
-                <Square size={14} /> Encerrar
+                <Square size={14} /> {saving ? "Salvando..." : "Encerrar"}
               </OutlineButton>
             </div>
           </div>
@@ -181,7 +212,7 @@ function TripPage() {
               <div className="mt-6 grid grid-cols-3 gap-3">
                 <Metric label="Tempo" value={formatDuration(elapsed)} />
                 <Metric label="Distância" value={`${distance.toFixed(1)} km`} />
-                <Metric label="Média" value={`${speed} km/h`} />
+                <Metric label="Média" value={`${average} km/h`} />
               </div>
             </div>
             <GoldButton onClick={reset}>Nova viagem</GoldButton>
@@ -223,4 +254,30 @@ function formatDuration(sec: number) {
   const m = Math.floor((sec % 3600) / 60);
   const s = sec % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+type BatteryManager = { level: number; addEventListener: (t: string, l: () => void) => void; removeEventListener: (t: string, l: () => void) => void };
+
+/** Real battery level when the browser exposes it; null when unsupported. */
+function useBatteryLevel(): number | null {
+  const [level, setLevel] = useState<number | null>(null);
+  useEffect(() => {
+    let battery: BatteryManager | null = null;
+    let onChange: (() => void) | null = null;
+    const nav = navigator as Navigator & { getBattery?: () => Promise<BatteryManager> };
+    if (typeof nav.getBattery !== "function") return;
+    void nav
+      .getBattery()
+      .then((b) => {
+        battery = b;
+        onChange = () => setLevel(Math.round(b.level * 100));
+        onChange();
+        b.addEventListener("levelchange", onChange);
+      })
+      .catch(() => setLevel(null));
+    return () => {
+      if (battery && onChange) battery.removeEventListener("levelchange", onChange);
+    };
+  }, []);
+  return level;
 }
