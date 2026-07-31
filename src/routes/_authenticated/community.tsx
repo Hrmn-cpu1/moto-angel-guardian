@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Heart, MapPin, MessageCircle, Plus, Send, Trash2, Users } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
