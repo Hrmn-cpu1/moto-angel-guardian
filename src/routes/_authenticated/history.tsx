@@ -6,7 +6,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { SOSFab } from "@/components/SOSFab";
 import { useHistory } from "@/hooks/useHistory";
 
-export const Route = createFileRoute("/history")({
+export const Route = createFileRoute("/_authenticated/history")({
   head: () => ({
     meta: [
       { title: "Histórico — Moto Anjo" },

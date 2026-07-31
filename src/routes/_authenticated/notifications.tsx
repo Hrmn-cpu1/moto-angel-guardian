@@ -5,7 +5,7 @@ import { Header } from "@/components/Header";
 import { SOSFab } from "@/components/SOSFab";
 import type { LucideIcon } from "lucide-react";
 
-export const Route = createFileRoute("/notifications")({
+export const Route = createFileRoute("/_authenticated/notifications")({
   head: () => ({
     meta: [
       { title: "Notificações — Moto Anjo" },

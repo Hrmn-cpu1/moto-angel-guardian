@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { useContacts } from "@/hooks/useContacts";
 import { useGeolocation } from "@/hooks/useGeolocation";
 
-export const Route = createFileRoute("/contacts")({
+export const Route = createFileRoute("/_authenticated/contacts")({
   head: () => ({
     meta: [
       { title: "Contatos de confiança — Moto Anjo" },

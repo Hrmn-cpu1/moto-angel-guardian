@@ -10,7 +10,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { useContacts } from "@/hooks/useContacts";
 import { useHistory } from "@/hooks/useHistory";
 
-export const Route = createFileRoute("/trip")({
+export const Route = createFileRoute("/_authenticated/trip")({
   head: () => ({
     meta: [
       { title: "Iniciar viagem — Moto Anjo" },

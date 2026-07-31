@@ -26,7 +26,7 @@ import { searchPOIs, type POI } from "@/lib/pois.functions";
 
 const RealMap = lazy(() => import("@/components/RealMap"));
 
-export const Route = createFileRoute("/map")({
+export const Route = createFileRoute("/_authenticated/map")({
   head: () => ({
     meta: [
       { title: "Mapa — Moto Anjo" },

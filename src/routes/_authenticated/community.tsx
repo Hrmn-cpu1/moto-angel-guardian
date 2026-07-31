@@ -8,7 +8,7 @@ import { GoldButton } from "@/components/GoldButton";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-export const Route = createFileRoute("/community")({
+export const Route = createFileRoute("/_authenticated/community")({
   head: () => ({
     meta: [
       { title: "Comunidade — Moto Anjo" },

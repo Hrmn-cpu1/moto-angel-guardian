@@ -24,7 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@/types";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/profile")({
+export const Route = createFileRoute("/_authenticated/profile")({
   head: () => ({
     meta: [
       { title: "Perfil — Moto Anjo" },
