@@ -16,7 +16,8 @@ import { EmergencyButton } from "@/components/EmergencyButton";
 import { OutlineButton } from "@/components/OutlineButton";
 import { GoldButton } from "@/components/GoldButton";
 import { useGeolocation, type GeoPosition } from "@/hooks/useGeolocation";
-import { useHistory } from "@/hooks/useHistory";
+import { historyKey } from "@/hooks/useHistory";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { triggerSos, dispatchSosNotifications } from "@/lib/sos.functions";
 import { toast } from "sonner";
@@ -36,7 +37,10 @@ export const Route = createFileRoute("/_authenticated/sos")({
 function SOS() {
   const navigate = useNavigate();
   const { capture, share } = useGeolocation();
-  const { add } = useHistory();
+  const queryClient = useQueryClient();
+  const refreshHistory = () => {
+    void queryClient.invalidateQueries({ queryKey: historyKey });
+  };
   const [pos, setPos] = useState<GeoPosition | null>(null);
   const [activated, setActivated] = useState(false);
   const [sosEventId, setSosEventId] = useState<string | null>(null);
