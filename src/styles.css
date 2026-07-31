@@ -417,3 +417,41 @@
 @utility animate-scale-in {
   animation: scale-in 0.3s ease-out;
 }
+
+@keyframes splash-progress {
+  from {
+    width: 8%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes gold-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 oklch(0.83 0.169 85 / 0.35);
+  }
+  50% {
+    box-shadow: 0 0 28px 2px oklch(0.83 0.169 85 / 0.45);
+  }
+}
+
+@utility animate-splash-progress {
+  animation: splash-progress 2.5s ease-in-out forwards;
+}
+
+@utility animate-gold-glow {
+  animation: gold-glow 2.6s ease-in-out infinite;
+}
+
+@utility gold-shimmer {
+  background: linear-gradient(
+    100deg,
+    oklch(0.83 0.169 85) 20%,
+    oklch(0.93 0.12 90) 45%,
+    oklch(0.83 0.169 85) 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3.5s linear infinite;
+}
