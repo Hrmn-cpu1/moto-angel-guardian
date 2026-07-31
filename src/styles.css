@@ -326,7 +326,6 @@
   border-radius: 9999px;
   background: oklch(0.83 0.169 85);
   border: 2px solid oklch(0.06 0 0);
-  animation: moto-user-location-pulse 2.4s ease-out infinite;
 }
 
 @utility animate-fade-up {
