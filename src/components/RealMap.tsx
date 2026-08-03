@@ -34,6 +34,13 @@ const DARK_STYLE: google.maps.MapTypeStyle[] = [
 
 type LoaderState = "idle" | "loading" | "ready" | "error";
 
+/** The bundled @types/google.maps build ships an incomplete HeatmapLayer. */
+interface HeatmapLayerLike {
+  setMap: (map: google.maps.Map | null) => void;
+  setData: (data: { location: google.maps.LatLng; weight: number }[]) => void;
+}
+type HeatmapCtor = new (opts: Record<string, unknown>) => HeatmapLayerLike;
+
 let loaderPromise: Promise<typeof google> | null = null;
 const DEFAULT_CENTER = { lat: -23.55052, lng: -46.633308 };
 
