@@ -78,6 +78,7 @@ function loadGoogleMaps(apiKey: string, channel?: string): Promise<typeof google
       key: apiKey,
       loading: "async",
       callback: cbName,
+      libraries: "visualization",
     });
     if (channel) params.set("channel", channel);
     s.src = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
@@ -140,6 +141,10 @@ function pinSvg(color: string, glyphColor: string, glyph: string): string {
       '<path d="M9 15l6-6M11 9h4v4" stroke="' +
       glyphColor +
       '" stroke-width="1.8" fill="none" stroke-linecap="round"/>',
+    police:
+      '<path d="M12 7l4 1.8v3c0 2.4-1.7 4.2-4 5-2.3-.8-4-2.6-4-5v-3z" fill="none" stroke="' +
+      glyphColor +
+      '" stroke-width="1.6" stroke-linejoin="round"/>',
     anjo:
       '<path d="M12 8l2 3 3 .4-2.2 2.1.5 3-2.3-1.3-2.3 1.3.5-3L9 11.4l3-.4z" fill="' +
       glyphColor +
