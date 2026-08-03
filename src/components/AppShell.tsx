@@ -8,9 +8,12 @@ import { isTermsAccepted } from "@/lib/terms";
 export function AppShell({
   children,
   hideNav = false,
+  fullBleed = false,
 }: {
   children: ReactNode;
   hideNav?: boolean;
+  /** Full-screen surfaces (map home) drop the bottom padding. */
+  fullBleed?: boolean;
 }) {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -25,7 +28,9 @@ export function AppShell({
   }, [user, loading, navigate]);
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col bg-background pb-24">
+    <div
+      className={`mx-auto flex min-h-screen max-w-md flex-col bg-background ${fullBleed ? "" : "pb-24"}`}
+    >
       {children}
       {!hideNav && <BottomNavigation />}
     </div>
