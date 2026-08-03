@@ -8,7 +8,7 @@ const InputSchema = z.object({
   radius: z.number().min(100).max(20000).default(3000),
 });
 
-export type POIType = "hospital" | "fuel" | "shop" | "anjo";
+export type POIType = "hospital" | "fuel" | "shop" | "police" | "anjo";
 
 export interface POI {
   id: string;
@@ -83,12 +83,13 @@ export const searchPOIs = createServerFn({ method: "POST" })
       return { pois: [] as POI[], error: "missing_credentials" };
     }
     try {
-      const [hospitals, fuel, shops] = await Promise.all([
+      const [hospitals, fuel, shops, police] = await Promise.all([
         nearby(apiKey, lovableKey, data.lat, data.lng, data.radius, ["hospital"], "hospital"),
         nearby(apiKey, lovableKey, data.lat, data.lng, data.radius, ["gas_station"], "fuel"),
         nearby(apiKey, lovableKey, data.lat, data.lng, data.radius, ["car_repair"], "shop"),
+        nearby(apiKey, lovableKey, data.lat, data.lng, data.radius, ["police"], "police"),
       ]);
-      return { pois: [...hospitals, ...fuel, ...shops], error: null as string | null };
+      return { pois: [...hospitals, ...fuel, ...shops, ...police], error: null as string | null };
     } catch (e) {
       console.error("searchPOIs error", e);
       return { pois: [] as POI[], error: "request_failed" };
