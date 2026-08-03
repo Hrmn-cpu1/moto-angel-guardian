@@ -213,6 +213,24 @@ function ProfilePage() {
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
+  return <InfoRowBase label={label} value={value} />;
+}
+
+function Shortcut({ to, icon: Icon, label }: { to: string; icon: LucideIcon; label: string }) {
+  return (
+    <Link
+      to={to}
+      className="glass-card group flex aspect-square flex-col items-center justify-center gap-2 rounded-2xl p-3 text-center transition hover:border-gold/40"
+    >
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-gold/25 bg-gold/5 text-gold group-hover:bg-gold/10">
+        <Icon size={18} />
+      </div>
+      <span className="text-[10px] font-semibold leading-tight text-foreground">{label}</span>
+    </Link>
+  );
+}
+
+function InfoRowBase({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</p>
