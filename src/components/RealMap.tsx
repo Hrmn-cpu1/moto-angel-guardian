@@ -225,7 +225,7 @@ export default function RealMap({
   const alertMarkersRef = useRef<google.maps.Marker[]>([]);
   const riderOverlaysRef = useRef<Map<string, RiderOverlay>>(new Map());
   const partnerOverlaysRef = useRef<Map<string, PartnerOverlay>>(new Map());
-  const heatmapRef = useRef<google.maps.visualization.HeatmapLayer | null>(null);
+  const heatmapRef = useRef<HeatmapLayerLike | null>(null);
   const trafficRef = useRef<google.maps.TrafficLayer | null>(null);
   const [state, setState] = useState<LoaderState>("idle");
 
