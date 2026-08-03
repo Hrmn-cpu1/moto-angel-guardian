@@ -333,8 +333,10 @@ export default function RealMap({
       location: new g.maps.LatLng(p.lat, p.lng),
       weight: p.weight,
     }));
-    if (!heatmapRef.current) {
-      heatmapRef.current = new g.maps.visualization.HeatmapLayer({
+    let layer = heatmapRef.current;
+    if (!layer) {
+      const Ctor = g.maps.visualization.HeatmapLayer as unknown as HeatmapCtor;
+      layer = new Ctor({
         data,
         radius: 46,
         opacity: 0.55,
@@ -346,10 +348,11 @@ export default function RealMap({
           "rgba(217,35,35,0.95)",
         ],
       });
+      heatmapRef.current = layer;
     } else {
-      heatmapRef.current.setData(data);
+      layer.setData(data);
     }
-    heatmapRef.current.setMap(map);
+    layer.setMap(map);
   }, [riskPoints, showHeatmap, state]);
 
   // Update user marker + recenter when center changes
