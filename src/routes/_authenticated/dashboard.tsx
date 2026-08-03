@@ -1,26 +1,21 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import {
-  Shield,
-  Navigation,
-  Share2,
-  Gauge,
-  AlertTriangle,
-  BadgePercent,
-  Users,
-  Contact,
-  History,
-  ChevronRight,
-  type LucideIcon,
-} from "lucide-react";
+import { createFileRoute, ClientOnly } from "@tanstack/react-router";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { Crosshair, Flame, Layers, TrafficCone } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { Header } from "@/components/Header";
-import { LocationCard } from "@/components/LocationCard";
-import { ShareLocationButton } from "@/components/ShareLocationButton";
-import { StatusBadge } from "@/components/StatusBadge";
+import { HomeTopBar } from "@/components/HomeTopBar";
+import { SosFab } from "@/components/SosFab";
+import { LocationPermissionGate } from "@/components/LocationPermissionGate";
 import { useAuth } from "@/hooks/useAuth";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { useAlerts } from "@/hooks/useAlerts";
+import { useOnlineRiders } from "@/hooks/useOnlineRiders";
+import { useRiskZones } from "@/hooks/useRiskZones";
+import { usePartners } from "@/hooks/usePartners";
+import { useServerFn } from "@tanstack/react-start";
+import { searchPOIs, type POI } from "@/lib/pois.functions";
 import { LoadingScreen } from "@/components/LoadingScreen";
+
+const RealMap = lazy(() => import("@/components/RealMap"));
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -34,118 +29,198 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
-function greeting() {
-  const h = new Date().getHours();
-  if (h < 12) return "Bom dia";
-  if (h < 18) return "Boa tarde";
-  return "Boa noite";
-}
-
+/**
+ * Home = live safety map (Waze/Uber style), full screen, dark premium theme.
+ * Layers: traffic, risk heatmap, online riders, recent incidents and support
+ * points (hospitals, fuel, workshops, police, partners).
+ */
 function Dashboard() {
   const { user, loading } = useAuth();
-  const { position, capture } = useGeolocation();
-  const [sync, setSync] = useState<string>();
+  const { position, capture, startWatch, stopWatch, watching } = useGeolocation();
+  const [granted, setGranted] = useState(false);
+  const [follow, setFollow] = useState(true);
+  const [showTraffic, setShowTraffic] = useState(true);
+  const [showHeat, setShowHeat] = useState(true);
+  const [showSupport, setShowSupport] = useState(true);
+  const [pois, setPois] = useState<POI[]>([]);
+  const fetchPOIs = useServerFn(searchPOIs);
+  const { alerts } = useAlerts(position);
+  const { riders } = useOnlineRiders(position);
+  const { risks } = useRiskZones(position);
+  const { located: locatedPartners } = usePartners();
 
   useEffect(() => {
-    capture().then(() => setSync(new Date().toLocaleTimeString("pt-BR").slice(0, 5)));
-  }, [capture]);
+    if (!granted) return;
+    void capture();
+    startWatch();
+    return () => stopWatch();
+  }, [granted, capture, startWatch, stopWatch]);
+
+  useEffect(() => {
+    if (!position || !showSupport) return;
+    fetchPOIs({ data: { lat: position.lat, lng: position.lng, radius: 3000 } })
+      .then((r) => setPois(r.pois))
+      .catch((e) => console.error(e));
+  }, [position, fetchPOIs, showSupport]);
 
   if (loading || !user) return <LoadingScreen />;
 
+  if (!granted) {
+    return (
+      <AppShell>
+        <div className="px-5 pt-8">
+          <LocationPermissionGate onGranted={() => setGranted(true)} />
+        </div>
+      </AppShell>
+    );
+  }
+
   return (
-    <AppShell>
-      <Header
-        title={user.name.split(" ")[0]}
-        subtitle={`${greeting()}, motociclista.`}
-        showBell
-        right={
-          <div className="flex h-10 w-10 items-center justify-center rounded-full gold-gradient text-sm font-black text-black">
-            {user.name.slice(0, 1).toUpperCase()}
-          </div>
-        }
-      />
-
-      <div className="space-y-4 px-5 pt-5">
-        {/* Escudo card */}
-        <div className="relative overflow-hidden rounded-3xl glass-card p-6 animate-fade-up">
-          <div
-            className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full"
-            style={{
-              background: "radial-gradient(circle, oklch(0.83 0.169 85 / 0.25), transparent 70%)",
-            }}
-          />
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-gold">
-                Escudo Moto Anjo
-              </p>
-              <h2 className="mt-2 text-2xl font-black text-foreground">Proteção ativa</h2>
-              <StatusBadge status="active" label="Todos os sistemas OK" className="mt-3" />
-              <p className="mt-4 max-w-[220px] text-sm text-muted-foreground">
-                Localização e recursos de segurança disponíveis.
-              </p>
+    <AppShell fullBleed>
+      <div className="relative min-h-screen w-full overflow-hidden bg-background">
+        <ClientOnly
+          fallback={
+            <div className="absolute inset-0 flex items-center justify-center text-xs uppercase tracking-widest text-gold">
+              Preparando mapa...
             </div>
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl gold-gradient shadow-[0_10px_40px_-10px_oklch(0.83_0.169_85/0.6)]">
-              <Shield size={30} className="text-black" strokeWidth={2.4} />
-            </div>
-          </div>
-          <button
-            onClick={() => alert("Escudo Moto Anjo ativo. Todos os recursos disponíveis.")}
-            className="mt-5 flex w-full items-center justify-between rounded-xl border border-gold/25 bg-black/30 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-gold transition hover:bg-gold/5"
-          >
-            Ver status
-            <ChevronRight size={16} />
-          </button>
-        </div>
-
-        <LocationCard position={position} lastSync={sync} />
-        <ShareLocationButton />
-
-        <div>
-          <p className="mb-3 px-1 text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-            Atalhos
-          </p>
-          <div className="grid grid-cols-3 gap-3">
-            <Shortcut to="/trip" icon={Navigation} label="Iniciar viagem" />
-            <Shortcut to="/ride" icon={Gauge} label="Velocímetro" />
-            <Shortcut to="/sharing" icon={Share2} label="Compartilhar" />
-            <Shortcut to="/alerts" icon={AlertTriangle} label="Alertas próximos" />
-            <Shortcut to="/benefits" icon={BadgePercent} label="Benefícios" />
-            <Shortcut to="/community" icon={Users} label="Comunidade" />
-            <Shortcut to="/contacts" icon={Contact} label="Meus contatos" />
-            <Shortcut to="/history" icon={History} label="Histórico" />
-            <Shortcut to="/map" icon={Shield} label="Mapa seguro" />
-          </div>
-        </div>
-
-        <Link
-          to="/sos"
-          className="mt-2 flex items-center justify-between rounded-2xl border border-emergency/40 bg-emergency/10 px-5 py-4 transition hover:bg-emergency/15"
+          }
         >
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-emergency">
-              Emergência
-            </p>
-            <p className="text-sm font-semibold text-foreground">Ativar alerta SOS</p>
-          </div>
-          <ChevronRight size={18} className="text-emergency" />
-        </Link>
-      </div>
+          <Suspense
+            fallback={
+              <div className="absolute inset-0 flex items-center justify-center text-xs uppercase tracking-widest text-gold">
+                Carregando mapa...
+              </div>
+            }
+          >
+            <RealMap
+              center={position ? { lat: position.lat, lng: position.lng } : null}
+              accuracy={position?.accuracy ?? null}
+              follow={follow}
+              zoom={16}
+              rounded={false}
+              showTraffic={showTraffic}
+              showHeatmap={showHeat}
+              riskPoints={risks}
+              pois={showSupport ? pois : []}
+              alerts={alerts.map((a) => ({
+                id: a.id,
+                type: a.type,
+                title: a.title,
+                lat: a.lat,
+                lng: a.lng,
+              }))}
+              riders={riders.map((r) => ({
+                id: r.user_id,
+                name: r.name,
+                avatarUrl: r.avatar_url,
+                lat: r.lat,
+                lng: r.lng,
+              }))}
+              partners={
+                showSupport
+                  ? locatedPartners.map((p) => ({
+                      id: p.id,
+                      name: p.name,
+                      benefit: p.benefit,
+                      logoUrl: p.logo_url,
+                      featured: p.featured,
+                      lat: p.lat as number,
+                      lng: p.lng as number,
+                    }))
+                  : []
+              }
+              className="absolute inset-0"
+            />
+          </Suspense>
+        </ClientOnly>
 
+        {position && follow && (
+          <div className="moto-user-location-marker left-1/2 top-1/2" aria-label="Sua localização">
+            <span className="moto-user-location-marker__pulse" />
+            <span className="moto-user-location-marker__pin">
+              <span />
+            </span>
+          </div>
+        )}
+
+        <HomeTopBar gpsOnline={watching && !!position} />
+
+        {/* Layer controls */}
+        <div className="absolute right-3 top-[76px] z-30 flex flex-col gap-2">
+          <LayerToggle
+            active={showTraffic}
+            onClick={() => setShowTraffic((v) => !v)}
+            label="Trânsito"
+            icon={<TrafficCone size={14} />}
+          />
+          <LayerToggle
+            active={showHeat}
+            onClick={() => setShowHeat((v) => !v)}
+            label="Áreas de risco"
+            icon={<Flame size={14} />}
+          />
+          <LayerToggle
+            active={showSupport}
+            onClick={() => setShowSupport((v) => !v)}
+            label="Apoio"
+            icon={<Layers size={14} />}
+          />
+          <LayerToggle
+            active={follow}
+            onClick={() => {
+              setFollow(true);
+              void capture();
+            }}
+            label="Centralizar"
+            icon={<Crosshair size={14} />}
+          />
+        </div>
+
+        {/* Live summary */}
+        <div className="absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+96px)] z-30 flex justify-between gap-2 text-[10px] font-semibold uppercase tracking-widest">
+          <span className="rounded-full border border-gold/30 bg-black/75 px-3 py-1.5 text-gold">
+            {riders.length} online
+          </span>
+          <span className="rounded-full border border-emergency/40 bg-black/75 px-3 py-1.5 text-emergency">
+            {alerts.length} ocorrências
+          </span>
+        </div>
+
+        <SosFab
+          position={
+            position
+              ? { lat: position.lat, lng: position.lng, accuracy: position.accuracy ?? null }
+              : null
+          }
+        />
+      </div>
     </AppShell>
   );
 }
 
-function Shortcut({ to, icon: Icon, label }: { to: string; icon: LucideIcon; label: string }) {
+function LayerToggle({
+  active,
+  onClick,
+  label,
+  icon,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  icon: React.ReactNode;
+}) {
   return (
-    <Link
-      to={to}
-      className="glass-card group flex aspect-square flex-col items-center justify-center gap-2 rounded-2xl p-3 text-center transition hover:border-gold/40"
+    <button
+      onClick={onClick}
+      aria-pressed={active}
+      aria-label={label}
+      className={`flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur-md transition ${
+        active
+          ? "border-gold bg-gold/20 text-gold"
+          : "border-white/10 bg-black/70 text-muted-foreground"
+      }`}
     >
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-gold/25 bg-gold/5 text-gold group-hover:bg-gold/10">
-        <Icon size={18} />
-      </div>
-      <span className="text-[10px] font-semibold leading-tight text-foreground">{label}</span>
-    </Link>
+      {icon}
+    </button>
   );
 }

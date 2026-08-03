@@ -34,6 +34,13 @@ const DARK_STYLE: google.maps.MapTypeStyle[] = [
 
 type LoaderState = "idle" | "loading" | "ready" | "error";
 
+/** The bundled @types/google.maps build ships an incomplete HeatmapLayer. */
+interface HeatmapLayerLike {
+  setMap: (map: google.maps.Map | null) => void;
+  setData: (data: { location: google.maps.LatLng; weight: number }[]) => void;
+}
+type HeatmapCtor = new (opts: Record<string, unknown>) => HeatmapLayerLike;
+
 let loaderPromise: Promise<typeof google> | null = null;
 const DEFAULT_CENTER = { lat: -23.55052, lng: -46.633308 };
 
@@ -78,6 +85,7 @@ function loadGoogleMaps(apiKey: string, channel?: string): Promise<typeof google
       key: apiKey,
       loading: "async",
       callback: cbName,
+      libraries: "visualization",
     });
     if (channel) params.set("channel", channel);
     s.src = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
@@ -140,6 +148,10 @@ function pinSvg(color: string, glyphColor: string, glyph: string): string {
       '<path d="M9 15l6-6M11 9h4v4" stroke="' +
       glyphColor +
       '" stroke-width="1.8" fill="none" stroke-linecap="round"/>',
+    police:
+      '<path d="M12 7l4 1.8v3c0 2.4-1.7 4.2-4 5-2.3-.8-4-2.6-4-5v-3z" fill="none" stroke="' +
+      glyphColor +
+      '" stroke-width="1.6" stroke-linejoin="round"/>',
     anjo:
       '<path d="M12 8l2 3 3 .4-2.2 2.1.5 3-2.3-1.3-2.3 1.3.5-3L9 11.4l3-.4z" fill="' +
       glyphColor +
@@ -181,6 +193,13 @@ interface Props {
   onRiderSelect?: (rider: MapRider) => void;
   partners?: MapPartner[];
   onPartnerSelect?: (partner: MapPartner) => void;
+  /** Aggregated risk points for the danger heatmap. */
+  riskPoints?: { lat: number; lng: number; weight: number }[];
+  showTraffic?: boolean;
+  showHeatmap?: boolean;
+  zoom?: number;
+  /** Rounded corners (off for the full-screen home map). */
+  rounded?: boolean;
   interactive?: boolean;
   className?: string;
 }
@@ -197,6 +216,11 @@ export default function RealMap({
   onRiderSelect,
   partners = [],
   onPartnerSelect,
+  riskPoints = [],
+  showTraffic = false,
+  showHeatmap = false,
+  zoom = 15,
+  rounded = true,
   interactive = true,
   className,
 }: Props) {
@@ -208,6 +232,8 @@ export default function RealMap({
   const alertMarkersRef = useRef<google.maps.Marker[]>([]);
   const riderOverlaysRef = useRef<Map<string, RiderOverlay>>(new Map());
   const partnerOverlaysRef = useRef<Map<string, PartnerOverlay>>(new Map());
+  const heatmapRef = useRef<HeatmapLayerLike | null>(null);
+  const trafficRef = useRef<google.maps.TrafficLayer | null>(null);
   const [state, setState] = useState<LoaderState>("idle");
 
   // Prefer the project's own Google Cloud key (works on custom domains and in
@@ -222,6 +248,8 @@ export default function RealMap({
     | undefined;
 
   const fallbackCenter = useMemo(() => center ?? DEFAULT_CENTER, []);
+  const initialZoom = useRef(zoom).current;
+  const radius = rounded ? "rounded-3xl" : "";
 
   useEffect(() => {
     if (authFailed) setState("error");
@@ -241,7 +269,7 @@ export default function RealMap({
         if (cancelled || !containerRef.current) return;
         const map = new g.maps.Map(containerRef.current, {
           center: fallbackCenter,
-          zoom: 15,
+          zoom: initialZoom,
           disableDefaultUI: true,
           gestureHandling: interactive ? "greedy" : "none",
           zoomControl: interactive,
@@ -259,6 +287,10 @@ export default function RealMap({
       });
     return () => {
       cancelled = true;
+      heatmapRef.current?.setMap(null);
+      heatmapRef.current = null;
+      trafficRef.current?.setMap(null);
+      trafficRef.current = null;
       userMarkerRef.current?.setMap(null);
       userMarkerRef.current = null;
       accuracyCircleRef.current?.setMap(null);
@@ -272,7 +304,56 @@ export default function RealMap({
       partnerOverlaysRef.current.forEach((o) => o.setMap(null));
       partnerOverlaysRef.current.clear();
     };
-  }, [apiKey, channel, fallbackCenter, interactive]);
+  }, [apiKey, channel, fallbackCenter, initialZoom, interactive]);
+
+  // Traffic layer (toggles without recreating the map)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (state !== "ready" || !map) return;
+    const g = (window as unknown as { google: typeof google }).google;
+    if (showTraffic) {
+      if (!trafficRef.current) trafficRef.current = new g.maps.TrafficLayer();
+      trafficRef.current.setMap(map);
+    } else {
+      trafficRef.current?.setMap(null);
+    }
+  }, [showTraffic, state]);
+
+  // Risk heatmap — data updates in place, never reloads the map
+  useEffect(() => {
+    const map = mapRef.current;
+    if (state !== "ready" || !map) return;
+    const g = (window as unknown as { google: typeof google }).google;
+    if (!g.maps.visualization) return;
+    if (!showHeatmap || riskPoints.length === 0) {
+      heatmapRef.current?.setMap(null);
+      return;
+    }
+    const data = riskPoints.map((p) => ({
+      location: new g.maps.LatLng(p.lat, p.lng),
+      weight: p.weight,
+    }));
+    let layer = heatmapRef.current;
+    if (!layer) {
+      const Ctor = g.maps.visualization.HeatmapLayer as unknown as HeatmapCtor;
+      layer = new Ctor({
+        data,
+        radius: 46,
+        opacity: 0.55,
+        gradient: [
+          "rgba(217,35,35,0)",
+          "rgba(212,175,55,0.35)",
+          "rgba(243,214,117,0.55)",
+          "rgba(217,35,35,0.75)",
+          "rgba(217,35,35,0.95)",
+        ],
+      });
+      heatmapRef.current = layer;
+    } else {
+      layer.setData(data);
+    }
+    layer.setMap(map);
+  }, [riskPoints, showHeatmap, state]);
 
   // Update user marker + recenter when center changes
   useEffect(() => {

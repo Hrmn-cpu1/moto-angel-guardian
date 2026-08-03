@@ -46,6 +46,7 @@ const iconFor = {
   hospital: Cross,
   fuel: Fuel,
   shop: Wrench,
+  police: Shield,
   anjo: Shield,
 };
 
@@ -53,6 +54,7 @@ const labelFor: Record<POI["type"], string> = {
   hospital: "Hospital",
   fuel: "Combustível",
   shop: "Oficina",
+  police: "Posto policial",
   anjo: "Ponto Moto Anjo",
 };
 

@@ -589,6 +589,19 @@ export type Database = {
         }[]
       }
       request_location_access: { Args: { _phone: string }; Returns: string }
+      risk_heatmap: {
+        Args: {
+          _days?: number
+          _lat: number
+          _lng: number
+          _radius_km?: number
+        }
+        Returns: {
+          lat: number
+          lng: number
+          weight: number
+        }[]
+      }
       user_history: {
         Args: { _limit?: number }
         Returns: {

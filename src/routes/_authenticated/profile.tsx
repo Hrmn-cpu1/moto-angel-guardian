@@ -1,15 +1,23 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import {
+  AlertTriangle,
+  BadgePercent,
   Bike,
   ChevronRight,
   Contact as ContactIcon,
   FileText,
+  Gauge,
+  History,
   Info as InfoIcon,
   Lock,
   LogOut,
+  MapPin,
+  Navigation,
+  Share2,
   Shield,
   ShieldCheck,
+  Siren,
   Sparkles,
   User as UserIcon,
   type LucideIcon,
@@ -64,6 +72,23 @@ function ProfilePage() {
       <Header title="Perfil" subtitle="Sua identidade" showBell />
 
       <div className="space-y-4 px-5 pt-4">
+        <div>
+          <p className="mb-3 px-1 text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+            Atalhos
+          </p>
+          <div className="grid grid-cols-3 gap-3">
+            <Shortcut to="/sos" icon={Siren} label="SOS" />
+            <Shortcut to="/trip" icon={Navigation} label="Iniciar viagem" />
+            <Shortcut to="/ride" icon={Gauge} label="Velocímetro" />
+            <Shortcut to="/sharing" icon={Share2} label="Compartilhar" />
+            <Shortcut to="/alerts" icon={AlertTriangle} label="Alertas próximos" />
+            <Shortcut to="/benefits" icon={BadgePercent} label="Benefícios" />
+            <Shortcut to="/contacts" icon={ContactIcon} label="Meus contatos" />
+            <Shortcut to="/history" icon={History} label="Histórico" />
+            <Shortcut to="/map" icon={MapPin} label="Mapa seguro" />
+          </div>
+        </div>
+
         <div className="glass-card flex items-center gap-4 rounded-2xl p-5 animate-fade-up">
           <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl gold-gradient text-2xl font-black text-black">
             {user.name.slice(0, 1).toUpperCase()}
@@ -188,6 +213,24 @@ function ProfilePage() {
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
+  return <InfoRowBase label={label} value={value} />;
+}
+
+function Shortcut({ to, icon: Icon, label }: { to: string; icon: LucideIcon; label: string }) {
+  return (
+    <Link
+      to={to}
+      className="glass-card group flex aspect-square flex-col items-center justify-center gap-2 rounded-2xl p-3 text-center transition hover:border-gold/40"
+    >
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-gold/25 bg-gold/5 text-gold group-hover:bg-gold/10">
+        <Icon size={18} />
+      </div>
+      <span className="text-[10px] font-semibold leading-tight text-foreground">{label}</span>
+    </Link>
+  );
+}
+
+function InfoRowBase({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</p>
