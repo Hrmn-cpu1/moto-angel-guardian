@@ -34,12 +34,16 @@ const DARK_STYLE: google.maps.MapTypeStyle[] = [
 
 type LoaderState = "idle" | "loading" | "ready" | "error";
 
-/** The bundled @types/google.maps build ships an incomplete HeatmapLayer. */
-interface HeatmapLayerLike {
-  setMap: (map: google.maps.Map | null) => void;
-  setData: (data: { location: google.maps.LatLng; weight: number }[]) => void;
-}
-type HeatmapCtor = new (opts: Record<string, unknown>) => HeatmapLayerLike;
+/**
+ * Risk areas are painted with layered translucent circles. Google removed the
+ * visualization HeatmapLayer in Maps JS 3.65 (it now throws), so this keeps the
+ * same visual language (gold -> red glow) with plain overlays.
+ */
+const RISK_BANDS = [
+  { scale: 1.0, color: "#D92323", opacity: 0.1 },
+  { scale: 0.62, color: "#F3D675", opacity: 0.14 },
+  { scale: 0.32, color: "#D92323", opacity: 0.28 },
+] as const;
 
 let loaderPromise: Promise<typeof google> | null = null;
 const DEFAULT_CENTER = { lat: -23.55052, lng: -46.633308 };
@@ -85,7 +89,7 @@ function loadGoogleMaps(apiKey: string, channel?: string): Promise<typeof google
       key: apiKey,
       loading: "async",
       callback: cbName,
-      libraries: "visualization",
+    });
     });
     if (channel) params.set("channel", channel);
     s.src = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
