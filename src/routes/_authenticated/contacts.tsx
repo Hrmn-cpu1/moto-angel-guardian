@@ -141,7 +141,6 @@ function ContactsPage() {
           </div>
         </div>
       )}
-
     </AppShell>
   );
 }

@@ -8,7 +8,11 @@ interface Props {
   sharing?: boolean;
 }
 
-type BatteryLike = { level: number; charging: boolean; addEventListener?: (t: string, l: () => void) => void };
+type BatteryLike = {
+  level: number;
+  charging: boolean;
+  addEventListener?: (t: string, l: () => void) => void;
+};
 
 /** Slim translucent status strip floating over the full-screen home map. */
 export function HomeTopBar({ gpsOnline, sharing = false }: Props) {
@@ -20,7 +24,10 @@ export function HomeTopBar({ gpsOnline, sharing = false }: Props) {
   useEffect(() => {
     const nav = navigator as Navigator & {
       getBattery?: () => Promise<BatteryLike>;
-      connection?: { effectiveType?: string; addEventListener?: (t: string, l: () => void) => void };
+      connection?: {
+        effectiveType?: string;
+        addEventListener?: (t: string, l: () => void) => void;
+      };
     };
     let cancelled = false;
     void nav.getBattery?.().then((b) => {

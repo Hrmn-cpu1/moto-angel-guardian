@@ -30,7 +30,9 @@ export function SosFab({ position, className }: Props) {
   const timerRef = useRef<number | null>(null);
   const startRef = useRef(0);
   const { contacts } = useContacts();
-  const { create: createAlert } = useAlerts(position ? { lat: position.lat, lng: position.lng } : null);
+  const { create: createAlert } = useAlerts(
+    position ? { lat: position.lat, lng: position.lng } : null,
+  );
   const qc = useQueryClient();
 
   const stop = useCallback(() => {

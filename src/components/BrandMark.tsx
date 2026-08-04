@@ -17,7 +17,10 @@ export function BrandMark({
       alt="Moto Anjo"
       width={1024}
       height={1024}
-      className={cn("block h-auto object-contain drop-shadow-[0_0_28px_rgba(212,175,55,0.35)]", !withWordmark && className)}
+      className={cn(
+        "block h-auto object-contain drop-shadow-[0_0_28px_rgba(212,175,55,0.35)]",
+        !withWordmark && className,
+      )}
       style={{ width: size * 1.6 }}
     />
   );

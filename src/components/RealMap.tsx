@@ -165,8 +165,7 @@ function pinSvg(color: string, glyphColor: string, glyph: string): string {
       '<path d="M12 7l1.6 3.4 3.4.6-2.6 2.4.7 3.6-3.1-1.8-3.1 1.8.7-3.6L7 11l3.4-.6z" fill="' +
       glyphColor +
       '"/>',
-    bloqueio:
-      '<path d="M8 10h8v4H8z" fill="' + glyphColor + '"/>',
+    bloqueio: '<path d="M8 10h8v4H8z" fill="' + glyphColor + '"/>',
     roubo:
       '<path d="M12 7c2 0 3.5 1.5 3.5 3.5S14 14 12 14s-3.5-1.5-3.5-3.5S10 7 12 7z" fill="none" stroke="' +
       glyphColor +

@@ -151,9 +151,7 @@ function SharingPage() {
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-foreground">{g.viewer_name}</p>
-                  <p className="text-[10px] uppercase tracking-widest text-gold">
-                    Pedido pendente
-                  </p>
+                  <p className="text-[10px] uppercase tracking-widest text-gold">Pedido pendente</p>
                 </div>
                 <div className="flex shrink-0 gap-2">
                   <button
