@@ -234,7 +234,7 @@ export default function RealMap({
   const alertMarkersRef = useRef<google.maps.Marker[]>([]);
   const riderOverlaysRef = useRef<Map<string, RiderOverlay>>(new Map());
   const partnerOverlaysRef = useRef<Map<string, PartnerOverlay>>(new Map());
-  const heatmapRef = useRef<HeatmapLayerLike | null>(null);
+  const heatCirclesRef = useRef<google.maps.Circle[]>([]);
   const trafficRef = useRef<google.maps.TrafficLayer | null>(null);
   const [state, setState] = useState<LoaderState>("idle");
 
@@ -289,8 +289,8 @@ export default function RealMap({
       });
     return () => {
       cancelled = true;
-      heatmapRef.current?.setMap(null);
-      heatmapRef.current = null;
+      heatCirclesRef.current.forEach((c) => c.setMap(null));
+      heatCirclesRef.current = [];
       trafficRef.current?.setMap(null);
       trafficRef.current = null;
       userMarkerRef.current?.setMap(null);
@@ -321,40 +321,36 @@ export default function RealMap({
     }
   }, [showTraffic, state]);
 
-  // Risk heatmap — data updates in place, never reloads the map
+  // Risk areas — layered translucent circles (HeatmapLayer was removed by Google)
   useEffect(() => {
     const map = mapRef.current;
     if (state !== "ready" || !map) return;
     const g = (window as unknown as { google: typeof google }).google;
-    if (!g.maps.visualization) return;
-    if (!showHeatmap || riskPoints.length === 0) {
-      heatmapRef.current?.setMap(null);
-      return;
-    }
-    const data = riskPoints.map((p) => ({
-      location: new g.maps.LatLng(p.lat, p.lng),
-      weight: p.weight,
-    }));
-    let layer = heatmapRef.current;
-    if (!layer) {
-      const Ctor = g.maps.visualization.HeatmapLayer as unknown as HeatmapCtor;
-      layer = new Ctor({
-        data,
-        radius: 46,
-        opacity: 0.55,
-        gradient: [
-          "rgba(217,35,35,0)",
-          "rgba(212,175,55,0.35)",
-          "rgba(243,214,117,0.55)",
-          "rgba(217,35,35,0.75)",
-          "rgba(217,35,35,0.95)",
-        ],
+    heatCirclesRef.current.forEach((c) => c.setMap(null));
+    heatCirclesRef.current = [];
+    if (!showHeatmap || riskPoints.length === 0) return;
+    const maxWeight = Math.max(...riskPoints.map((p) => p.weight), 1);
+    riskPoints.forEach((p) => {
+      const intensity = Math.min(1, p.weight / maxWeight);
+      const baseRadius = 260 + intensity * 520;
+      RISK_BANDS.forEach((band) => {
+        const circle = new g.maps.Circle({
+          map,
+          center: { lat: p.lat, lng: p.lng },
+          radius: baseRadius * band.scale,
+          strokeWeight: 0,
+          fillColor: band.color,
+          fillOpacity: band.opacity * (0.55 + intensity * 0.45),
+          clickable: false,
+          zIndex: 1,
+        });
+        heatCirclesRef.current.push(circle);
       });
-      heatmapRef.current = layer;
-    } else {
-      layer.setData(data);
-    }
-    layer.setMap(map);
+    });
+    return () => {
+      heatCirclesRef.current.forEach((c) => c.setMap(null));
+      heatCirclesRef.current = [];
+    };
   }, [riskPoints, showHeatmap, state]);
 
   // Update user marker + recenter when center changes
