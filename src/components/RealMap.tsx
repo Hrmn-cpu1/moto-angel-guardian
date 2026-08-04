@@ -90,7 +90,6 @@ function loadGoogleMaps(apiKey: string, channel?: string): Promise<typeof google
       loading: "async",
       callback: cbName,
     });
-    });
     if (channel) params.set("channel", channel);
     s.src = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
     s.async = true;
