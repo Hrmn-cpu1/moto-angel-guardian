@@ -86,33 +86,31 @@ function BenefitsPage() {
               }`}
             >
               <div className="flex items-start gap-3">
-                  {p.logo_url ? (
-                    <img
-                      src={p.logo_url}
-                      alt={`Logo ${p.name}`}
-                      loading="lazy"
-                      width={48}
-                      height={48}
-                      className="h-12 w-12 shrink-0 rounded-xl border border-gold/25 bg-black/50 object-contain p-1.5"
-                    />
-                  ) : (
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-gold/25 bg-black/50 text-gold">
-                      <BadgePercent size={18} />
-                    </span>
-                  )}
-                  <div className="min-w-0">
-                    <p className="text-[9px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                      {p.category}
+                {p.logo_url ? (
+                  <img
+                    src={p.logo_url}
+                    alt={`Logo ${p.name}`}
+                    loading="lazy"
+                    width={48}
+                    height={48}
+                    className="h-12 w-12 shrink-0 rounded-xl border border-gold/25 bg-black/50 object-contain p-1.5"
+                  />
+                ) : (
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-gold/25 bg-black/50 text-gold">
+                    <BadgePercent size={18} />
+                  </span>
+                )}
+                <div className="min-w-0">
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                    {p.category}
+                  </p>
+                  <h2 className="mt-0.5 text-sm font-bold break-words text-foreground">{p.name}</h2>
+                  {p.address && (
+                    <p className="mt-0.5 text-[11px] break-words text-muted-foreground">
+                      {p.address}
                     </p>
-                    <h2 className="mt-0.5 text-sm font-bold break-words text-foreground">
-                      {p.name}
-                    </h2>
-                    {p.address && (
-                      <p className="mt-0.5 text-[11px] break-words text-muted-foreground">
-                        {p.address}
-                      </p>
-                    )}
-                  </div>
+                  )}
+                </div>
               </div>
               <p className="mt-3 rounded-full border border-gold/40 bg-gold/10 px-3 py-1 text-center text-[10px] font-black uppercase tracking-wider text-gold">
                 {p.benefit}

@@ -184,10 +184,7 @@ function AlertsPage() {
             const Icon = TYPES.find((t) => t.key === a.type)?.icon ?? AlertTriangle;
             const critical = a.type === "acidente" || a.type === "roubo";
             return (
-              <article
-                key={a.id}
-                className="glass-card flex gap-3 rounded-xl p-4 animate-fade-up"
-              >
+              <article key={a.id} className="glass-card flex gap-3 rounded-xl p-4 animate-fade-up">
                 <div
                   className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border ${
                     critical

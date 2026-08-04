@@ -35,9 +35,7 @@ export function Speedometer({ speed, max = 180 }: SpeedometerProps) {
         <p className="font-black leading-none text-foreground [font-size:clamp(2.75rem,14vw,3.5rem)]">
           {speed}
         </p>
-        <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.32em] text-gold">
-          km/h
-        </p>
+        <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.32em] text-gold">km/h</p>
       </div>
     </div>
   );

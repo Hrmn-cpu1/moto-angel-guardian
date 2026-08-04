@@ -57,11 +57,7 @@ const BLOCKS: Block[] = [
   {
     icon: HeartHandshake,
     title: "Irmandade",
-    lines: [
-      "Comunidade Moto Anjo.",
-      "Ajuda entre motociclistas.",
-      "Rede de apoio em tempo real.",
-    ],
+    lines: ["Comunidade Moto Anjo.", "Ajuda entre motociclistas.", "Rede de apoio em tempo real."],
   },
 ];
 
@@ -96,8 +92,8 @@ function IntroPage() {
             Este aplicativo foi desenvolvido pensando 100% na segurança do motoboy.
           </p>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Nossa missão é simples: aumentar as chances de que você volte para casa em
-            segurança todos os dias.
+            Nossa missão é simples: aumentar as chances de que você volte para casa em segurança
+            todos os dias.
           </p>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             Porque cada corrida importa. E quem espera você em casa merece ver você voltar.
@@ -158,9 +154,7 @@ function IntroPage() {
             >
               {dontShow && <Check size={13} strokeWidth={3} />}
             </span>
-            <span className="text-xs text-muted-foreground">
-              Não mostrar esta tela novamente
-            </span>
+            <span className="text-xs text-muted-foreground">Não mostrar esta tela novamente</span>
           </button>
 
           <GoldButton size="lg" onClick={onContinue} className="animate-gold-glow">

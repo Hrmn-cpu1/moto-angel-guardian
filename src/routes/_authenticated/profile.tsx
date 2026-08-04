@@ -187,11 +187,7 @@ function ProfilePage() {
             label="Política de Privacidade"
             onClick={() => navigate({ to: "/privacy" })}
           />
-          <Row
-            icon={InfoIcon}
-            label="Sobre o Moto Anjo"
-            onClick={() => toast("Moto Anjo v1.0")}
-          />
+          <Row icon={InfoIcon} label="Sobre o Moto Anjo" onClick={() => toast("Moto Anjo v1.0")} />
           {isAdmin && (
             <Row
               icon={ShieldCheck}

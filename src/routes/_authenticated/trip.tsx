@@ -256,7 +256,11 @@ function formatDuration(sec: number) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-type BatteryManager = { level: number; addEventListener: (t: string, l: () => void) => void; removeEventListener: (t: string, l: () => void) => void };
+type BatteryManager = {
+  level: number;
+  addEventListener: (t: string, l: () => void) => void;
+  removeEventListener: (t: string, l: () => void) => void;
+};
 
 /** Real battery level when the browser exposes it; null when unsupported. */
 function useBatteryLevel(): number | null {

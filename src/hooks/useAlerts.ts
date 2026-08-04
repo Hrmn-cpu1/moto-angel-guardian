@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useId } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -36,6 +36,7 @@ export function alertsKey(lat?: number, lng?: number) {
 export function useAlerts(pos: { lat: number; lng: number } | null, radiusKm = 25) {
   const qc = useQueryClient();
   const key = alertsKey(pos?.lat, pos?.lng);
+  const instanceId = useId();
 
   const query = useQuery({
     queryKey: key,
@@ -61,7 +62,7 @@ export function useAlerts(pos: { lat: number; lng: number } | null, radiusKm = 2
 
   useEffect(() => {
     const channel = supabase
-      .channel("community_alerts_feed")
+      .channel(`community_alerts_feed:${instanceId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "community_alerts" }, () => {
         invalidate();
       })
@@ -69,7 +70,7 @@ export function useAlerts(pos: { lat: number; lng: number } | null, radiusKm = 2
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [invalidate]);
+  }, [invalidate, instanceId]);
 
   const create = useMutation({
     mutationFn: async (input: {

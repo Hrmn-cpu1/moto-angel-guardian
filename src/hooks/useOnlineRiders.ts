@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useId } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -23,6 +23,7 @@ export interface OnlineRider {
  */
 export function useOnlineRiders(pos: { lat: number; lng: number } | null, radiusKm = 50) {
   const qc = useQueryClient();
+  const instanceId = useId();
   const key = [
     "online-riders",
     pos ? pos.lat.toFixed(2) : "none",
@@ -54,7 +55,7 @@ export function useOnlineRiders(pos: { lat: number; lng: number } | null, radius
 
   useEffect(() => {
     const channel = supabase
-      .channel("live_locations_feed")
+      .channel(`live_locations_feed:${instanceId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "live_locations" }, () => {
         invalidate();
       })
@@ -62,7 +63,7 @@ export function useOnlineRiders(pos: { lat: number; lng: number } | null, radius
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [invalidate]);
+  }, [invalidate, instanceId]);
 
   return {
     riders: query.data ?? [],

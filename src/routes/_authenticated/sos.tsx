@@ -18,7 +18,10 @@ export const Route = createFileRoute("/_authenticated/sos")({
       { title: "SOS — Moto Anjo" },
       { name: "description", content: "Acionamento de emergência com localização em tempo real." },
       { property: "og:title", content: "SOS — Moto Anjo" },
-      { property: "og:description", content: "Acionamento de emergência com localização em tempo real." },
+      {
+        property: "og:description",
+        content: "Acionamento de emergência com localização em tempo real.",
+      },
     ],
   }),
   component: SOS,
@@ -267,4 +270,3 @@ type Notification = {
   error_message: string | null;
   sent_at: string | null;
 };
-

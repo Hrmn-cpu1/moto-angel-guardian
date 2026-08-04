@@ -456,7 +456,6 @@ function Community() {
           ))
         )}
       </div>
-
     </AppShell>
   );
 }
