@@ -14,6 +14,11 @@
     "test": "node --experimental-strip-types --test src/lib/phone.test.ts src/lib/coords.test.ts src/lib/sos.server.test.ts src/lib/sos-client.test.ts src/lib/sos-unificacao.test.ts"
   },
   "dependencies": {
+    "@capacitor/android": "^7",
+    "@capacitor/app": "^7",
+    "@capacitor/core": "^7",
+    "@capacitor/geolocation": "^7",
+    "@capacitor/splash-screen": "^7",
     "@hookform/resolvers": "^5.2.2",
     "@lovable.dev/cloud-auth-js": "^1.1.2",
     "@lovable.dev/mcp-js": "^0.25.0",
@@ -71,6 +76,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@capacitor/cli": "^7",
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "2.9.1",
     "@types/google.maps": "^3.65.3",
