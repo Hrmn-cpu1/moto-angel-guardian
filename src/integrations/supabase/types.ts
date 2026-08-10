@@ -231,6 +231,36 @@ export type Database = {
         }
         Relationships: []
       }
+      native_auth_codes: {
+        Row: {
+          access_token: string
+          code: string
+          code_challenge: string
+          created_at: string
+          expires_at: string
+          refresh_token: string
+          used_at: string | null
+        }
+        Insert: {
+          access_token: string
+          code: string
+          code_challenge: string
+          created_at?: string
+          expires_at?: string
+          refresh_token: string
+          used_at?: string | null
+        }
+        Update: {
+          access_token?: string
+          code?: string
+          code_challenge?: string
+          created_at?: string
+          expires_at?: string
+          refresh_token?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       partners: {
         Row: {
           active: boolean
@@ -650,6 +680,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      purge_native_auth_codes: { Args: never; Returns: undefined }
       request_location_access: { Args: { _phone: string }; Returns: string }
       risk_heatmap: {
         Args: {

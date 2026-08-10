@@ -2,13 +2,15 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { BrandMark } from "@/components/BrandMark";
 import { NATIVE_CALLBACK_URL, parseAuthCallback } from "@/lib/native-auth";
+import { stashNativeSession } from "@/lib/native-auth.functions";
 
 /**
  * Retorno público do OAuth (Google).
  *
  * No navegador: o supabase-js já detecta os tokens na URL e cria a sessão;
- * aqui só aguardamos e seguimos. No APK: a página abre dentro do Custom Tab,
- * então devolvemos os tokens ao aplicativo pelo deep link com.motoanjo.app://.
+ * aqui só aguardamos e seguimos. No APK: a página abre dentro do Custom Tab e
+ * NUNCA devolve tokens pelo deep link — guarda a sessão no servidor e envia
+ * apenas um código opaco de uso único (Authorization Code + PKCE).
  *
  * A URL é capturada no import, antes de qualquer código tocar no supabase,
  * para que o `detectSessionInUrl` não limpe o hash antes de repassarmos.
@@ -40,11 +42,26 @@ function AuthCallback() {
 
     if (isNativeReturn) {
       setMessage("Voltando para o Moto Anjo...");
-      const payload = new URLSearchParams();
-      if (parsed.access_token) payload.set("access_token", parsed.access_token);
-      if (parsed.refresh_token) payload.set("refresh_token", parsed.refresh_token);
-      if (parsed.error) payload.set("error", parsed.error);
-      window.location.replace(`${NATIVE_CALLBACK_URL}#${payload.toString()}`);
+      const challenge = new URL(url).searchParams.get("cc") ?? "";
+      const back = (params: Record<string, string>) =>
+        window.location.replace(`${NATIVE_CALLBACK_URL}?${new URLSearchParams(params).toString()}`);
+      if (parsed.error) {
+        back({ error: parsed.error });
+        return;
+      }
+      if (!parsed.access_token || !parsed.refresh_token || !challenge) {
+        back({ error: "Retorno do Google sem sessão." });
+        return;
+      }
+      void stashNativeSession({
+        data: {
+          access_token: parsed.access_token,
+          refresh_token: parsed.refresh_token,
+          code_challenge: challenge,
+        },
+      })
+        .then((res: { code: string }) => back({ code: res.code }))
+        .catch((e: unknown) => back({ error: e instanceof Error ? e.message : "Falha no login." }));
       return;
     }
 
