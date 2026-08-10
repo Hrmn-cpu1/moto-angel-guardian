@@ -1,93 +1,100 @@
 # PROMPT DE CONTINUAÇÃO — MOTO ANJO (entregar ao Claude junto com o repositório)
 
-**Antes de editar qualquer arquivo, audite o repositório e compare o código real
-com `HANDOFF_MOTO_ANJO.md` e `PROJECT_STATUS.md`.** Se encontrar divergência,
-relate antes de mudar qualquer coisa.
+**Antes de editar qualquer arquivo, leia `HANDOFF_MOTO_ANJO.md`,
+`PROJECT_STATUS.md` e `NEXT_STEPS.md` e depois audite o código real do
+repositório para confirmar que a documentação corresponde ao estado atual.**
+Relate qualquer divergência antes de mudar qualquer coisa.
 
-**Depois: continue primeiro corrigindo exclusivamente o Google Maps preto no
-Samsung, preservando Auth e SOS.**
+**Não reconstrua o Moto Anjo. Continue do estado existente.**
 
----
+## O que é
 
-## O que é o Moto Anjo
+App de segurança para motociclistas: SOS com localização, aviso automático a
+contatos por WhatsApp, mapa em tempo real com riders e zonas de risco,
+comunidade, histórico e telemetria. Identidade "Graphite & Gold" (preto #050505,
+dourado #D4AF37, vermelho #D92323 só para emergência). Português do Brasil.
 
-Aplicativo de segurança para motociclistas: acionamento de emergência (SOS) com
-localização, contatos de confiança avisados por WhatsApp, mapa em tempo real com
-outros motociclistas e zonas de risco, comunidade, histórico de viagens e
-telemetria (velocímetro/inclinação). Identidade visual "Graphite & Gold":
-preto profundo, dourado metálico, vermelho só para emergência. Português do Brasil.
+## Stack
 
-## Arquitetura
+React 19 · TypeScript · TanStack Start 1 + TanStack Router (rotas por arquivo) ·
+TanStack Query · Vite 8 · Tailwind CSS v4 · shadcn/ui · Supabase (Postgres, Auth,
+RLS, RPCs SECURITY DEFINER) · Capacitor 7 / Android · Google Maps JavaScript API ·
+GitHub Actions (Node 22, JDK 21, Android SDK, Gradle).
+
+## Arquitetura Android
 
 ```
 APK Android (com.motoanjo.app, versionCode 3, versionName 1.2)
   → Capacitor 7 / WebView
   → server.url = https://moto-angel-guardian.lovable.app
-  → TanStack Start (React 19, Vite 8, Tailwind v4, SSR em Worker/edge)
-  → Supabase (Postgres, Auth, RLS, RPCs SECURITY DEFINER)
+  → TanStack Start (SSR em Worker/edge)
+  → Supabase
 ```
+Consequência: o APK **não** empacota o bundle. Toda mudança de frontend só chega
+ao aparelho depois de publicar a web, e o app exige internet.
 
-O APK não empacota o bundle: carrega a versão publicada. Logo, **toda mudança de
-frontend só chega ao aparelho depois de publicar a web**.
+## Auth Android (VALIDADO FISICAMENTE NO SAMSUNG)
 
-## O que você NÃO deve reconstruir
-
-- Não refatorar o SOS (Checkpoint 1B) nem as RPCs relacionadas.
-- Não refatorar a autenticação nativa (PKCE + deep link) — está validada em aparelho.
-- Não editar migrations já aplicadas em `supabase/migrations/`.
-- Não trocar o roteador: é TanStack Router baseado em arquivos; nunca react-router.
-- Não mexer em `src/integrations/supabase/*` (gerado) nem em `src/routeTree.gen.ts`.
-- Não alterar branding, layout, `applicationId`, versionCode/versionName sem pedido.
-- Não adicionar nem remover funcionalidades por conta própria.
-- Não colocar secrets no repositório.
-
-## Checkpoint SOS 1B (intacto)
-
-Hold de 3 s → GPS novo → validação (fix < 60 s, precisão ≤ 500 m, cooldown 15 s)
-→ `request_id` → server fn → RPC `sos_open` → `sos_events` → fila
-`whatsapp_notifications` → Meta Cloud API (ou fallback `wa.me`).
-`sos_events` é somente leitura para o app; o frontend nunca faz INSERT/UPDATE/DELETE.
-Um SOS ativo por usuário, idempotente por `request_id`.
-Arquivos: `src/lib/sos-client.ts`, `src/lib/coords.ts`, `src/hooks/useSosController.ts`,
-`src/components/Sos*.tsx`, `src/lib/sos.functions.ts`, `src/lib/sos.server.ts`.
-
-## Auth Android (validado fisicamente)
-
-Custom Tab → Google OAuth → `/auth/callback?native=1&cc=<challenge>` → servidor
-guarda a sessão e devolve **código opaco** → deep link
-`com.motoanjo.app://auth/callback?code=...` → `appUrlOpen` **e** `getLaunchUrl`
-(cold start) → `handleNativeAuthUrl` idempotente → troca do código pela sessão →
-guard libera `/dashboard`. Nenhum token trafega na URL.
+```
+Moto Anjo → Custom Tab → Google OAuth → callback HTTPS /auth/callback?native=1&cc=<challenge>
+→ PKCE → deep link com.motoanjo.app://auth/callback?code=<opaco>
+→ App.addListener("appUrlOpen") ou App.getLaunchUrl() (cold start)
+→ handler idempotente (handleNativeAuthUrl) → exchangeNativeCode → sessão Supabase → Dashboard
+```
+Nenhum token trafega na URL; o código é opaco, de uso único, 5 min.
 Arquivos: `src/lib/native-auth.ts`, `src/lib/native-auth.functions.ts`,
 `src/lib/native.ts`, `src/routes/auth.callback.tsx`, `src/hooks/useAuth.ts`,
-`src/routes/_authenticated/route.tsx`.
+`src/routes/_authenticated/route.tsx`. **Não exportar tokens nem secrets.**
 
-## APK v3 e GitHub Actions
+## SOS — Checkpoint 1B
 
-`.github/workflows/android-debug.yml` ("Android Debug APK (v3)"):
-checkout → Node 22 → JDK 21 → Android SDK → `npm ci` → testes → typecheck →
-build web → `mkdir -p android/app/src/main/assets` → `npx cap sync android` →
-`./gradlew assembleDebug` → SHA-256 → artifact `moto-anjo-debug-v3`.
-Execução #3 terminou com sucesso. **Não remova `android/app/src/main/assets/.gitkeep`.**
+```
+SosHoldButton (hold 3 s) → useSosController → geolocalização → validação de
+coordenadas (fix < 60 s, precisão ≤ 500 m, velocidade plausível, cooldown 15 s)
+→ request_id (UUID no cliente) → server fn → RPC sos_open → sos_events
+→ fila whatsapp_notifications → Meta Cloud API (fallback wa.me)
+```
+Garantias: idempotência por `request_id`; **um único SOS ativo por usuário**
+(índice parcial); cancelamento (`sos_cancel`), resolução (`sos_resolve`),
+expiração e `superseded` tratados no `sos_open` endurecido; `sos_events` é
+**somente leitura** para o cliente (INSERT/UPDATE/DELETE negados por RLS);
+**zero DML direto no frontend** (verificado por busca global); limpeza segura via
+`sos_purge_history()`; claim atômico na fila evita envio duplicado.
+Migrations do Checkpoint 1/1B: `20260810153319`, `20260810153455`,
+`20260810153540`, `20260810153651`. **105/105 testes passando.**
+
+## Google Maps
+
+Sintoma anterior: mapa-base preto no Samsung. Diagnóstico provou tiles HTTP 200 e
+chave/referrer/billing corretos. **Causa: contraste insuficiente do `DARK_STYLE`**
+em `src/components/RealMap.tsx` (ruas `#161616` sobre `#0a0a0a`). Correção: nova
+paleta legível apenas nessa constante. Não exigiu novo APK.
+**Aguardando revalidação física no Samsung.**
+Chave: `VITE_GOOGLE_MAPS_BROWSER_KEY` (própria, prioritária) → fallback
+`VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY` (só vale em `*.lovable.app`).
+`gm_authFailure` já degrada para coordenadas + botão "Abrir no Google Maps".
 
 ## Supabase
 
-Tabelas principais: `profiles`, `emergency_contacts`, `sos_events`,
-`whatsapp_notifications`, `trips`, `community_posts/comments/likes/alerts`,
+14 tabelas em `public`, todas com RLS e GRANTs: `profiles`, `emergency_contacts`,
+`sos_events`, `whatsapp_notifications`, `trips`, `community_posts/comments/likes/alerts`,
 `live_locations`, `location_shares`, `partners`, `user_roles`, `native_auth_codes`.
-Papéis ficam em `user_roles` + `has_role()` — nunca no perfil.
-Toda tabela nova em `public` precisa de `GRANT` + RLS + policies na mesma migration.
+Papéis ficam em `user_roles` + `has_role()` — nunca no perfil. Toda tabela nova
+precisa de `GRANT` + RLS + policies na mesma migration. 27 migrations aplicadas.
 
-## Bug atual e prioridade
+## Proibições
 
-**P0 — mapa-base preto no Dashboard do APK Android.** Auth funciona, Dashboard
-abre, marcador e componentes aparecem, mas os tiles do Google Maps não renderizam.
-Investigue `src/components/RealMap.tsx` e a chave
-`VITE_GOOGLE_MAPS_BROWSER_KEY` (fallback gerenciado só vale em `*.lovable.app`).
-Diagnostique com `chrome://inspect` no WebView, procurando
-`RefererNotAllowedMapError`, `InvalidKeyMapError`, `ApiNotActivatedMapError` ou
-billing. Detalhes em `HANDOFF_MOTO_ANJO.md` §6.
-Depois do P0, siga `NEXT_STEPS.md` na ordem.
+- Não quebrar o que já está validado: Auth nativa, SOS 1B, guards, deep links.
+- Não editar migrations já aplicadas; mudanças de banco só em migration nova.
+- Não trocar o roteador (é TanStack Router por arquivo; nunca react-router).
+- Não editar `src/integrations/supabase/*` nem `src/routeTree.gen.ts`.
+- Não alterar branding, `applicationId`, versionCode/versionName sem pedido.
+- Não adicionar/remover funcionalidades por conta própria; não colocar secrets no repo.
+
+## Próxima prioridade
+
+P0: revalidar o Google Maps no Samsung (fechar e reabrir o APK v3).
+Depois seguir `NEXT_STEPS.md` na ordem.
 
 ## Como validar qualquer mudança
 
