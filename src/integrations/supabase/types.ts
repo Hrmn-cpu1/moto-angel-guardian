@@ -714,6 +714,7 @@ export type Database = {
           triggered_at: string
         }[]
       }
+      sos_purge_history: { Args: never; Returns: number }
       sos_resolve: {
         Args: { _sos_event_id: string }
         Returns: {
