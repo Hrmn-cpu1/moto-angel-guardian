@@ -84,41 +84,39 @@ export async function signInWithGoogleNative(): Promise<void> {
     `${origin}/~oauth/initiate?provider=google` +
     `&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
 
-  const code = await new Promise<string>(
-    (resolve, reject) => {
-      let settled = false;
-      const timer = setTimeout(
-        () =>
-          finish(() =>
-            reject(authFailure("network", "O login com Google demorou demais. Tente novamente.")),
-          ),
-        TIMEOUT_MS,
-      );
+  const code = await new Promise<string>((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(
+      () =>
+        finish(() =>
+          reject(authFailure("network", "O login com Google demorou demais. Tente novamente.")),
+        ),
+      TIMEOUT_MS,
+    );
 
-      const finish = (action: () => void) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        void handle.then((h) => h.remove()).catch(() => undefined);
-        void Browser.close().catch(() => undefined);
-        action();
-      };
+    const finish = (action: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      void handle.then((h) => h.remove()).catch(() => undefined);
+      void Browser.close().catch(() => undefined);
+      action();
+    };
 
-      const handle = App.addListener("appUrlOpen", ({ url }) => {
-        if (!url || !url.startsWith(NATIVE_CALLBACK_SCHEME + "://")) return;
-        const parsed = parseAuthCallback(url);
-        if (parsed.error) return finish(() => reject(authFailure("unexpected", parsed.error!)));
-        if (!parsed.code) {
-          return finish(() => reject(authFailure("unexpected", "Retorno do Google sem código.")));
-        }
-        finish(() => resolve(parsed.code!));
-      });
+    const handle = App.addListener("appUrlOpen", ({ url }) => {
+      if (!url || !url.startsWith(NATIVE_CALLBACK_SCHEME + "://")) return;
+      const parsed = parseAuthCallback(url);
+      if (parsed.error) return finish(() => reject(authFailure("unexpected", parsed.error!)));
+      if (!parsed.code) {
+        return finish(() => reject(authFailure("unexpected", "Retorno do Google sem código.")));
+      }
+      finish(() => resolve(parsed.code!));
+    });
 
-      void handle
-        .then(() => Browser.open({ url: authUrl, presentationStyle: "popover" }))
-        .catch((e) => finish(() => reject(authFailure("unexpected", String(e)))));
-    },
-  );
+    void handle
+      .then(() => Browser.open({ url: authUrl, presentationStyle: "popover" }))
+      .catch((e) => finish(() => reject(authFailure("unexpected", String(e)))));
+  });
 
   const session = await exchangeNativeCode({ data: { code, code_verifier: verifier } }).catch(
     (e: unknown) => {

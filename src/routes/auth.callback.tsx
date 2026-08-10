@@ -44,9 +44,7 @@ function AuthCallback() {
       setMessage("Voltando para o Moto Anjo...");
       const challenge = new URL(url).searchParams.get("cc") ?? "";
       const back = (params: Record<string, string>) =>
-        window.location.replace(
-          `${NATIVE_CALLBACK_URL}?${new URLSearchParams(params).toString()}`,
-        );
+        window.location.replace(`${NATIVE_CALLBACK_URL}?${new URLSearchParams(params).toString()}`);
       if (parsed.error) {
         back({ error: parsed.error });
         return;
