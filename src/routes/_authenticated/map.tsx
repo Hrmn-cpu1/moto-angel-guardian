@@ -186,13 +186,8 @@ function MapPage() {
               </div>
             )}
 
-            <MapSosButton
-              position={
-                position
-                  ? { lat: position.lat, lng: position.lng, accuracy: position.accuracy ?? null }
-                  : null
-              }
-            />
+            {/* Sem prop de posição: o SOS captura o GPS na hora do acionamento. */}
+            <MapSosButton />
 
             {selected && (
               <div className="absolute inset-x-3 bottom-3 rounded-2xl glass-card p-3 animate-fade-up">
@@ -344,7 +339,7 @@ function MapPage() {
               <MapPin size={14} className="text-gold" />
               <span className="font-mono text-xs text-muted-foreground">
                 {position
-                  ? `${position.lat.toFixed(5)}, ${position.lng.toFixed(5)}${position.accuracy ? ` · ±${Math.round(position.accuracy)}m` : ""}${position.simulated ? " (sim)" : ""}${watching ? " · ao vivo" : ""}`
+                  ? `${position.lat.toFixed(5)}, ${position.lng.toFixed(5)}${position.accuracy ? ` · ±${Math.round(position.accuracy)}m` : ""}${watching ? " · ao vivo" : ""}`
                   : "Localizando..."}
               </span>
             </div>

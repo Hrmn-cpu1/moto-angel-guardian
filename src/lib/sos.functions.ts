@@ -1,22 +1,62 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { isValidCoordinate } from "@/lib/coords";
+import { SOS_MAX_ACCURACY_M, SOS_MAX_FIX_AGE_MS } from "@/lib/sos-client";
 
-const TriggerInput = z.object({
-  lat: z.number().min(-90).max(90),
-  lng: z.number().min(-180).max(180),
-  note: z.string().max(500).optional().nullable(),
-});
+/**
+ * Entrada do acionamento.
+ *
+ * As mesmas regras que o cliente aplica em `validateSosFix` são reaplicadas
+ * aqui. O cliente pode ser adulterado; o servidor não confia nele.
+ */
+const TriggerInput = z
+  .object({
+    requestId: z.string().uuid(),
+    lat: z.number().min(-90).max(90),
+    lng: z.number().min(-180).max(180),
+    accuracy: z.number().min(0).max(SOS_MAX_ACCURACY_M).nullable().optional(),
+    fixAgeMs: z.number().int().min(0).max(SOS_MAX_FIX_AGE_MS).nullable().optional(),
+    note: z.string().max(500).optional().nullable(),
+  })
+  .refine((v) => isValidCoordinate(v.lat, v.lng), {
+    message: "Coordenada inválida para um acionamento de emergência.",
+  });
 
 const DispatchInput = z.object({
   sosEventId: z.string().uuid(),
   onlyFailed: z.boolean().optional().default(false),
 });
 
+export interface TriggerSosResult {
+  sosEventId: string;
+  requestId: string;
+  /**
+   * Ciclo de vida do evento devolvido pelo banco. Só 'active' significa
+   * socorro em curso — o hook confere isto antes de salvar qualquer snapshot.
+   */
+  status: string;
+  /** true quando o pedido já existia: retry, duplo toque ou SOS ainda aberto. */
+  reused: boolean;
+  triggeredAt: string;
+  queued: number;
+  profile: { name: string; phone: string };
+  /** Só é true quando o servidor realmente tem as credenciais da Meta. */
+  autoDispatch: boolean;
+}
+
+/**
+ * Porta única de acionamento, usada pelos três gatilhos (SosFab, MapSosButton
+ * e a rota /sos) através do mesmo hook.
+ *
+ * A idempotência não é feita aqui e sim no banco: `sos_open` é atômica e
+ * devolve o evento existente quando o request_id repete ou quando o usuário já
+ * tem um SOS aberto. Dois cliques simultâneos produzem UM registro.
+ */
 export const triggerSos = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => TriggerInput.parse(input))
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data, context }): Promise<TriggerSosResult> => {
     const { supabase, userId } = context;
 
     const { data: profile } = await supabase
@@ -25,72 +65,71 @@ export const triggerSos = createServerFn({ method: "POST" })
       .eq("id", userId)
       .maybeSingle();
 
-    const { data: sosRow, error: sosErr } = await supabase
-      .from("sos_events")
-      .insert({
-        user_id: userId,
-        latitude: data.lat,
-        longitude: data.lng,
-        status: "active",
-        note: data.note ?? null,
-      })
-      .select("id")
-      .single();
-    if (sosErr || !sosRow) {
-      console.error("[sos] failed to create event", sosErr);
-      throw new Error("Não foi possível registrar o SOS.");
+    const { data: rows, error } = await supabase.rpc("sos_open", {
+      _request_id: data.requestId,
+      _lat: data.lat,
+      _lng: data.lng,
+      _accuracy_m: data.accuracy ?? null,
+      _fix_age_ms: data.fixAgeMs ?? null,
+      _note: data.note ?? null,
+    });
+
+    const row = Array.isArray(rows) ? rows[0] : null;
+    if (error || !row) {
+      console.error("[sos] sos_open falhou", error);
+      throw new Error(error?.message ?? "Não foi possível registrar o SOS.");
     }
 
-    const { data: contactsRaw } = await supabase
-      .from("emergency_contacts")
-      .select("id, name, phone")
-      .eq("user_id", userId);
-    const contacts = (contactsRaw ?? []).filter((c) => c.phone && c.phone.trim().length > 0);
-
-    if (contacts.length === 0) {
-      return {
-        sosEventId: sosRow.id,
-        profile: { name: profile?.name ?? "Motociclista", phone: profile?.phone ?? "" },
-        queued: 0,
-      };
-    }
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const rows = contacts.map((c) => ({
-      sos_event_id: sosRow.id,
-      user_id: userId,
-      emergency_contact_id: c.id,
-      recipient_name: c.name,
-      recipient_phone: c.phone,
-      provider: "meta_whatsapp",
-      status: "queued",
-    }));
-    const { error: insErr } = await supabaseAdmin.from("whatsapp_notifications").insert(rows);
-    if (insErr) {
-      console.error("[sos] failed to queue notifications", insErr);
-      throw new Error("Falha ao preparar envios.");
-    }
+    const { isWhatsAppConfigured } = await import("./sos.server");
 
     return {
-      sosEventId: sosRow.id,
+      sosEventId: row.sos_event_id,
+      requestId: row.request_id,
+      status: row.status,
+      reused: row.reused,
+      triggeredAt: row.triggered_at,
+      queued: row.queued,
       profile: { name: profile?.name ?? "Motociclista", phone: profile?.phone ?? "" },
-      queued: rows.length,
+      autoDispatch: isWhatsAppConfigured(),
     };
   });
 
+export interface DispatchSosResult {
+  sosEventId: string;
+  claimed: number;
+  accepted: number;
+  failed: number;
+}
+
+/**
+ * Envio automático pela Cloud API da Meta.
+ *
+ * Ordem obrigatória: CLAIM atômico primeiro, chamada externa depois. A função
+ * `claim_sos_notifications` usa FOR UPDATE SKIP LOCKED, então dois processos
+ * concorrentes nunca pegam a mesma linha e o contato não recebe a mensagem
+ * duplicada.
+ *
+ * `accepted` significa que a API aceitou o payload — e nada além disso. A
+ * confirmação de entrega só chega pelo webhook de status, que é o único
+ * caminho para o status 'delivered' no banco.
+ */
 export const dispatchSosNotifications = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: unknown) => DispatchInput.parse(input))
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data, context }): Promise<DispatchSosResult> => {
     const { supabase, userId } = context;
 
+    // O select passa pela RLS: garante que o evento é mesmo deste usuário.
     const { data: sos, error: sosErr } = await supabase
       .from("sos_events")
-      .select("id, user_id, latitude, longitude, triggered_at")
+      .select("id, user_id, latitude, longitude, triggered_at, status")
       .eq("id", data.sosEventId)
       .maybeSingle();
     if (sosErr || !sos) throw new Error("SOS não encontrado.");
     if (sos.user_id !== userId) throw new Error("Acesso negado.");
+    if (sos.status === "cancelled" || sos.status === "resolved") {
+      return { sosEventId: sos.id, claimed: 0, accepted: 0, failed: 0 };
+    }
 
     const { data: profile } = await supabase
       .from("profiles")
@@ -101,17 +140,21 @@ export const dispatchSosNotifications = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { buildSosMessage, sendWhatsAppText } = await import("./sos.server");
 
-    const q = supabaseAdmin
-      .from("whatsapp_notifications")
-      .select("id, recipient_name, recipient_phone, status, attempts")
-      .eq("sos_event_id", sos.id);
-    if (data.onlyFailed) q.eq("status", "failed");
-    const { data: pending, error: pErr } = await q;
-    if (pErr) throw new Error("Falha ao listar notificações.");
+    const claimToken = crypto.randomUUID();
+    const { data: claimed, error: claimErr } = await supabaseAdmin.rpc("claim_sos_notifications", {
+      _sos_event_id: sos.id,
+      _claim_token: claimToken,
+      _only_failed: data.onlyFailed,
+      _max: 20,
+    });
+    if (claimErr) {
+      console.error("[sos] claim falhou", claimErr);
+      throw new Error("Não foi possível reservar os envios.");
+    }
 
-    const toSend = (pending ?? []).filter((n) => n.status !== "sent");
-    if (toSend.length === 0) {
-      return { sosEventId: sos.id, dispatched: 0, sent: 0, failed: 0 };
+    const linhas = claimed ?? [];
+    if (linhas.length === 0) {
+      return { sosEventId: sos.id, claimed: 0, accepted: 0, failed: 0 };
     }
 
     const body = buildSosMessage({
@@ -122,37 +165,27 @@ export const dispatchSosNotifications = createServerFn({ method: "POST" })
       when: new Date(sos.triggered_at as string),
     });
 
-    let sent = 0;
+    let accepted = 0;
     let failed = 0;
 
     await Promise.all(
-      toSend.map(async (n) => {
+      linhas.map(async (n) => {
         const result = await sendWhatsAppText(n.recipient_phone, body);
-        const patch = result.ok
-          ? {
-              status: "sent",
-              provider_message_id: result.providerMessageId,
-              error_message: null,
-              sent_at: new Date().toISOString(),
-              attempts: (n.attempts ?? 0) + 1,
-            }
-          : {
-              status: "failed",
-              error_message: result.error.slice(0, 500),
-              attempts: (n.attempts ?? 0) + 1,
-            };
-        if (result.ok) sent += 1;
+        if (result.ok) accepted += 1;
         else failed += 1;
-        const { error: upErr } = await supabaseAdmin
-          .from("whatsapp_notifications")
-          .update(patch)
-          .eq("id", n.id);
-        if (upErr) console.error("[sos] update notification failed", n.id, upErr);
+        const { error: settleErr } = await supabaseAdmin.rpc("settle_sos_notification", {
+          _id: n.id,
+          _claim_token: claimToken,
+          _ok: result.ok,
+          _provider_message_id: result.ok ? result.providerMessageId : null,
+          _error: result.ok ? null : result.error,
+        });
+        if (settleErr) console.error("[sos] settle falhou", n.id, settleErr);
       }),
     );
 
-    const finalStatus = failed === 0 ? "notified" : sent === 0 ? "failed" : "partial";
-    await supabaseAdmin.from("sos_events").update({ status: finalStatus }).eq("id", sos.id);
-
-    return { sosEventId: sos.id, dispatched: toSend.length, sent, failed };
+    // O status do evento é ciclo de vida (active / cancelled / resolved) e não
+    // resultado de envio. Quem guarda o resultado é whatsapp_notifications, e
+    // é por isso que o alerta continua recuperável depois de um F5.
+    return { sosEventId: sos.id, claimed: linhas.length, accepted, failed };
   });

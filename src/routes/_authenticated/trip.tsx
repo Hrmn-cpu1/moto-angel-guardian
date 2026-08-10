@@ -104,8 +104,8 @@ function TripPage() {
               </p>
               <div className="mt-4 space-y-2">
                 <Check
-                  label={position ? "GPS ativo" : gpsError ? "GPS indisponível" : "Obtendo GPS..."}
-                  ok={Boolean(position && !position.simulated)}
+                  label={position ? "GPS ativo" : (gpsError?.message ?? "Obtendo GPS...")}
+                  ok={Boolean(position)}
                 />
                 {battery !== null && (
                   <Check

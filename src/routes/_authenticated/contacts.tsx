@@ -8,6 +8,7 @@ import { OutlineButton } from "@/components/OutlineButton";
 import { EmptyState } from "@/components/EmptyState";
 import { useContacts } from "@/hooks/useContacts";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/contacts")({
   head: () => ({
@@ -35,7 +36,12 @@ function ContactsPage() {
   };
 
   const doShare = async (name: string, phone: string) => {
-    const pos = await capture();
+    const result = await capture();
+    if (!result.ok) {
+      toast.error(result.error.message);
+      return;
+    }
+    const pos = result.position;
     const url = `https://www.google.com/maps?q=${pos.lat},${pos.lng}`;
     await share(
       `Olá ${name}, estou em ${pos.lat.toFixed(4)}, ${pos.lng.toFixed(4)}. Contato: ${phone}`,

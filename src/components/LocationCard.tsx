@@ -16,11 +16,7 @@ export function LocationCard({ position, lastSync }: Props) {
           </p>
           <h3 className="mt-1 flex items-center gap-2 text-base font-semibold text-foreground">
             <MapPin size={16} className="text-gold" />
-            {position
-              ? position.simulated
-                ? "São Paulo, SP (simulado)"
-                : "Localização atual"
-              : "GPS aguardando"}
+            {position ? "Localização atual" : "GPS aguardando"}
           </h3>
           {position && (
             <p className="mt-1 font-mono text-xs text-muted-foreground">
