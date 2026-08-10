@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { bootstrapNative } from "../lib/native";
 import { Toaster } from "../components/ui/sonner";
 
 function NotFoundComponent() {
@@ -130,6 +131,11 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  // Dentro do APK: pede o GPS e fecha a splash nativa. No navegador é no-op.
+  useEffect(() => {
+    bootstrapNative();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
