@@ -3,6 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import type { User as AppUser } from "@/types";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
+import { classifyAuthError, authFailure } from "@/lib/auth-errors";
+import { isNativeApp } from "@/lib/native";
+import { signInWithGoogleNative } from "@/lib/native-auth";
 
 type ProfileRow = {
   id: string;
@@ -107,8 +110,8 @@ export function useAuth() {
       email: email.trim(),
       password,
     });
-    if (error) throw new Error(mapAuthError(error.message));
-    if (!data.user) throw new Error("Falha ao entrar.");
+    if (error) throw classifyAuthError(error);
+    if (!data.user) throw authFailure("unexpected", "Falha ao entrar.");
     const u = await loadProfile(data.user.id, data.user.email ?? "");
     setState({ user: u, loading: false });
     return u;
@@ -121,12 +124,23 @@ export function useAuth() {
         email: rest.email.trim(),
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: { name: rest.name, phone: rest.phone },
         },
       });
-      if (error) throw new Error(mapAuthError(error.message));
-      if (!data.user) throw new Error("Falha ao criar conta.");
+      if (error) throw classifyAuthError(error);
+      if (!data.user) throw authFailure("unexpected", "Falha ao criar conta.");
+      // O Supabase responde 200 mesmo quando o e-mail já existe (proteção
+      // contra enumeração): a marca é `identities` vazio. Sem isto o app dizia
+      // "conta criada" e em seguida o login falhava com "senha inválida".
+      if (Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        throw authFailure("google_only_account");
+      }
+      // Confirmação de e-mail está ativa: não há sessão até o usuário clicar
+      // no link. Não fingimos login — a tela mostra o aviso.
+      if (!data.session) {
+        return { status: "confirm_email" as const, user: null };
+      }
       // Upsert profile fields (the trigger creates a bare row; we fill the rest here).
       await supabase.from("profiles").upsert({
         id: data.user.id,
@@ -143,7 +157,7 @@ export function useAuth() {
       });
       const u = await loadProfile(data.user.id, data.user.email ?? "");
       setState({ user: u, loading: false });
-      return u;
+      return { status: "signed_in" as const, user: u };
     },
     [],
   );
@@ -158,8 +172,14 @@ export function useAuth() {
         /* ignore */
       }
     }
+    // Android: Custom Tab + deep link. O WebView puro perdia o fluxo para o
+    // Chrome e o Google devolvia 400.
+    if (isNativeApp()) {
+      await signInWithGoogleNative();
+      return { redirected: false as const, error: null };
+    }
     const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: redirectBase });
-    if (result.error) throw new Error(result.error.message || "Falha no login Google.");
+    if (result.error) throw classifyAuthError(result.error);
     return result;
   }, []);
 
@@ -196,20 +216,11 @@ export function useAuth() {
   );
 }
 
-function mapAuthError(msg: string): string {
-  const low = msg.toLowerCase();
-  if (low.includes("invalid login")) return "E-mail ou senha inválidos.";
-  if (low.includes("already registered") || low.includes("user already"))
-    return "Já existe uma conta com este e-mail.";
-  if (low.includes("password should be at least")) {
-    const m = msg.match(/at least (\d+)/i);
-    const n = m ? m[1] : "8";
-    return `Senha muito curta (mínimo ${n} caracteres).`;
-  }
-  if (low.includes("weak password")) return "Senha muito fraca. Use letras, números e símbolos.";
-  if (low.includes("known to be weak") || low.includes("pwned") || low.includes("compromised")) {
-    return "Essa senha apareceu em vazamentos conhecidos. Escolha outra (evite senhas comuns como 123456, senha, qwerty).";
-  }
-  if (low.includes("password")) return msg;
-  return msg;
+export async function resendConfirmationEmail(email: string): Promise<void> {
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email: email.trim(),
+    options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+  });
+  if (error) throw classifyAuthError(error);
 }

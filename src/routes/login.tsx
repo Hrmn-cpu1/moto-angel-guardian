@@ -6,6 +6,8 @@ import { BrandMark } from "@/components/BrandMark";
 import { GoldButton } from "@/components/GoldButton";
 import { OutlineButton } from "@/components/OutlineButton";
 import { useAuth } from "@/hooks/useAuth";
+import { resendConfirmationEmail } from "@/hooks/useAuth";
+import { AuthFailure } from "@/lib/auth-errors";
 
 export const Route = createFileRoute("/login")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -30,6 +32,7 @@ function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
 
   const goNext = () => {
     if (next && next.startsWith("/")) {
@@ -42,11 +45,15 @@ function Login() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setNeedsConfirmation(false);
     setLoading(true);
     try {
       await login(email.trim(), password);
       goNext();
     } catch (err) {
+      if (err instanceof AuthFailure && err.kind === "email_not_confirmed") {
+        setNeedsConfirmation(true);
+      }
       setError(err instanceof Error ? err.message : "Erro ao entrar.");
     } finally {
       setLoading(false);
@@ -123,6 +130,25 @@ function Login() {
             <AlertCircle size={14} className="mt-0.5" />
             <span>{error}</span>
           </div>
+        )}
+
+        {needsConfirmation && (
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                await resendConfirmationEmail(email);
+                toast("Link reenviado", {
+                  description: "Confira sua caixa de entrada e o spam.",
+                });
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Não foi possível reenviar.");
+              }
+            }}
+            className="w-full text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-gold"
+          >
+            Reenviar e-mail de confirmação
+          </button>
         )}
 
         <div className="pt-2">

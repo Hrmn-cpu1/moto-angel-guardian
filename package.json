@@ -16,6 +16,7 @@
   "dependencies": {
     "@capacitor/android": "^7",
     "@capacitor/app": "^7",
+    "@capacitor/browser": "^7",
     "@capacitor/core": "^7",
     "@capacitor/geolocation": "^7",
     "@capacitor/splash-screen": "^7",

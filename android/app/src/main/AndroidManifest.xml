@@ -22,6 +22,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Retorno do login Google: o Custom Tab termina em
+                 com.motoanjo.app://auth/callback e o app recebe os tokens. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.motoanjo.app" android:host="auth" />
+            </intent-filter>
+
         </activity>
 
         <provider

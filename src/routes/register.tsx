@@ -40,6 +40,7 @@ function Register() {
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [confirmSent, setConfirmSent] = useState(false);
 
   const set = (k: keyof typeof form) => (v: string) => setForm((s) => ({ ...s, [k]: v }));
 
@@ -83,7 +84,7 @@ function Register() {
     if (!accepted) return setError("Você precisa aceitar os termos.");
     setLoading(true);
     try {
-      await register({
+      const result = await register({
         name: form.name,
         email: form.email,
         phone: form.phone,
@@ -94,6 +95,10 @@ function Register() {
         emergencyContact: form.emergencyContact,
         emergencyPhone: form.emergencyPhone,
       });
+      if (result.status === "confirm_email") {
+        setConfirmSent(true);
+        return;
+      }
       goNext();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao criar conta.");
@@ -118,6 +123,24 @@ function Register() {
       setError(err instanceof Error ? err.message : "Falha no login com Google.");
     }
   };
+
+  if (confirmSent) {
+    return (
+      <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 bg-background px-6 text-center">
+        <BrandMark size={72} withWordmark />
+        <h1 className="text-xl font-black tracking-tight text-foreground">Confirme seu e-mail</h1>
+        <p className="text-sm text-muted-foreground">
+          Enviamos um link de confirmação para <span className="gold-text">{form.email}</span>. Abra
+          o link e depois volte para entrar. Sua conta só é liberada após a confirmação.
+        </p>
+        <Link to="/login" search={{ next }} className="w-full pt-2">
+          <OutlineButton type="button" size="lg">
+            Ir para o login
+          </OutlineButton>
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col bg-background px-6 pt-10 pb-10">
