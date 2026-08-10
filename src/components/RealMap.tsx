@@ -3,33 +3,47 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { POI } from "@/lib/pois.functions";
 
 // Premium dark style with gold accents
+// Dark, but legible: streets must stay clearly readable on AMOLED screens and
+// in daylight. Keeping the road geometry near-black made the base map look
+// completely black on physical Android devices even with tiles loaded fine.
 const DARK_STYLE: google.maps.MapTypeStyle[] = [
-  { elementType: "geometry", stylers: [{ color: "#0a0a0a" }] },
+  { elementType: "geometry", stylers: [{ color: "#15161a" }] },
   { elementType: "labels.text.stroke", stylers: [{ color: "#0a0a0a" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#8c8c8c" }] },
-  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#1a1a1a" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#c9c9c9" }] },
+  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#3a3a3a" }] },
+  {
+    featureType: "administrative.locality",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#e6e6e6" }],
+  },
   { featureType: "poi", stylers: [{ visibility: "off" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#161616" }] },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#3a3d44" }] },
+  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#22242a" }] },
   {
     featureType: "road.arterial",
     elementType: "geometry",
-    stylers: [{ color: "#1f1a10" }],
+    stylers: [{ color: "#4a4a44" }],
   },
   {
     featureType: "road.highway",
     elementType: "geometry",
-    stylers: [{ color: "#2a1f0a" }],
+    stylers: [{ color: "#6b5a2a" }],
   },
   {
     featureType: "road.highway",
     elementType: "geometry.stroke",
-    stylers: [{ color: "#D4AF37" }, { weight: 0.3 }],
+    stylers: [{ color: "#D4AF37" }, { weight: 0.5 }],
   },
-  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#666" }] },
+  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#d8d8d8" }] },
   { featureType: "transit", stylers: [{ visibility: "off" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#050505" }] },
-  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#3a3a3a" }] },
-  { featureType: "landscape", elementType: "geometry", stylers: [{ color: "#0d0d0d" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#0b1620" }] },
+  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#5a7a8c" }] },
+  { featureType: "landscape", elementType: "geometry", stylers: [{ color: "#15161a" }] },
+  {
+    featureType: "landscape.natural",
+    elementType: "geometry",
+    stylers: [{ color: "#1b241b" }],
+  },
 ];
 
 type LoaderState = "idle" | "loading" | "ready" | "error";
