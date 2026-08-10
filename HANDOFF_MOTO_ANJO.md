@@ -200,11 +200,54 @@ Migrations em `supabase/migrations/` (ordem cronológica, 27 arquivos):
 (SOS 1 fila), `20260810153540` (SOS 1B RLS), `20260810153651` (SOS 1B hardening),
 `20260810180909` (native_auth_codes). **Não editar migrations já aplicadas.**
 
-## 6. Google Maps / GPS — PENDÊNCIA ABERTA
+## 6. Google Maps / GPS — CORRIGIDO (aguardando revalidação física)
 
-Estado observado no APK v3 em aparelho físico: autenticação OK, Dashboard abre,
-componentes do mapa e o marcador aparecem, **mas o mapa-base fica preto — os
-tiles não renderizam**.
+### Sintoma
+No APK v3 em aparelho físico Samsung: auth OK, Dashboard abre, controles e
+marcador aparecem, **mas o mapa-base parecia totalmente preto**.
+
+### Diagnóstico executado (2026-08-10, não é chute)
+Carregamento real da Maps JS API a partir da origem publicada
+`https://moto-angel-guardian.lovable.app` em navegador headless:
+- script `maps/api/js` → HTTP 200;
+- `main.js`, `map.js`, `onion.js`, `util.js`, `common.js` → HTTP 200;
+- **13 requisições de tiles `maps/api/vt` → HTTP 200**;
+- nenhum `RefererNotAllowedMapError`, `InvalidKeyMapError`,
+  `ApiNotActivatedMapError` ou `BillingNotEnabledMapError`;
+- `gm_authFailure` nunca disparou.
+
+Ou seja: chave, referrer, ativação da API e billing estavam **corretos**, e os
+tiles chegavam ao dispositivo. Reproduzindo o mapa com o `DARK_STYLE` do app, a
+captura mostrou geometria `#0a0a0a` com ruas locais `#161616` e rótulos `#666` —
+contraste tão baixo que em tela AMOLED (e sob luz do dia) o mapa lê como preto
+total, mesmo com os tiles presentes.
+
+### CAUSA EXATA
+**Estilo escuro do mapa com contraste insuficiente** (ruas quase da mesma cor do
+fundo). Não era chave, não era referrer, não era billing, não era CSS/container,
+não era WebView.
+
+### CORREÇÃO REALIZADA
+Alteração única em `src/components/RealMap.tsx`, apenas na constante
+`DARK_STYLE`: geometria base `#15161a`, ruas `#3a3d44` com stroke `#22242a`,
+arteriais `#4a4a44`, rodovias `#6b5a2a` com traço dourado `#D4AF37`, rótulos de
+via `#d8d8d8`, rótulos gerais `#c9c9c9`, água `#0b1620`, vegetação `#1b241b`.
+Identidade Graphite & Gold preservada; nenhuma outra linha do arquivo mudou.
+Ruas, avenidas, nomes e contexto geográfico ficam legíveis; overlays Moto Anjo
+(marcador, precisão, riscos, alertas, riders, parceiros) inalterados.
+
+Classificação da correção:
+- código: **sim** (somente `DARK_STYLE` em `RealMap.tsx`);
+- Google Cloud: **não necessário**;
+- variável de ambiente: **não necessário** (a chave gerenciada funciona em
+  `*.lovable.app`, que é o domínio do WebView);
+- referrer: **não necessário**;
+- publicação: **sim** — o APK v3 carrega o site publicado, então basta publicar.
+
+**PRECISA NOVO APK: NÃO.** Nenhum arquivo Android/Capacitor foi tocado; basta
+fechar e reabrir o app.
+
+> **Aguardando revalidação física no Samsung.**
 
 Implementação: `src/components/RealMap.tsx`
 - Carrega o script `https://maps.googleapis.com/maps/api/js` dinamicamente (`loadGoogleMaps`), com `channel` opcional.
@@ -216,9 +259,7 @@ Como diagnosticar (Chrome DevTools remoto: `chrome://inspect` com o Samsung por 
 - `InvalidKeyMapError` — variável ausente no build publicado.
 - `ApiNotActivatedMapError` — Maps JavaScript API desativada no projeto Google Cloud.
 - `BillingNotEnabledMapError` / mapa cinza com marca d'água — billing desligado.
-- Tiles pretos **sem erro no console** — normalmente CSS: container com altura 0/`position` errada, ou o tema escuro custom sobrepondo. Comparar com o mesmo Dashboard aberto no Chrome do celular (fora do APK): se lá funciona, o problema é WebView/referrer; se lá também falha, é chave/CSS.
-
-**PRÓXIMA TAREFA PRIORITÁRIA: corrigir o mapa-base preto no Samsung sem alterar Auth ou SOS.**
+- Tiles pretos **sem erro no console** — foi este o caso: contraste do estilo (corrigido acima) ou container com altura 0.
 
 GPS: `src/hooks/useGeolocation.ts` usa `watchPosition`; a permissão em runtime é
 pedida por `ensureNativeLocationPermission()` (`@capacitor/geolocation`).
