@@ -55,5 +55,6 @@ export async function hideNativeSplash(): Promise<void> {
 /** Chamado uma vez no boot do app. */
 export function bootstrapNative(): void {
   if (!isNativeApp()) return;
+  void import("./native-auth").then(({ bootstrapNativeAuth }) => bootstrapNativeAuth());
   void ensureNativeLocationPermission().finally(() => void hideNativeSplash());
 }

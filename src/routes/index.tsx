@@ -4,6 +4,7 @@ import { ShieldPlus, Users, MapPin, ShieldCheck, Clock } from "lucide-react";
 import poster from "@/assets/moto-anjo-hero.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 import { isIntroHidden } from "@/lib/intro";
+import { bootstrapNativeAuth, getNativeAuthSnapshot } from "@/lib/native-auth";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -29,6 +30,8 @@ function Splash() {
   useEffect(() => {
     let cancelled = false;
     const t = window.setTimeout(async () => {
+      await bootstrapNativeAuth();
+      if (getNativeAuthSnapshot().processing) return;
       const { data } = await supabase.auth.getSession();
       if (cancelled) return;
       // Honor a saved intent from Google OAuth redirect.
