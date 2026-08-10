@@ -335,33 +335,54 @@ export type Database = {
       }
       sos_events: {
         Row: {
+          accuracy_m: number | null
           address: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          fix_age_ms: number | null
           id: string
           latitude: number | null
           longitude: number | null
           note: string | null
+          request_id: string | null
+          resolved_at: string | null
           status: string
           triggered_at: string
+          updated_at: string
           user_id: string
         }
         Insert: {
+          accuracy_m?: number | null
           address?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          fix_age_ms?: number | null
           id?: string
           latitude?: number | null
           longitude?: number | null
           note?: string | null
+          request_id?: string | null
+          resolved_at?: string | null
           status?: string
           triggered_at?: string
+          updated_at?: string
           user_id: string
         }
         Update: {
+          accuracy_m?: number | null
           address?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          fix_age_ms?: number | null
           id?: string
           latitude?: number | null
           longitude?: number | null
           note?: string | null
+          request_id?: string | null
+          resolved_at?: string | null
           status?: string
           triggered_at?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -600,6 +621,54 @@ export type Database = {
           lat: number
           lng: number
           weight: number
+        }[]
+      }
+      sos_active_event: {
+        Args: never
+        Returns: {
+          accuracy_m: number
+          latitude: number
+          longitude: number
+          note: string
+          queued: number
+          request_id: string
+          sos_event_id: string
+          status: string
+          triggered_at: string
+        }[]
+      }
+      sos_cancel: {
+        Args: { _reason?: string; _sos_event_id: string }
+        Returns: {
+          cancelled_at: string
+          sos_event_id: string
+          status: string
+        }[]
+      }
+      sos_open: {
+        Args: {
+          _accuracy_m?: number
+          _fix_age_ms?: number
+          _lat: number
+          _lng: number
+          _note?: string
+          _request_id: string
+        }
+        Returns: {
+          queued: number
+          request_id: string
+          reused: boolean
+          sos_event_id: string
+          status: string
+          triggered_at: string
+        }[]
+      }
+      sos_resolve: {
+        Args: { _sos_event_id: string }
+        Returns: {
+          resolved_at: string
+          sos_event_id: string
+          status: string
         }[]
       }
       user_history: {
