@@ -177,7 +177,7 @@ export const dispatchSosNotifications = createServerFn({ method: "POST" })
           _id: n.id,
           _claim_token: claimToken,
           _ok: result.ok,
-          _provider_message_id: result.ok ? result.providerMessageId : undefined,
+          _provider_message_id: result.ok ? (result.providerMessageId ?? undefined) : undefined,
           _error: result.ok ? undefined : result.error,
         });
         if (settleErr) console.error("[sos] settle falhou", n.id, settleErr);
