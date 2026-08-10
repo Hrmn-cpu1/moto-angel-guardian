@@ -24,6 +24,9 @@ const config: CapacitorConfig = {
     allowNavigation: [
       "moto-angel-guardian.lovable.app",
       "*.lovable.app",
+      "oauth.lovable.app",
+      "lovable.dev",
+      "*.lovable.dev",
       "*.supabase.co",
       "accounts.google.com",
       "*.google.com",
