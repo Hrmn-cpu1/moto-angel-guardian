@@ -230,16 +230,7 @@ export function useAuth() {
       updateUser,
       loginWithGoogle,
     }),
-    [
-      user,
-      loading,
-      nativeAuthProcessing,
-      login,
-      register,
-      logout,
-      updateUser,
-      loginWithGoogle,
-    ],
+    [user, loading, nativeAuthProcessing, login, register, logout, updateUser, loginWithGoogle],
   );
 }
 

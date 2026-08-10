@@ -157,7 +157,10 @@ export async function handleNativeAuthUrl(
 
   const parsed = parseAuthCallback(rawUrl);
   console.info(`[NativeAuth] code present: ${Boolean(parsed.code)}`);
-  if (callbackUrl.searchParams.has("access_token") || callbackUrl.searchParams.has("refresh_token")) {
+  if (
+    callbackUrl.searchParams.has("access_token") ||
+    callbackUrl.searchParams.has("refresh_token")
+  ) {
     console.error("[NativeAuth] callback rejeitado: token sensível na URL");
     pendingAttempt?.reject(authFailure("config", "Retorno de login inseguro foi bloqueado."));
     pendingAttempt = null;
@@ -175,7 +178,8 @@ export async function handleNativeAuthUrl(
       if (parsed.error) throw authFailure("unexpected", parsed.error);
       if (!parsed.code) throw authFailure("unexpected", "Retorno do Google sem código.");
       const verifier = takeVerifier();
-      if (!verifier) throw authFailure("unexpected", "Verificação PKCE não encontrada. Entre novamente.");
+      if (!verifier)
+        throw authFailure("unexpected", "Verificação PKCE não encontrada. Entre novamente.");
 
       // O broker retorna uma sessão à página HTTPS. Ela é convertida ali em
       // um código opaco, único e vinculado a este verifier PKCE. Somente esta
@@ -185,7 +189,8 @@ export async function handleNativeAuthUrl(
       });
       const { data, error } = await supabase.auth.setSession(exchanged);
       console.info(`[NativeAuth] exchangeCodeForSession ${error ? "error" : "success"}`);
-      if (error || !data.session) throw authFailure("unexpected", error?.message ?? "Sessão ausente.");
+      if (error || !data.session)
+        throw authFailure("unexpected", error?.message ?? "Sessão ausente.");
 
       const signedInObserved = await waitForSignedIn(data.session.user.id);
       const confirmed = await supabase.auth.getSession();
@@ -240,7 +245,10 @@ export function bootstrapNativeAuth(): Promise<void> {
     setNativeAuthProcessing(false);
   })().catch((error) => {
     setNativeAuthProcessing(false);
-    console.error("[NativeAuth] bootstrap error", error instanceof Error ? error.message : "unknown");
+    console.error(
+      "[NativeAuth] bootstrap error",
+      error instanceof Error ? error.message : "unknown",
+    );
   });
   return nativeBootstrap;
 }
