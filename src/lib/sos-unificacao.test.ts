@@ -192,20 +192,33 @@ test("o servidor não promove 'aceito pela API' a entrega", () => {
 
 const DIR_MIGRATIONS = "supabase/migrations";
 
-function sqlNovo(): string {
-  const arquivos = readdirSync(join(RAIZ, DIR_MIGRATIONS))
-    .filter((f) => f.endsWith(".sql") && f.startsWith("20260806"))
+// As migrations do checkpoint foram aplicadas neste projeto com carimbo de
+// data próprio, então elas são identificadas pelo cabeçalho do arquivo e não
+// pelo prefixo do nome.
+function arquivosSql(): string[] {
+  return readdirSync(join(RAIZ, DIR_MIGRATIONS))
+    .filter((f) => f.endsWith(".sql"))
     .sort();
+}
+
+function ehCheckpoint(f: string, marca: "1" | "1B" | "qualquer"): boolean {
+  const sql = ler(join(DIR_MIGRATIONS, f));
+  const um = /CHECKPOINT 1 —/.test(sql);
+  const umB = /CHECKPOINT 1B —/.test(sql);
+  if (marca === "1") return um;
+  if (marca === "1B") return umB;
+  return um || umB;
+}
+
+function sqlNovo(): string {
+  const arquivos = arquivosSql().filter((f) => ehCheckpoint(f, "qualquer"));
   assert.ok(arquivos.length >= 2, "as migrations novas do checkpoint 1 não estão lá");
   return arquivos.map((f) => ler(join(DIR_MIGRATIONS, f))).join("\n");
 }
 
 test("as migrations antigas não foram tocadas", () => {
-  const todas = readdirSync(join(RAIZ, DIR_MIGRATIONS)).filter((f) => f.endsWith(".sql"));
-  const antigas = todas.filter((f) => !f.startsWith("20260806"));
-  assert.equal(antigas.length, 23, "o número de migrations pré-existentes mudou");
-  // A contagem exata por checkpoint fica no teste "1B — as migrations do 1B
-  // também são aditivas", que separa 20260806-12* de 20260806-13*.
+  const antigas = arquivosSql().filter((f) => !ehCheckpoint(f, "qualquer"));
+  assert.equal(antigas.length, 22, "o número de migrations pré-existentes mudou");
 });
 
 test("as migrations novas são aditivas: nada de DROP TABLE nem ALTER destrutivo", () => {
@@ -503,11 +516,11 @@ test("1B — recovering nunca fica preso em true", () => {
 });
 
 test("1B — as migrations do 1B também são aditivas", () => {
-  const todas = readdirSync(join(RAIZ, DIR_MIGRATIONS)).filter((f) => f.endsWith(".sql"));
-  const antigas = todas.filter((f) => !f.startsWith("20260806"));
-  assert.equal(antigas.length, 23, "o número de migrations pré-existentes mudou");
-  const doCheckpoint1 = todas.filter((f) => f.startsWith("2026080612"));
-  const doCheckpoint1b = todas.filter((f) => f.startsWith("2026080613"));
+  const todas = arquivosSql();
+  const antigas = todas.filter((f) => !ehCheckpoint(f, "qualquer"));
+  assert.equal(antigas.length, 22, "o número de migrations pré-existentes mudou");
+  const doCheckpoint1 = todas.filter((f) => ehCheckpoint(f, "1"));
+  const doCheckpoint1b = todas.filter((f) => ehCheckpoint(f, "1B"));
   assert.equal(doCheckpoint1.length, 2, "as migrations do checkpoint 1 mudaram de número");
   assert.equal(doCheckpoint1b.length, 2, "esperadas exatamente 2 migrations no checkpoint 1B");
 });
