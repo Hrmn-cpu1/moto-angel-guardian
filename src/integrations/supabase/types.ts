@@ -335,33 +335,54 @@ export type Database = {
       }
       sos_events: {
         Row: {
+          accuracy_m: number | null
           address: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          fix_age_ms: number | null
           id: string
           latitude: number | null
           longitude: number | null
           note: string | null
+          request_id: string | null
+          resolved_at: string | null
           status: string
           triggered_at: string
+          updated_at: string
           user_id: string
         }
         Insert: {
+          accuracy_m?: number | null
           address?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          fix_age_ms?: number | null
           id?: string
           latitude?: number | null
           longitude?: number | null
           note?: string | null
+          request_id?: string | null
+          resolved_at?: string | null
           status?: string
           triggered_at?: string
+          updated_at?: string
           user_id: string
         }
         Update: {
+          accuracy_m?: number | null
           address?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          fix_age_ms?: number | null
           id?: string
           latitude?: number | null
           longitude?: number | null
           note?: string | null
+          request_id?: string | null
+          resolved_at?: string | null
           status?: string
           triggered_at?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -426,47 +447,65 @@ export type Database = {
       whatsapp_notifications: {
         Row: {
           attempts: number
+          claim_token: string | null
+          claimed_at: string | null
           created_at: string
+          delivered_at: string | null
           emergency_contact_id: string | null
           error_message: string | null
           id: string
+          last_status_at: string | null
           provider: string
           provider_message_id: string | null
           recipient_name: string
           recipient_phone: string
+          request_id: string | null
           sent_at: string | null
           sos_event_id: string
           status: string
+          updated_at: string
           user_id: string
         }
         Insert: {
           attempts?: number
+          claim_token?: string | null
+          claimed_at?: string | null
           created_at?: string
+          delivered_at?: string | null
           emergency_contact_id?: string | null
           error_message?: string | null
           id?: string
+          last_status_at?: string | null
           provider?: string
           provider_message_id?: string | null
           recipient_name?: string
           recipient_phone: string
+          request_id?: string | null
           sent_at?: string | null
           sos_event_id: string
           status?: string
+          updated_at?: string
           user_id: string
         }
         Update: {
           attempts?: number
+          claim_token?: string | null
+          claimed_at?: string | null
           created_at?: string
+          delivered_at?: string | null
           emergency_contact_id?: string | null
           error_message?: string | null
           id?: string
+          last_status_at?: string | null
           provider?: string
           provider_message_id?: string | null
           recipient_name?: string
           recipient_phone?: string
+          request_id?: string | null
           sent_at?: string | null
           sos_event_id?: string
           status?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
@@ -510,6 +549,21 @@ export type Database = {
           total_users: number
         }[]
       }
+      claim_sos_notifications: {
+        Args: {
+          _claim_token: string
+          _max?: number
+          _only_failed?: boolean
+          _sos_event_id: string
+          _stale_after?: string
+        }
+        Returns: {
+          attempts: number
+          id: string
+          recipient_name: string
+          recipient_phone: string
+        }[]
+      }
       community_feed: {
         Args: { _limit?: number }
         Returns: {
@@ -546,6 +600,14 @@ export type Database = {
           viewer_id: string
           viewer_name: string
         }[]
+      }
+      mark_sos_notification_delivered: {
+        Args: {
+          _occurred_at?: string
+          _provider_message_id: string
+          _status?: string
+        }
+        Returns: boolean
       }
       nearby_alerts: {
         Args: {
@@ -600,6 +662,65 @@ export type Database = {
           lat: number
           lng: number
           weight: number
+        }[]
+      }
+      settle_sos_notification: {
+        Args: {
+          _claim_token: string
+          _error?: string
+          _id: string
+          _ok: boolean
+          _provider_message_id?: string
+        }
+        Returns: boolean
+      }
+      sos_active_event: {
+        Args: never
+        Returns: {
+          accuracy_m: number
+          latitude: number
+          longitude: number
+          note: string
+          queued: number
+          request_id: string
+          sos_event_id: string
+          status: string
+          triggered_at: string
+        }[]
+      }
+      sos_cancel: {
+        Args: { _reason?: string; _sos_event_id: string }
+        Returns: {
+          cancelled_at: string
+          sos_event_id: string
+          status: string
+        }[]
+      }
+      sos_open: {
+        Args: {
+          _accuracy_m?: number
+          _fix_age_ms?: number
+          _lat: number
+          _lng: number
+          _note?: string
+          _request_id: string
+        }
+        Returns: {
+          queued: number
+          request_id: string
+          reused: boolean
+          sos_event_id: string
+          status: string
+          triggered_at: string
+        }[]
+      }
+      sos_purge_history: { Args: never; Returns: number }
+      sos_resolve: {
+        Args: { _sos_event_id: string }
+        Returns: {
+          resolved_at: string
+          sos_event_id: string
+          status: string
         }[]
       }
       user_history: {
