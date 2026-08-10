@@ -1,12 +1,13 @@
 /// <reference types="google.maps" />
 import { useEffect, useMemo, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 import type { POI } from "@/lib/pois.functions";
 
 // Premium dark style with gold accents
 // Dark, but legible: streets must stay clearly readable on AMOLED screens and
 // in daylight. Keeping the road geometry near-black made the base map look
 // completely black on physical Android devices even with tiles loaded fine.
-const DARK_STYLE: google.maps.MapTypeStyle[] = [
+export const DARK_STYLE: google.maps.MapTypeStyle[] = [
   { elementType: "geometry", stylers: [{ color: "#15161a" }] },
   { elementType: "labels.text.stroke", stylers: [{ color: "#0a0a0a" }] },
   { elementType: "labels.text.fill", stylers: [{ color: "#c9c9c9" }] },
@@ -53,7 +54,7 @@ type LoaderState = "idle" | "loading" | "ready" | "error";
  * visualization HeatmapLayer in Maps JS 3.65 (it now throws), so this keeps the
  * same visual language (gold -> red glow) with plain overlays.
  */
-const RISK_BANDS = [
+export const RISK_BANDS = [
   { scale: 1.0, color: "#D92323", opacity: 0.1 },
   { scale: 0.62, color: "#F3D675", opacity: 0.14 },
   { scale: 0.32, color: "#D92323", opacity: 0.28 },
@@ -86,7 +87,7 @@ type UserLocationOverlay = google.maps.OverlayView & {
   setPosition: (position: google.maps.LatLngLiteral) => void;
 };
 
-function loadGoogleMaps(apiKey: string, channel?: string): Promise<typeof google> {
+export function loadGoogleMaps(apiKey: string, channel?: string): Promise<typeof google> {
   if (typeof window === "undefined") return Promise.reject(new Error("no window"));
   if ((window as unknown as { google?: typeof google }).google?.maps) {
     return Promise.resolve((window as unknown as { google: typeof google }).google);
@@ -251,6 +252,9 @@ export default function RealMap({
   const heatCirclesRef = useRef<google.maps.Circle[]>([]);
   const trafficRef = useRef<google.maps.TrafficLayer | null>(null);
   const [state, setState] = useState<LoaderState>("idle");
+  // null = ainda não medido; false = medido e sem área; true = pronto.
+  // O mapa só é construído quando isto vira true. Ver o efeito de medição.
+  const [hasArea, setHasArea] = useState<boolean | null>(null);
 
   // Prefer the project's own Google Cloud key (works on custom domains and in
   // the Android/Capacitor WebView); fall back to the Lovable-managed key.
@@ -272,8 +276,36 @@ export default function RealMap({
     return registerAuthFailureHandler(() => setState("error"));
   }, []);
 
+  /**
+   * Mede o container antes de entregar ele ao Google.
+   *
+   * `new google.maps.Map()` fixa o viewport no momento da construção. Se o div
+   * estiver com 0 px — o que acontecia quando a altura dependia de `h-full`
+   * dentro de um ancestral só com `min-height` — o mapa nasce sem área e o que
+   * sobra na tela é o fundo preto do app com os controles por cima. Esperar a
+   * primeira medida diferente de zero elimina essa janela.
+   */
   useEffect(() => {
-    if (!apiKey || !containerRef.current) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const medir = () => {
+      const r = el.getBoundingClientRect();
+      setHasArea(r.width >= 2 && r.height >= 2);
+    };
+    medir();
+    if (typeof ResizeObserver === "undefined") {
+      // WebView antigo sem ResizeObserver: não bloqueia o mapa por falta de
+      // instrumento de medida.
+      setHasArea(true);
+      return;
+    }
+    const observer = new ResizeObserver(medir);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!apiKey || !containerRef.current || hasArea !== true) return;
     if (authFailed) {
       setState("error");
       return;
@@ -320,7 +352,7 @@ export default function RealMap({
       partnerOverlaysRef.current.forEach((o) => o.setMap(null));
       partnerOverlaysRef.current.clear();
     };
-  }, [apiKey, channel, fallbackCenter, initialZoom, interactive]);
+  }, [apiKey, channel, fallbackCenter, initialZoom, interactive, hasArea]);
 
   // Traffic layer (toggles without recreating the map)
   useEffect(() => {
@@ -641,11 +673,20 @@ export default function RealMap({
     });
   }, [partners, onPartnerSelect, state]);
 
+  // `cn` (tailwind-merge) resolve o conflito de posicionamento: quando o
+  // chamador passa `absolute inset-0`, ele vence o `relative` padrão em vez de
+  // ser silenciosamente ignorado pela ordem das classes no CSS gerado. Assim o
+  // wrapper preenche a caixa já dimensionada do pai em vez de depender de
+  // `h-full` resolver contra um ancestral que só tem `min-height`.
+  // O container do mapa recebe posição e inset por estilo inline: o tamanho
+  // que vai para o google.maps.Map não pode depender de ordem de classe
+  // utilitária nem de porcentagem.
   return (
-    <div className={`relative h-full w-full ${className ?? ""}`}>
+    <div className={cn("relative h-full w-full", className)}>
       <div
         ref={containerRef}
-        className={`absolute inset-0 h-full w-full rounded-3xl ${state === "error" || !apiKey ? "invisible" : ""}`}
+        style={{ position: "absolute", inset: 0 }}
+        className={cn(radius, (state === "error" || !apiKey) && "invisible")}
       />
       {state === "error" || !apiKey ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-3xl bg-[radial-gradient(circle_at_center,rgba(212,175,55,0.10),#050505_70%)] px-6 text-center">
@@ -689,10 +730,16 @@ export default function RealMap({
           </button>
         </div>
       ) : state !== "ready" ? (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-3xl bg-black/80 text-xs uppercase tracking-widest text-gold">
-          Carregando mapa...
+        // Etiqueta, não cortina. O véu anterior cobria a área inteira com
+        // preto 80% enquanto o estado não virasse "ready" — visualmente
+        // idêntico ao defeito que estamos investigando.
+        <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center">
+          <span className="rounded-full border border-gold/30 bg-black/70 px-3 py-1.5 text-[10px] uppercase tracking-widest text-gold">
+            {hasArea === false ? "Sem área para desenhar o mapa" : "Carregando mapa..."}
+          </span>
         </div>
       ) : null}
     </div>
   );
 }
+
