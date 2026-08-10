@@ -63,18 +63,12 @@ export function useHistory() {
           avg_speed: duration > 0 ? distance / (duration / 3600) : 0,
           companion: (meta.companion as string) || null,
         });
-      } else if (item.type === "sos") {
-        const meta = item.meta ?? {};
-        await supabase.from("sos_events").insert({
-          user_id: user.id,
-          latitude: meta.lat === "" ? null : Number(meta.lat),
-          longitude: meta.lng === "" ? null : Number(meta.lng),
-          address: item.description,
-          note: (meta.note as string) || null,
-          status: "active",
-        });
       }
-      // "share" events are ephemeral; nothing to persist server-side.
+      // Não existe mais caminho de INSERT em sos_events pelo cliente: um SOS
+      // só nasce por sos_open, que valida a coordenada, exige request_id e
+      // garante um único alerta ativo. Registrar um "histórico de SOS" por
+      // fora criaria um evento com status active sem nada disso.
+      // "share" é efêmero; nada a persistir no servidor.
     },
     onSuccess: invalidate,
   });
@@ -85,10 +79,16 @@ export function useHistory() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
-      await Promise.all([
+      // sos_events é somente-leitura para o cliente. Apagar o próprio
+      // histórico continua sendo um direito, então passa pela RPC — que
+      // preserva um SOS ainda ativo em vez de sumir com uma emergência.
+      const [{ error: erroViagens }, { error: erroSos }] = await Promise.all([
         supabase.from("trips").delete().eq("user_id", user.id),
-        supabase.from("sos_events").delete().eq("user_id", user.id),
+        supabase.rpc("sos_purge_history"),
       ]);
+      if (erroViagens || erroSos) {
+        throw new Error("Não foi possível limpar todo o histórico. Tente de novo.");
+      }
     },
     onSuccess: () => qc.setQueryData(historyKey, [] as HistoryItem[]),
   });

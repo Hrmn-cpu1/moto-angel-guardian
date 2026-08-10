@@ -1,3 +1,11 @@
+/**
+ * OBSOLETO desde o Checkpoint 1.
+ *
+ * A tela /sos passou a usar `SosHoldButton`, que compartilha a mesma regra de
+ * pressão prolongada com o botão do painel e o botão do mapa. Este arquivo
+ * ficou sem uso e é mantido apenas como referência visual — não ligue nada
+ * novo nele, ou o gesto de emergência volta a ter duas implementações.
+ */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Siren } from "lucide-react";
 import { cn } from "@/lib/utils";

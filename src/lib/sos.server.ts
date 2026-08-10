@@ -3,6 +3,11 @@
 
 const META_GRAPH_URL = "https://graph.facebook.com/v20.0";
 
+/** True only when both Meta WhatsApp Cloud API secrets are present on the server. */
+export function isWhatsAppConfigured(): boolean {
+  return Boolean(process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID);
+}
+
 export function normalizeE164(input: string): string {
   const digits = (input || "").replace(/\D/g, "");
   if (!digits) return "";

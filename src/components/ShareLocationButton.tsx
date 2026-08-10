@@ -11,12 +11,19 @@ export function ShareLocationButton() {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [link, setLink] = useState<string | null>(null);
+  const [geoError, setGeoError] = useState<string | null>(null);
 
   async function handleShare() {
     setLoading(true);
     setCopied(false);
     try {
-      const pos = await capture();
+      const result = await capture();
+      if (!result.ok) {
+        setGeoError(result.error.message);
+        return;
+      }
+      const pos = result.position;
+      setGeoError(null);
       const url = buildMapsUrl(pos);
       setLink(url);
       const text = `Estou aqui agora — Moto Anjo. Minha localização em tempo real:`;
@@ -59,6 +66,12 @@ export function ShareLocationButton() {
           Compartilhar
         </button>
       </div>
+
+      {geoError && (
+        <p className="mt-3 rounded-xl border border-emergency/40 bg-emergency/10 p-2 text-[11px] text-emergency">
+          {geoError}
+        </p>
+      )}
 
       {link && (
         <div className="mt-3 flex items-center gap-2 rounded-xl border border-gold/20 bg-black/40 p-2">

@@ -186,13 +186,8 @@ function Dashboard() {
           </span>
         </div>
 
-        <SosFab
-          position={
-            position
-              ? { lat: position.lat, lng: position.lng, accuracy: position.accuracy ?? null }
-              : null
-          }
-        />
+        {/* Sem prop de posição: o SOS captura o GPS na hora do acionamento. */}
+        <SosFab />
       </div>
     </AppShell>
   );
