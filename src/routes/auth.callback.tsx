@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { BrandMark } from "@/components/BrandMark";
 import { NATIVE_CALLBACK_URL, parseAuthCallback } from "@/lib/native-auth";
+import { stashNativeSession } from "@/lib/native-auth.functions";
 
 /**
  * Retorno público do OAuth (Google).
@@ -61,7 +62,7 @@ function AuthCallback() {
           code_challenge: challenge,
         },
       })
-        .then(({ code }) => back({ code }))
+        .then((res: { code: string }) => back({ code: res.code }))
         .catch((e: unknown) => back({ error: e instanceof Error ? e.message : "Falha no login." }));
       return;
     }
