@@ -69,9 +69,9 @@ export const triggerSos = createServerFn({ method: "POST" })
       _request_id: data.requestId,
       _lat: data.lat,
       _lng: data.lng,
-      _accuracy_m: data.accuracy ?? null,
-      _fix_age_ms: data.fixAgeMs ?? null,
-      _note: data.note ?? null,
+      _accuracy_m: data.accuracy ?? undefined,
+      _fix_age_ms: data.fixAgeMs ?? undefined,
+      _note: data.note ?? undefined,
     });
 
     const row = Array.isArray(rows) ? rows[0] : null;
@@ -177,8 +177,8 @@ export const dispatchSosNotifications = createServerFn({ method: "POST" })
           _id: n.id,
           _claim_token: claimToken,
           _ok: result.ok,
-          _provider_message_id: result.ok ? result.providerMessageId : null,
-          _error: result.ok ? null : result.error,
+          _provider_message_id: result.ok ? result.providerMessageId : undefined,
+          _error: result.ok ? undefined : result.error,
         });
         if (settleErr) console.error("[sos] settle falhou", n.id, settleErr);
       }),
