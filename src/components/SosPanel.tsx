@@ -170,9 +170,7 @@ export function SosPanel({ sos, layout = "overlay", onAddContacts, className }: 
                         key={r.id}
                         className={cn(
                           "flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5",
-                          confirmado
-                            ? "border-gold/30 bg-gold/5"
-                            : "border-white/10 bg-black/40",
+                          confirmado ? "border-gold/30 bg-gold/5" : "border-white/10 bg-black/40",
                         )}
                       >
                         {identidade}

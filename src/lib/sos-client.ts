@@ -192,7 +192,10 @@ export function validateSosFix(input: RawFix | null | undefined, now = Date.now(
     }
   }
 
-  const ts = typeof input.timestamp === "number" && Number.isFinite(input.timestamp) ? input.timestamp : null;
+  const ts =
+    typeof input.timestamp === "number" && Number.isFinite(input.timestamp)
+      ? input.timestamp
+      : null;
   if (ts == null) {
     return { ok: false, reason: "sem_fix", message: FIX_MESSAGES.sem_fix };
   }
@@ -315,7 +318,12 @@ export function buildSosMessage(input: SosMessageInput): string {
     timeZone: "America/Sao_Paulo",
   });
 
-  const linhas: string[] = ["🚨 MOTO ANJO — SOS", "", `${input.name || "Um motociclista"} acionou um pedido de socorro.`, ""];
+  const linhas: string[] = [
+    "🚨 MOTO ANJO — SOS",
+    "",
+    `${input.name || "Um motociclista"} acionou um pedido de socorro.`,
+    "",
+  ];
 
   if (input.fix) {
     linhas.push("📍 Localização:", googleMapsUrl(input.fix.lat, input.fix.lng));

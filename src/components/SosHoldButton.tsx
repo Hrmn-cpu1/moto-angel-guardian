@@ -15,12 +15,14 @@ interface Props {
   holdMs?: number;
 }
 
-const TAMANHOS: Record<SosHoldVariant, { box: string; icone: number; rotulo: string; anel: string }> =
-  {
-    fab: { box: "h-[86px] w-[86px]", icone: 24, rotulo: "text-[13px]", anel: "inset-[4px]" },
-    map: { box: "h-[68px] w-[68px]", icone: 20, rotulo: "text-[11px]", anel: "inset-[3px]" },
-    page: { box: "h-64 w-64", icone: 44, rotulo: "text-xl", anel: "inset-2" },
-  };
+const TAMANHOS: Record<
+  SosHoldVariant,
+  { box: string; icone: number; rotulo: string; anel: string }
+> = {
+  fab: { box: "h-[86px] w-[86px]", icone: 24, rotulo: "text-[13px]", anel: "inset-[4px]" },
+  map: { box: "h-[68px] w-[68px]", icone: 20, rotulo: "text-[11px]", anel: "inset-[3px]" },
+  page: { box: "h-64 w-64", icone: 44, rotulo: "text-xl", anel: "inset-2" },
+};
 
 /**
  * Gesto de emergência compartilhado.
@@ -120,7 +122,9 @@ export function SosHoldButton({
       />
       <span className="relative z-10 flex flex-col items-center leading-none">
         {holding ? (
-          <span className={cn("font-black tabular-nums", variant === "page" ? "text-6xl" : "text-2xl")}>
+          <span
+            className={cn("font-black tabular-nums", variant === "page" ? "text-6xl" : "text-2xl")}
+          >
             {segundosRestantes}
           </span>
         ) : (

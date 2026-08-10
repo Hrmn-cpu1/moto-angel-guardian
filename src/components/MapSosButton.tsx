@@ -29,7 +29,11 @@ export function MapSosButton({ className }: Props) {
         onHoldComplete={(heldMs) => sos.trigger(heldMs)}
         className={cn("absolute bottom-4 right-4 z-20", className)}
       />
-      <SosPanel sos={sos} layout="inline" onAddContacts={() => void navigate({ to: "/contacts" })} />
+      <SosPanel
+        sos={sos}
+        layout="inline"
+        onAddContacts={() => void navigate({ to: "/contacts" })}
+      />
     </>
   );
 }

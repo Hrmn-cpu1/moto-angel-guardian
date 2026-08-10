@@ -47,6 +47,8 @@ test("isWhatsAppConfigured só é verdadeiro com as DUAS credenciais", () => {
   assert.equal(isWhatsAppConfigured(), false, "token sozinho não basta");
   process.env.WHATSAPP_PHONE_NUMBER_ID = "y";
   assert.equal(isWhatsAppConfigured(), true);
-  if (t) process.env.WHATSAPP_ACCESS_TOKEN = t; else delete process.env.WHATSAPP_ACCESS_TOKEN;
-  if (i) process.env.WHATSAPP_PHONE_NUMBER_ID = i; else delete process.env.WHATSAPP_PHONE_NUMBER_ID;
+  if (t) process.env.WHATSAPP_ACCESS_TOKEN = t;
+  else delete process.env.WHATSAPP_ACCESS_TOKEN;
+  if (i) process.env.WHATSAPP_PHONE_NUMBER_ID = i;
+  else delete process.env.WHATSAPP_PHONE_NUMBER_ID;
 });

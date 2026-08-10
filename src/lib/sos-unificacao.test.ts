@@ -29,10 +29,7 @@ const ACIONADORES = [
 test("os três acionadores usam o mesmo hook", () => {
   for (const arquivo of ACIONADORES) {
     const src = ler(arquivo);
-    assert.ok(
-      src.includes("useSosController"),
-      `${arquivo} não usa o controlador compartilhado`,
-    );
+    assert.ok(src.includes("useSosController"), `${arquivo} não usa o controlador compartilhado`);
   }
 });
 
@@ -96,10 +93,7 @@ test("o tempo de pressão é o mesmo nos três — 3 segundos", () => {
   const botao = ler("src/components/SosHoldButton.tsx");
   assert.ok(botao.includes("SOS_HOLD_MS"), "o botão precisa usar a constante compartilhada");
   const cliente = ler("src/lib/sos-client.ts");
-  assert.ok(
-    /export const SOS_HOLD_MS = 3000;/.test(cliente),
-    "SOS_HOLD_MS precisa valer 3000 ms",
-  );
+  assert.ok(/export const SOS_HOLD_MS = 3000;/.test(cliente), "SOS_HOLD_MS precisa valer 3000 ms");
   for (const arquivo of ACIONADORES) {
     const src = ler(arquivo);
     assert.ok(!/HOLD_MS\s*=\s*\d+/.test(src), `${arquivo} define um tempo de pressão próprio`);
@@ -284,14 +278,13 @@ test("só o webhook pode gravar delivered", () => {
   const sql = sqlNovo();
   assert.ok(/FUNCTION public\.mark_sos_notification_delivered/i.test(sql));
   assert.ok(
-    /REVOKE ALL ON FUNCTION public\.mark_sos_notification_delivered[\s\S]*?authenticated/i.test(sql),
+    /REVOKE ALL ON FUNCTION public\.mark_sos_notification_delivered[\s\S]*?authenticated/i.test(
+      sql,
+    ),
     "o app não pode executar a função de confirmação de entrega",
   );
   const src = ler("src/hooks/useSosController.ts");
-  assert.ok(
-    !src.includes("mark_sos_notification_delivered"),
-    "o cliente não pode marcar entrega",
-  );
+  assert.ok(!src.includes("mark_sos_notification_delivered"), "o cliente não pode marcar entrega");
 });
 
 /* ================================================================== *

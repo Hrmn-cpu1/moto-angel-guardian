@@ -459,7 +459,11 @@ test("a mensagem traz nome, aviso, link do mapa e horário de São Paulo", () =>
 });
 
 test("sem GPS a mensagem sai assumindo a falta de posição, não com link vazio", () => {
-  const msg = buildSosMessage({ name: "Herman", fix: null, when: new Date("2026-08-06T15:30:00Z") });
+  const msg = buildSosMessage({
+    name: "Herman",
+    fix: null,
+    when: new Date("2026-08-06T15:30:00Z"),
+  });
   assert.ok(!msg.includes("maps.google.com"), "não pode mandar link para lugar nenhum");
   assert.ok(msg.includes("GPS não respondeu"), "assume a falta em vez de esconder");
   assert.ok(msg.includes("Herman"));
@@ -603,10 +607,7 @@ test("prepared e opened mostram botão manual", () => {
 });
 
 test("os textos exigidos para sent e delivered estão exatos", () => {
-  assert.equal(
-    sosDeliveryLabel("aceita_pelo_provedor"),
-    "Aceito pela API — aguarde confirmação.",
-  );
+  assert.equal(sosDeliveryLabel("aceita_pelo_provedor"), "Aceito pela API — aguarde confirmação.");
   assert.equal(sosDeliveryLabel("entregue_confirmado"), "Entregue — confirmado pelo WhatsApp.");
 });
 
