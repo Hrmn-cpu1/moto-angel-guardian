@@ -9,7 +9,9 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test src/lib/phone.test.ts src/lib/coords.test.ts src/lib/sos.server.test.ts src/lib/sos-client.test.ts src/lib/sos-unificacao.test.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
