@@ -66,7 +66,8 @@ function Login() {
       const result = await loginWithGoogle(next);
       // Full-page redirect flow: browser navigates away, nothing to do here.
       if (result?.redirected) return;
-      goNext();
+      // No Android, o handler do deep link só navega depois de confirmar que
+      // a sessão persistida pode ser relida. Evita corrida com o route guard.
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha no login com Google.");
     }

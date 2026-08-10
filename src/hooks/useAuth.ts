@@ -5,7 +5,11 @@ import type { User as AppUser } from "@/types";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 import { classifyAuthError, authFailure } from "@/lib/auth-errors";
 import { isNativeApp } from "@/lib/native";
-import { signInWithGoogleNative } from "@/lib/native-auth";
+import {
+  getNativeAuthSnapshot,
+  signInWithGoogleNative,
+  subscribeNativeAuth,
+} from "@/lib/native-auth";
 
 type ProfileRow = {
   id: string;
@@ -99,6 +103,11 @@ export function useAuth() {
     subscribe,
     () => state,
     () => SERVER_STATE,
+  );
+  const { processing: nativeAuthProcessing } = useSyncExternalStore(
+    subscribeNativeAuth,
+    getNativeAuthSnapshot,
+    getNativeAuthSnapshot,
   );
 
   useEffect(() => {
@@ -211,8 +220,17 @@ export function useAuth() {
   );
 
   return useMemo(
-    () => ({ user, loading, login, register, logout, updateUser, loginWithGoogle }),
-    [user, loading, login, register, logout, updateUser, loginWithGoogle],
+    () => ({
+      user,
+      loading: loading || nativeAuthProcessing,
+      nativeAuthProcessing,
+      login,
+      register,
+      logout,
+      updateUser,
+      loginWithGoogle,
+    }),
+    [user, loading, nativeAuthProcessing, login, register, logout, updateUser, loginWithGoogle],
   );
 }
 

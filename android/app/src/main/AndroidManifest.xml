@@ -23,7 +23,8 @@
             </intent-filter>
 
             <!-- Retorno do login Google: o Custom Tab termina em
-                 com.motoanjo.app://auth/callback e o app recebe os tokens. -->
+                 com.motoanjo.app://auth/callback e o app recebe só um código
+                 opaco PKCE de uso único — nunca tokens de sessão. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
