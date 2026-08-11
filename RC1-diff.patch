@@ -1,0 +1,671 @@
+diff --git a/.env.example b/.env.example
+index 417ccbc..d166e79 100644
+--- a/.env.example
++++ b/.env.example
+@@ -26,6 +26,9 @@ VITE_GOOGLE_MAPS_BROWSER_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+ # Fallback gerenciado pelo conector do Lovable (só funciona em *.lovable.app).
+ VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+ VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID=channel-id-opcional
++# Servidor — usada só por src/lib/pois.functions.ts (busca de pontos de apoio).
++# Sem ela a busca devolve lista vazia; o mapa e o SOS continuam funcionando.
++GOOGLE_MAPS_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+ 
+ # --- WhatsApp Cloud API (Meta) — servidor, src/lib/sos.server.ts ------------
+ # Opcionais: sem elas o SOS continua funcionando e cai no envio manual wa.me.
+diff --git a/RELEASE-AUDIT.md b/RELEASE-AUDIT.md
+new file mode 100644
+index 0000000..ba540ee
+--- /dev/null
++++ b/RELEASE-AUDIT.md
+@@ -0,0 +1,137 @@
++# RELEASE AUDIT — Moto Anjo RC1
++
++Data: 2026-08-11 · Escopo: auditoria de release, sem novas funcionalidades.
++
++## 1. Commit base analisado
++
++- `cd0c1fc` — *Refactor RealMap component to export constants and functions* (branch `main`).
++
++## 2. Arquivos modificados nesta auditoria
++
++| Arquivo | Natureza |
++|---|---|
++| `supabase/migrations/20260811090000_sos_rpc_ambiguidade_coluna.sql` | **novo** — migration oficial P0.2, aplicada byte a byte como enviada |
++| `src/lib/sos-unificacao.test.ts` | contagem de migrations pré-existentes + 8 testes de regressão da P0.2 |
++| `.env.example` | documenta `GOOGLE_MAPS_API_KEY` (servidor) que faltava |
++| `src/components/RealMap.tsx` | somente formatação Prettier (nenhuma mudança de lógica/estilo do mapa) |
++| `RELEASE-AUDIT.md` | este relatório |
++
++Nenhum outro arquivo de aplicação foi tocado. Identidade visual, fluxo de
++navegação, OAuth, mapa, SOS hold-to-fire, WhatsApp, GPS, contatos, histórico,
++comunidade, admin e Capacitor estão preservados.
++
++## 3. Bugs encontrados
++
++1. **P0 — `column reference "request_id" is ambiguous` nas RPCs de SOS.**
++   Confirmado no banco: as três funções (`sos_open`, `sos_cancel`,
++   `sos_resolve`) ainda estavam com o corpo antigo, sem alias de coluna. Em
++   PL/pgSQL cada coluna de `RETURNS TABLE` também é variável, então
++   `WHERE request_id = _request_id` é recusado em tempo de execução — o SOS
++   morria no acionamento real (reproduzido no Samsung).
++2. **P2 — variável de ambiente não documentada.** `src/lib/pois.functions.ts`
++   lê `GOOGLE_MAPS_API_KEY` (servidor), ausente do `.env.example`. Fora do
++   Lovable a busca de pontos de apoio devolveria lista vazia sem explicação.
++3. **P2 — testes estruturais quebrariam ao adicionar a P0.2.** Dois testes
++   fixavam "23 migrations pré-existentes" e classificavam qualquer arquivo não
++   marcado como Checkpoint 1/1B como antigo.
++
++## 4. Bugs corrigidos
++
++1. Migration P0.2 adicionada ao repositório **e aplicada ao banco**. Verificado
++   por `pg_get_functiondef`: `sos_open` contém `se.request_id = _request_id`;
++   `sos_cancel` e `sos_resolve` contêm `se.status NOT IN (...)`.
++2. `GOOGLE_MAPS_API_KEY` documentada no `.env.example`.
++3. Testes ajustados para reconhecer a P0.2 como migration nova (a asserção de
++   "23 migrations pré-existentes intocadas" continua valendo, agora correta) e
++   ampliados com 8 regressões específicas — nenhum teste foi removido ou
++   enfraquecido.
++
++## 5. Migrations
++
++- Adicionada: `20260811090000_sos_rpc_ambiguidade_coluna.sql` (ADITIVA — apenas
++  `CREATE OR REPLACE` das três funções; sem `DROP`, `ALTER` destrutivo ou
++  `TRUNCATE`; assinaturas, nomes de argumento e colunas de retorno idênticos).
++- **Não** recriada e comprovadamente ausente: `20260810230000_sos_p02_ambiguidade_coluna.sql`
++  (há teste automatizado impedindo o retorno).
++- 27 migrations anteriores intactas; nenhuma reescrita. Nenhuma duplicata ou
++  migration conflitante encontrada nas 24 pré-existentes + Checkpoint 1/1B.
++
++## 6. Testes e comandos executados
++
++| Comando | Resultado |
++|---|---|
++| `npm test` | **113/113 aprovados**, 0 falhas |
++| `npm run typecheck` | **OK** (`tsc --noEmit`, sem erros) |
++| `npm run build` | **OK** (build web + servidor Nitro/Cloudflare) |
++| `npm run lint` | **684 erros de formatação Prettier + 11 avisos** — ver abaixo |
++| `npx cap sync android` | **não executado neste ambiente** (o SDK Android não está instalado no sandbox; roda no GitHub Actions) |
++| `./gradlew assembleDebug` | **não executado neste ambiente** pelo mesmo motivo |
++
++### Lint em detalhe
++
++Todos os 684 erros são `prettier/prettier` (formatação) e nenhum é erro de
++lógica, tipo ou regra de React. Concentram-se em 11 arquivos, quase todos
++gerados ou de biblioteca: `src/integrations/supabase/types.ts` (gerado),
++`src/routes/mcp.ts`, `src/routes/[.mcp]/*`, `src/routes/[.well-known]/*`
++(gerados pelo plugin MCP) e componentes shadcn em `src/components/ui/`.
++`src/components/RealMap.tsx`, único arquivo de aplicação afetado e tocado pela
++correção anterior do mapa, foi formatado nesta auditoria. Os demais foram
++deixados como estão para não misturar 600+ linhas cosméticas em um release
++candidate. Os 11 avisos são `react-refresh/only-export-components` e
++`react-hooks/exhaustive-deps` e são intencionais/benignos. O workflow do
++Android não roda `lint`, então isso não bloqueia o APK.
++
++## 7. Status por área
++
++- **SOS (P0)** — preservados e verificados no SQL aplicado: `request_id`,
++  idempotência, um único SOS ativo por usuário (índice parcial único),
++  `pg_advisory_xact_lock` por usuário, tratamento de `unique_violation`, recusa
++  de `request_id` de evento encerrado, fila do WhatsApp com
++  `ON CONFLICT DO NOTHING`, cancelamento que cancela a fila, resolução,
++  histórico e RLS. O front-end continua sem nenhum INSERT/UPDATE/DELETE direto.
++- **Supabase / RLS** — 14 tabelas com RLS habilitado. `native_auth_codes` tem
++  RLS sem policies **de propósito**: só o `service_role` (troca PKCE no
++  servidor) acessa. Demais tabelas com políticas por `auth.uid()`. As RPCs de
++  SOS têm `REVOKE ... FROM public, anon` e `GRANT EXECUTE` só para
++  `authenticated`/`service_role`. Os avisos do linter sobre "SECURITY DEFINER
++  executável por signed-in users" são o desenho pretendido dessas RPCs.
++- **Auth / Google OAuth / deep link** — fluxo Authorization Code + PKCE
++  intacto; `com.motoanjo.app://auth` declarado no manifest; `App.getLaunchUrl()`
++  no bootstrap; guard respeitando `nativeAuthProcessing`. Nada alterado.
++- **Android / Capacitor** — `appId com.motoanjo.app`, `versionCode 3`,
++  `versionName 1.2`, `minSdk 23`, `target/compileSdk 35`, modelo WebView com
++  `server.url` remoto preservado, permissões INTERNET, ACCESS_NETWORK_STATE,
++  ACCESS_FINE/COARSE_LOCATION e queries do WhatsApp presentes.
++- **GitHub Actions** — `.github/workflows/android-debug.yml` íntegro: Node 22,
++  JDK 21, `npm ci`, testes, typecheck, build web, `mkdir -p android/app/src/main/assets`,
++  `cap sync`, `assembleDebug`, SHA-256 e artifact `moto-anjo-debug-v3`.
++- **Mapa / GPS / Realtime / comunidade / trips / histórico / notificações / admin**
++  — auditados, sem bug comprovado; nenhuma alteração.
++- **Imports quebrados** — nenhum: `typecheck` e `build` passam.
++- **Arquivos obsoletos** — três componentes sem nenhum importador:
++  `src/components/EmergencyButton.tsx`, `src/components/LocationCard.tsx`,
++  `src/components/ShareLocationButton.tsx` (o compartilhamento vive hoje em
++  `/sharing`). São código morto inofensivo; **não removidos** para não alterar
++  nada fora do escopo de estabilidade. Recomendado remover em um passo próprio.
++- **Placeholders** — nenhum TODO/FIXME/placeholder em `src/`, `android/` ou
++  `.github/`.
++
++## 8. Riscos restantes / pendências
++
++Este pacote é um **release candidate**, não está declarado pronto para
++produção. Ainda dependem de teste físico, credencial ou infraestrutura externa:
++
++1. **Samsung — SOS ponta a ponta.** A causa raiz do erro de ambiguidade foi
++   corrigida no banco, mas o acionamento real no aparelho ainda não foi
++   reexecutado.
++2. **Samsung — Google OAuth v3 (PKCE + cold start)** aguarda revalidação física.
++3. **Samsung — contraste do mapa** após a correção do `DARK_STYLE` (AMOLED, sol).
++4. **GPS em movimento** (precisão, `watchPosition`, consumo).
++5. **WhatsApp Cloud API** ponta a ponta: depende de `WHATSAPP_ACCESS_TOKEN` e
++   `WHATSAPP_PHONE_NUMBER_ID`. Sem elas o app cai no envio manual `wa.me`.
++6. **APK v3** precisa ser gerado pelo GitHub Actions (SDK Android indisponível
++   neste ambiente). O APK atual continua válido: o WebView carrega a URL
++   publicada, então correções web chegam sem novo APK — mas as mudanças desta
++   auditoria são de banco e testes, e **exigem apenas a publicação web**.
++7. **Release assinado / AAB / Play Store** ainda não iniciados.
++8. **Formatação Prettier** pendente em arquivos gerados e shadcn.
+diff --git a/src/components/RealMap.tsx b/src/components/RealMap.tsx
+index db82ea9..20aa4e6 100644
+--- a/src/components/RealMap.tsx
++++ b/src/components/RealMap.tsx
+@@ -742,4 +742,3 @@ export default function RealMap({
+     </div>
+   );
+ }
+-
+diff --git a/src/lib/sos-unificacao.test.ts b/src/lib/sos-unificacao.test.ts
+index f89f453..370c75e 100644
+--- a/src/lib/sos-unificacao.test.ts
++++ b/src/lib/sos-unificacao.test.ts
+@@ -195,6 +195,11 @@ function arquivosSql(): string[] {
+     .sort();
+ }
+ 
++/** A P0.2 é uma migration nova (correção das RPCs), não uma pré-existente. */
++function ehP02(f: string): boolean {
++  return /CHECKPOINT P0\.2 —/.test(ler(join(DIR_MIGRATIONS, f)));
++}
++
+ function ehCheckpoint(f: string, marca: "1" | "1B" | "qualquer"): boolean {
+   const sql = ler(join(DIR_MIGRATIONS, f));
+   const um = /CHECKPOINT 1 —/.test(sql);
+@@ -211,7 +216,7 @@ function sqlNovo(): string {
+ }
+ 
+ test("as migrations antigas não foram tocadas", () => {
+-  const antigas = arquivosSql().filter((f) => !ehCheckpoint(f, "qualquer"));
++  const antigas = arquivosSql().filter((f) => !ehCheckpoint(f, "qualquer") && !ehP02(f));
+   assert.equal(antigas.length, 23, "o número de migrations pré-existentes mudou");
+ });
+ 
+@@ -510,10 +515,120 @@ test("1B — recovering nunca fica preso em true", () => {
+ 
+ test("1B — as migrations do 1B também são aditivas", () => {
+   const todas = arquivosSql();
+-  const antigas = todas.filter((f) => !ehCheckpoint(f, "qualquer"));
++  const antigas = todas.filter((f) => !ehCheckpoint(f, "qualquer") && !ehP02(f));
+   assert.equal(antigas.length, 23, "o número de migrations pré-existentes mudou");
+   const doCheckpoint1 = todas.filter((f) => ehCheckpoint(f, "1"));
+   const doCheckpoint1b = todas.filter((f) => ehCheckpoint(f, "1B"));
+   assert.equal(doCheckpoint1.length, 2, "as migrations do checkpoint 1 mudaram de número");
+   assert.equal(doCheckpoint1b.length, 2, "esperadas exatamente 2 migrations no checkpoint 1B");
+ });
++
++/* ================================================================== *
++ * P0.2 — ambiguidade de coluna nas RPCs de SOS
++ *
++ * Bug real, reproduzido no aparelho: `column reference "request_id" is
++ * ambiguous`. Em PL/pgSQL, cada coluna de RETURNS TABLE também é variável,
++ * então toda referência de coluna homônima precisa de alias.
++ * ================================================================== */
++
++function sqlP02(): string {
++  const arquivos = arquivosSql().filter(ehP02);
++  assert.equal(arquivos.length, 1, "esperada exatamente 1 migration P0.2");
++  return ler(join(DIR_MIGRATIONS, arquivos[0]));
++}
++
++test("P0.2 — a migration oficial está no repositório e é a última do SOS", () => {
++  const arquivos = arquivosSql().filter(ehP02);
++  assert.equal(arquivos.length, 1);
++  assert.equal(arquivos[0], "20260811090000_sos_rpc_ambiguidade_coluna.sql");
++  const ultima = arquivosSql()[arquivosSql().length - 1];
++  assert.equal(ultima, arquivos[0], "a P0.2 precisa ser a migration mais recente");
++});
++
++test("P0.2 — a migration duplicada 20260810230000 não foi reintroduzida", () => {
++  assert.ok(
++    !arquivosSql().some((f) => f.startsWith("20260810230000")),
++    "a migration duplicada de P0.2 voltou ao repositório",
++  );
++});
++
++test("P0.2 — é aditiva: só CREATE OR REPLACE das três RPCs", () => {
++  const sql = sqlP02().toUpperCase();
++  assert.ok(!sql.includes("DROP TABLE"));
++  assert.ok(!sql.includes("DROP COLUMN"));
++  assert.ok(!sql.includes("TRUNCATE"));
++  assert.ok(!sql.includes("DROP FUNCTION"));
++  for (const fn of ["SOS_OPEN", "SOS_CANCEL", "SOS_RESOLVE"]) {
++    assert.ok(
++      sql.includes(`CREATE OR REPLACE FUNCTION PUBLIC.${fn}`),
++      `a P0.2 precisa substituir ${fn}`,
++    );
++  }
++});
++
++test("P0.2 — nenhuma referência de coluna ambígua sobrou", () => {
++  // Sem os comentários: o cabeçalho documenta justamente o código velho.
++  const sql = sqlP02()
++    .split("\n")
++    .filter((l) => !l.trimStart().startsWith("--"))
++    .join("\n");
++  const proibidos = [
++    /WHERE\s+request_id\s*=/i,
++    /AND\s+status\s*=\s*'active'/i,
++    /ORDER\s+BY\s+triggered_at/i,
++    /WHERE\s+sos_event_id\s*=/i,
++    /AND\s+status\s+NOT\s+IN/i,
++  ];
++  for (const re of proibidos) {
++    assert.ok(!re.test(sql), `referência de coluna sem alias: ${re}`);
++  }
++});
++
++test("P0.2 — as referências passaram a ser qualificadas", () => {
++  const sql = sqlP02();
++  assert.ok(/se\.request_id\s*=\s*_request_id/.test(sql));
++  assert.ok(/se\.status\s*=\s*'active'/.test(sql));
++  assert.ok(/ORDER\s+BY\s+se\.triggered_at\s+DESC/i.test(sql));
++  assert.ok(/wn\.sos_event_id\s*=\s*v_(event|row)\.id/.test(sql));
++  assert.ok(/se\.status\s+NOT\s+IN\s*\('cancelled','resolved'\)/i.test(sql));
++});
++
++test("P0.2 — o contrato público das RPCs continua igual", () => {
++  const sql = sqlP02();
++  assert.ok(
++    /sos_open\(\s*\n?\s*_request_id\s+uuid,[\s\S]*?_lat[\s\S]*?_lng[\s\S]*?_accuracy_m[\s\S]*?_fix_age_ms[\s\S]*?_note/i.test(
++      sql,
++    ),
++    "os nomes de argumento de sos_open mudaram",
++  );
++  assert.ok(
++    /RETURNS TABLE \(\s*\n?\s*sos_event_id uuid,\s*\n?\s*request_id\s+uuid,\s*\n?\s*status\s+text,\s*\n?\s*triggered_at timestamptz,\s*\n?\s*reused\s+boolean,\s*\n?\s*queued\s+integer/i.test(
++      sql,
++    ),
++    "as colunas de retorno de sos_open mudaram",
++  );
++  assert.ok(/sos_cancel\(_sos_event_id uuid, _reason text DEFAULT NULL\)/i.test(sql));
++  assert.ok(/sos_resolve\(_sos_event_id uuid\)/i.test(sql));
++});
++
++test("P0.2 — as garantias do SOS continuam no corpo das funções", () => {
++  const sql = sqlP02();
++  assert.ok(/pg_advisory_xact_lock/.test(sql), "sumiu o advisory lock por usuário");
++  assert.ok(/WHEN unique_violation THEN/.test(sql), "sumiu o tratamento de colisão");
++  assert.ok(/SOS_ENCERRADO/.test(sql), "sumiu a recusa de request_id encerrado");
++  assert.ok(/ON CONFLICT DO NOTHING/.test(sql), "a fila do WhatsApp perdeu a idempotência");
++  assert.ok(/SECURITY DEFINER/.test(sql));
++  assert.ok(/SET search_path = public/.test(sql));
++});
++
++test("P0.2 — o anônimo continua sem poder executar as RPCs", () => {
++  const sql = sqlP02();
++  for (const fn of ["sos_open", "sos_cancel", "sos_resolve"]) {
++    const revoke = new RegExp(`REVOKE ALL ON FUNCTION public\\.${fn}\\([^)]*\\) FROM public, anon`);
++    const grant = new RegExp(
++      `GRANT EXECUTE ON FUNCTION public\\.${fn}\\([^)]*\\) TO authenticated, service_role`,
++    );
++    assert.ok(revoke.test(sql), `${fn} sem REVOKE de anon`);
++    assert.ok(grant.test(sql), `${fn} sem GRANT para authenticated`);
++  }
++});
+diff --git a/supabase/migrations/20260811090000_sos_rpc_ambiguidade_coluna.sql b/supabase/migrations/20260811090000_sos_rpc_ambiguidade_coluna.sql
+new file mode 100644
+index 0000000..218bc90
+--- /dev/null
++++ b/supabase/migrations/20260811090000_sos_rpc_ambiguidade_coluna.sql
+@@ -0,0 +1,352 @@
++-- ============================================================================
++-- CHECKPOINT P0.2 — column reference "request_id" is ambiguous
++--
++-- Migration ADITIVA. Não altera nem apaga nenhuma migration já aplicada.
++-- Substitui apenas o CORPO de três funções via CREATE OR REPLACE, mantendo
++-- assinatura, nomes de argumento, colunas de retorno e semântica idênticos.
++--
++-- O ERRO
++-- ------
++-- Teste físico no Samsung: o SOS chegou ao servidor e o Postgres respondeu
++--   column reference "request_id" is ambiguous
++--
++-- A CAUSA
++-- -------
++-- Em PL/pgSQL, cada coluna declarada em RETURNS TABLE (...) vira também uma
++-- VARIÁVEL de saída dentro do corpo da função. sos_open declara
++--
++--   RETURNS TABLE (sos_event_id uuid, request_id uuid, status text,
++--                  triggered_at timestamptz, reused boolean, queued integer)
++--
++-- e depois consultava a tabela sem qualificar a coluna:
++--
++--   SELECT * INTO v_event
++--     FROM public.sos_events
++--    WHERE request_id = _request_id AND user_id = v_uid;   -- <— aqui
++--
++-- Nesse WHERE, `request_id` pode ser a variável de saída da função ou a coluna
++-- sos_events.request_id. O padrão do Postgres é plpgsql.variable_conflict =
++-- error: em vez de escolher em silêncio, ele recusa a função inteira. Como o
++-- erro só aparece na EXECUÇÃO da instrução, a função foi criada sem reclamar e
++-- só quebrou quando alguém realmente acionou o SOS.
++--
++-- Não era um caso isolado. O mesmo choque existia em mais quatro pontos:
++--
++--   sos_open   . WHERE request_id = _request_id          (request_id)
++--   sos_open   . WHERE ... AND status = 'active'         (status)
++--   sos_open   . ORDER BY triggered_at DESC              (triggered_at)
++--   sos_open   . WHERE sos_event_id = v_event.id         (sos_event_id)
++--   sos_cancel . AND status NOT IN ('cancelled',...)     (status)
++--   sos_cancel . WHERE sos_event_id = v_row.id           (sos_event_id)
++--   sos_resolve. AND status NOT IN ('cancelled',...)     (status)
++--
++-- Corrigir só a primeira linha faria o acionamento morrer três linhas adiante,
++-- e o cancelamento continuaria quebrado.
++--
++-- A CORREÇÃO
++-- ----------
++-- Toda referência de coluna passa a ser qualificada por alias explícito
++-- (se.request_id, se.status, wn.sos_event_id). Nada de renomear argumento
++-- público nem coluna de retorno: `supabase.rpc("sos_open", { _request_id, ... })`
++-- e o formato de resposta continuam exatamente iguais.
++--
++-- Alvos de atribuição em UPDATE ... SET continuam sem alias porque o Postgres
++-- não aceita `SET se.status = ...` — e ali não há ambiguidade: nome de coluna
++-- em lista de destino não é substituído por variável. O mesmo vale para a lista
++-- de colunas de INSERT INTO ... (...).
++--
++-- Preservado sem mudança: idempotência por request_id, advisory lock por
++-- usuário, um único SOS ativo, tratamento de unique_violation, recusa de
++-- request_id de evento encerrado, RLS, histórico e a fila do WhatsApp.
++-- ============================================================================
++
++-- ----------------------------------------------------------------------------
++-- 1. sos_open
++-- ----------------------------------------------------------------------------
++CREATE OR REPLACE FUNCTION public.sos_open(
++  _request_id  uuid,
++  _lat         double precision,
++  _lng         double precision,
++  _accuracy_m  double precision DEFAULT NULL,
++  _fix_age_ms  integer DEFAULT NULL,
++  _note        text DEFAULT NULL
++)
++RETURNS TABLE (
++  sos_event_id uuid,
++  request_id   uuid,
++  status       text,
++  triggered_at timestamptz,
++  reused       boolean,
++  queued       integer
++)
++LANGUAGE plpgsql
++SECURITY DEFINER
++SET search_path = public
++AS $$
++DECLARE
++  v_uid    uuid := auth.uid();
++  v_event  public.sos_events%ROWTYPE;
++  v_reused boolean := false;
++  v_queued integer := 0;
++BEGIN
++  -- ------------------------------------------------------------------
++  -- 1. Autenticação
++  -- ------------------------------------------------------------------
++  IF v_uid IS NULL THEN
++    RAISE EXCEPTION 'Nao autenticado.' USING ERRCODE = '42501';
++  END IF;
++
++  -- ------------------------------------------------------------------
++  -- 2. Validação de entrada — as mesmas regras do cliente, reaplicadas
++  --    aqui porque o cliente não é confiável.
++  -- ------------------------------------------------------------------
++  IF _request_id IS NULL THEN
++    RAISE EXCEPTION 'SOS_ENTRADA_INVALIDA: request_id e obrigatorio.'
++      USING ERRCODE = '22023';
++  END IF;
++
++  -- BETWEEN ja recusa NaN e Infinity: em Postgres, NaN e Infinity sao
++  -- ordenados acima de qualquer numero finito, entao o teste falha.
++  IF _lat IS NULL OR _lng IS NULL
++     OR NOT (_lat BETWEEN -90 AND 90)
++     OR NOT (_lng BETWEEN -180 AND 180) THEN
++    RAISE EXCEPTION 'SOS_ENTRADA_INVALIDA: coordenada fora de faixa.'
++      USING ERRCODE = '22023';
++  END IF;
++
++  -- Null Island: o (0,0) e o zero devolvido por GPS quebrado, nao um lugar.
++  IF _lat = 0 AND _lng = 0 THEN
++    RAISE EXCEPTION 'SOS_ENTRADA_INVALIDA: coordenada 0,0 nao e uma posicao real.'
++      USING ERRCODE = '22023';
++  END IF;
++
++  IF _accuracy_m IS NOT NULL AND NOT (_accuracy_m BETWEEN 0 AND 500) THEN
++    RAISE EXCEPTION 'SOS_ENTRADA_INVALIDA: accuracy_m precisa estar entre 0 e 500 metros.'
++      USING ERRCODE = '22023';
++  END IF;
++
++  IF _fix_age_ms IS NOT NULL AND NOT (_fix_age_ms BETWEEN 0 AND 60000) THEN
++    RAISE EXCEPTION 'SOS_ENTRADA_INVALIDA: fix_age_ms precisa estar entre 0 e 60000 ms.'
++      USING ERRCODE = '22023';
++  END IF;
++
++  IF _note IS NOT NULL AND length(_note) > 500 THEN
++    RAISE EXCEPTION 'SOS_ENTRADA_INVALIDA: note passa de 500 caracteres.'
++      USING ERRCODE = '22023';
++  END IF;
++
++  -- ------------------------------------------------------------------
++  -- 3. SERIALIZAÇÃO POR USUÁRIO
++  --
++  --    Trava de transação com chave derivada do uid. Duas chamadas
++  --    simultâneas do MESMO usuário entram em fila aqui; a segunda só
++  --    prossegue depois que a primeira terminou, e portanto já enxerga o
++  --    evento que a primeira criou. É isto que faz dois toques com
++  --    request_id diferentes resultarem em um evento só.
++  --
++  --    Usuários diferentes têm chaves diferentes e não se bloqueiam.
++  --    O lock cai sozinho no fim da transação — não há como vazar.
++  -- ------------------------------------------------------------------
++  PERFORM pg_advisory_xact_lock(hashtextextended(v_uid::text, 20260806));
++
++  -- ------------------------------------------------------------------
++  -- 4. Este request_id já foi usado?
++  --    `se.` obrigatório: sem o alias, request_id colide com a coluna de
++  --    retorno homônima e o Postgres recusa a instrução.
++  -- ------------------------------------------------------------------
++  SELECT se.* INTO v_event
++    FROM public.sos_events se
++   WHERE se.request_id = _request_id
++     AND se.user_id = v_uid;
++
++  IF FOUND THEN
++    -- Reaproveita SOMENTE se o evento ainda estiver aberto. Um acionamento
++    -- já cancelado ou resolvido não pode voltar à tela como se estivesse em
++    -- curso: a pessoa acharia que tem socorro a caminho quando não tem.
++    IF v_event.status <> 'active' THEN
++      RAISE EXCEPTION
++        'SOS_ENCERRADO: este acionamento ja foi encerrado (status %). Gere um novo request_id.',
++        v_event.status
++        USING ERRCODE = '22023';
++    END IF;
++    v_reused := true;
++
++  ELSE
++    -- ----------------------------------------------------------------
++    -- 5. Já existe outro SOS aberto? Devolve ele em vez de abrir o segundo.
++    -- ----------------------------------------------------------------
++    SELECT se.* INTO v_event
++      FROM public.sos_events se
++     WHERE se.user_id = v_uid
++       AND se.status = 'active'
++     ORDER BY se.triggered_at DESC
++     LIMIT 1;
++
++    IF FOUND THEN
++      v_reused := true;
++    ELSE
++      -- --------------------------------------------------------------
++      -- 6. Caminho normal: abre o evento.
++      --
++      --    O advisory lock acima já deveria tornar a colisão impossível
++      --    dentro deste banco. O bloco de exceção é a segunda trava, para
++      --    o caso de uma corrida vinda por outro caminho: em vez de
++      --    devolver erro de índice único ao aparelho de alguém em
++      --    emergência, relê o vencedor e devolve o mesmo evento.
++      --
++      --    A lista de colunas do INSERT e o RETURNING * não sofrem
++      --    substituição de variável: não precisam de alias.
++      -- --------------------------------------------------------------
++      BEGIN
++        INSERT INTO public.sos_events
++          (user_id, request_id, latitude, longitude, accuracy_m, fix_age_ms, note, status)
++        VALUES
++          (v_uid, _request_id, _lat, _lng, _accuracy_m, _fix_age_ms, _note, 'active')
++        RETURNING * INTO v_event;
++
++      EXCEPTION
++        WHEN unique_violation THEN
++          v_reused := true;
++          SELECT se.* INTO v_event
++            FROM public.sos_events se
++           WHERE se.user_id = v_uid
++             AND se.status = 'active'
++           ORDER BY se.triggered_at DESC
++           LIMIT 1;
++
++          IF NOT FOUND THEN
++            SELECT se.* INTO v_event
++              FROM public.sos_events se
++             WHERE se.request_id = _request_id
++               AND se.user_id = v_uid;
++          END IF;
++
++          IF NOT FOUND THEN
++            RAISE EXCEPTION 'Nao foi possivel registrar o SOS apos colisao de concorrencia.';
++          END IF;
++      END;
++    END IF;
++  END IF;
++
++  IF v_event.id IS NULL THEN
++    RAISE EXCEPTION 'Nao foi possivel registrar o SOS.';
++  END IF;
++
++  -- ------------------------------------------------------------------
++  -- 7. Enfileira os contatos. ON CONFLICT cobre a reentrada: o mesmo
++  --    contato nunca entra duas vezes na fila do mesmo evento.
++  -- ------------------------------------------------------------------
++  INSERT INTO public.whatsapp_notifications
++    (sos_event_id, user_id, emergency_contact_id, recipient_name, recipient_phone, provider, status)
++  SELECT v_event.id, v_uid, c.id, COALESCE(c.name,''), c.phone, 'meta_whatsapp', 'queued'
++    FROM public.emergency_contacts c
++   WHERE c.user_id = v_uid
++     AND c.phone IS NOT NULL
++     AND length(btrim(c.phone)) > 0
++  ON CONFLICT DO NOTHING;
++
++  -- `wn.` obrigatório: sos_event_id também é coluna de retorno desta função.
++  SELECT count(*)::integer INTO v_queued
++    FROM public.whatsapp_notifications wn
++   WHERE wn.sos_event_id = v_event.id;
++
++  RETURN QUERY SELECT v_event.id, v_event.request_id, v_event.status,
++                      v_event.triggered_at, v_reused, v_queued;
++END;
++$$;
++
++REVOKE ALL ON FUNCTION public.sos_open(uuid, double precision, double precision, double precision, integer, text) FROM public, anon;
++GRANT EXECUTE ON FUNCTION public.sos_open(uuid, double precision, double precision, double precision, integer, text) TO authenticated, service_role;
++
++COMMENT ON FUNCTION public.sos_open(uuid, double precision, double precision, double precision, integer, text) IS
++  'Unica porta de abertura de SOS. Valida entrada, serializa por usuario com advisory lock e trata unique_violation. Recusa request_id de evento ja encerrado. Referencias de coluna qualificadas: os nomes do RETURNS TABLE tambem sao variaveis PL/pgSQL.';
++
++-- ----------------------------------------------------------------------------
++-- 2. sos_cancel — mesma ambiguidade em `status` e `sos_event_id`
++-- ----------------------------------------------------------------------------
++CREATE OR REPLACE FUNCTION public.sos_cancel(_sos_event_id uuid, _reason text DEFAULT NULL)
++RETURNS TABLE (sos_event_id uuid, status text, cancelled_at timestamptz)
++LANGUAGE plpgsql
++SECURITY DEFINER
++SET search_path = public
++AS $$
++DECLARE
++  v_uid uuid := auth.uid();
++  v_row public.sos_events%ROWTYPE;
++BEGIN
++  IF v_uid IS NULL THEN
++    RAISE EXCEPTION 'Nao autenticado.' USING ERRCODE = '42501';
++  END IF;
++
++  UPDATE public.sos_events se
++     SET status = 'cancelled',
++         cancel_reason = COALESCE(_reason, se.cancel_reason)
++   WHERE se.id = _sos_event_id
++     AND se.user_id = v_uid
++     AND se.status NOT IN ('cancelled','resolved')
++  RETURNING se.* INTO v_row;
++
++  -- Já cancelado antes: devolve o estado atual em vez de estourar erro.
++  IF NOT FOUND THEN
++    SELECT se.* INTO v_row
++      FROM public.sos_events se
++     WHERE se.id = _sos_event_id
++       AND se.user_id = v_uid;
++    IF NOT FOUND THEN
++      RAISE EXCEPTION 'SOS nao encontrado.' USING ERRCODE = '42501';
++    END IF;
++  END IF;
++
++  -- O que ainda não saiu não deve sair depois de um cancelamento.
++  UPDATE public.whatsapp_notifications wn
++     SET status = 'cancelled'
++   WHERE wn.sos_event_id = v_row.id
++     AND wn.status IN ('queued','failed');
++
++  RETURN QUERY SELECT v_row.id, v_row.status, v_row.cancelled_at;
++END;
++$$;
++
++REVOKE ALL ON FUNCTION public.sos_cancel(uuid, text) FROM public, anon;
++GRANT EXECUTE ON FUNCTION public.sos_cancel(uuid, text) TO authenticated, service_role;
++
++-- ----------------------------------------------------------------------------
++-- 3. sos_resolve — mesma ambiguidade em `status`
++-- ----------------------------------------------------------------------------
++CREATE OR REPLACE FUNCTION public.sos_resolve(_sos_event_id uuid)
++RETURNS TABLE (sos_event_id uuid, status text, resolved_at timestamptz)
++LANGUAGE plpgsql
++SECURITY DEFINER
++SET search_path = public
++AS $$
++DECLARE
++  v_uid uuid := auth.uid();
++  v_row public.sos_events%ROWTYPE;
++BEGIN
++  IF v_uid IS NULL THEN
++    RAISE EXCEPTION 'Nao autenticado.' USING ERRCODE = '42501';
++  END IF;
++
++  UPDATE public.sos_events se
++     SET status = 'resolved'
++   WHERE se.id = _sos_event_id
++     AND se.user_id = v_uid
++     AND se.status NOT IN ('cancelled','resolved')
++  RETURNING se.* INTO v_row;
++
++  IF NOT FOUND THEN
++    SELECT se.* INTO v_row
++      FROM public.sos_events se
++     WHERE se.id = _sos_event_id
++       AND se.user_id = v_uid;
++    IF NOT FOUND THEN
++      RAISE EXCEPTION 'SOS nao encontrado.' USING ERRCODE = '42501';
++    END IF;
++  END IF;
++
++  RETURN QUERY SELECT v_row.id, v_row.status, v_row.resolved_at;
++END;
++$$;
++
++REVOKE ALL ON FUNCTION public.sos_resolve(uuid) FROM public, anon;
++GRANT EXECUTE ON FUNCTION public.sos_resolve(uuid) TO authenticated, service_role;
