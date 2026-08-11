@@ -195,6 +195,11 @@ function arquivosSql(): string[] {
     .sort();
 }
 
+/** A P0.2 é uma migration nova (correção das RPCs), não uma pré-existente. */
+function ehP02(f: string): boolean {
+  return /CHECKPOINT P0\.2 —/.test(ler(join(DIR_MIGRATIONS, f)));
+}
+
 function ehCheckpoint(f: string, marca: "1" | "1B" | "qualquer"): boolean {
   const sql = ler(join(DIR_MIGRATIONS, f));
   const um = /CHECKPOINT 1 —/.test(sql);
@@ -211,7 +216,7 @@ function sqlNovo(): string {
 }
 
 test("as migrations antigas não foram tocadas", () => {
-  const antigas = arquivosSql().filter((f) => !ehCheckpoint(f, "qualquer"));
+  const antigas = arquivosSql().filter((f) => !ehCheckpoint(f, "qualquer") && !ehP02(f));
   assert.equal(antigas.length, 23, "o número de migrations pré-existentes mudou");
 });
 
@@ -510,10 +515,116 @@ test("1B — recovering nunca fica preso em true", () => {
 
 test("1B — as migrations do 1B também são aditivas", () => {
   const todas = arquivosSql();
-  const antigas = todas.filter((f) => !ehCheckpoint(f, "qualquer"));
+  const antigas = todas.filter((f) => !ehCheckpoint(f, "qualquer") && !ehP02(f));
   assert.equal(antigas.length, 23, "o número de migrations pré-existentes mudou");
   const doCheckpoint1 = todas.filter((f) => ehCheckpoint(f, "1"));
   const doCheckpoint1b = todas.filter((f) => ehCheckpoint(f, "1B"));
   assert.equal(doCheckpoint1.length, 2, "as migrations do checkpoint 1 mudaram de número");
   assert.equal(doCheckpoint1b.length, 2, "esperadas exatamente 2 migrations no checkpoint 1B");
+});
+
+/* ================================================================== *
+ * P0.2 — ambiguidade de coluna nas RPCs de SOS
+ *
+ * Bug real, reproduzido no aparelho: `column reference "request_id" is
+ * ambiguous`. Em PL/pgSQL, cada coluna de RETURNS TABLE também é variável,
+ * então toda referência de coluna homônima precisa de alias.
+ * ================================================================== */
+
+function sqlP02(): string {
+  const arquivos = arquivosSql().filter(ehP02);
+  assert.equal(arquivos.length, 1, "esperada exatamente 1 migration P0.2");
+  return ler(join(DIR_MIGRATIONS, arquivos[0]));
+}
+
+test("P0.2 — a migration oficial está no repositório e é a última do SOS", () => {
+  const arquivos = arquivosSql().filter(ehP02);
+  assert.equal(arquivos.length, 1);
+  assert.equal(arquivos[0], "20260811090000_sos_rpc_ambiguidade_coluna.sql");
+  const ultima = arquivosSql()[arquivosSql().length - 1];
+  assert.equal(ultima, arquivos[0], "a P0.2 precisa ser a migration mais recente");
+});
+
+test("P0.2 — a migration duplicada 20260810230000 não foi reintroduzida", () => {
+  assert.ok(
+    !arquivosSql().some((f) => f.startsWith("20260810230000")),
+    "a migration duplicada de P0.2 voltou ao repositório",
+  );
+});
+
+test("P0.2 — é aditiva: só CREATE OR REPLACE das três RPCs", () => {
+  const sql = sqlP02().toUpperCase();
+  assert.ok(!sql.includes("DROP TABLE"));
+  assert.ok(!sql.includes("DROP COLUMN"));
+  assert.ok(!sql.includes("TRUNCATE"));
+  assert.ok(!sql.includes("DROP FUNCTION"));
+  for (const fn of ["SOS_OPEN", "SOS_CANCEL", "SOS_RESOLVE"]) {
+    assert.ok(
+      sql.includes(`CREATE OR REPLACE FUNCTION PUBLIC.${fn}`),
+      `a P0.2 precisa substituir ${fn}`,
+    );
+  }
+});
+
+test("P0.2 — nenhuma referência de coluna ambígua sobrou", () => {
+  const sql = sqlP02();
+  const proibidos = [
+    /WHERE\s+request_id\s*=/i,
+    /AND\s+status\s*=\s*'active'/i,
+    /ORDER\s+BY\s+triggered_at/i,
+    /WHERE\s+sos_event_id\s*=/i,
+    /AND\s+status\s+NOT\s+IN/i,
+  ];
+  for (const re of proibidos) {
+    assert.ok(!re.test(sql), `referência de coluna sem alias: ${re}`);
+  }
+});
+
+test("P0.2 — as referências passaram a ser qualificadas", () => {
+  const sql = sqlP02();
+  assert.ok(/se\.request_id\s*=\s*_request_id/.test(sql));
+  assert.ok(/se\.status\s*=\s*'active'/.test(sql));
+  assert.ok(/ORDER\s+BY\s+se\.triggered_at\s+DESC/i.test(sql));
+  assert.ok(/wn\.sos_event_id\s*=\s*v_(event|row)\.id/.test(sql));
+  assert.ok(/se\.status\s+NOT\s+IN\s*\('cancelled','resolved'\)/i.test(sql));
+});
+
+test("P0.2 — o contrato público das RPCs continua igual", () => {
+  const sql = sqlP02();
+  assert.ok(
+    /sos_open\(\s*\n?\s*_request_id\s+uuid,[\s\S]*?_lat[\s\S]*?_lng[\s\S]*?_accuracy_m[\s\S]*?_fix_age_ms[\s\S]*?_note/i.test(
+      sql,
+    ),
+    "os nomes de argumento de sos_open mudaram",
+  );
+  assert.ok(
+    /RETURNS TABLE \(\s*\n?\s*sos_event_id uuid,\s*\n?\s*request_id\s+uuid,\s*\n?\s*status\s+text,\s*\n?\s*triggered_at timestamptz,\s*\n?\s*reused\s+boolean,\s*\n?\s*queued\s+integer/i.test(
+      sql,
+    ),
+    "as colunas de retorno de sos_open mudaram",
+  );
+  assert.ok(/sos_cancel\(_sos_event_id uuid, _reason text DEFAULT NULL\)/i.test(sql));
+  assert.ok(/sos_resolve\(_sos_event_id uuid\)/i.test(sql));
+});
+
+test("P0.2 — as garantias do SOS continuam no corpo das funções", () => {
+  const sql = sqlP02();
+  assert.ok(/pg_advisory_xact_lock/.test(sql), "sumiu o advisory lock por usuário");
+  assert.ok(/WHEN unique_violation THEN/.test(sql), "sumiu o tratamento de colisão");
+  assert.ok(/SOS_ENCERRADO/.test(sql), "sumiu a recusa de request_id encerrado");
+  assert.ok(/ON CONFLICT DO NOTHING/.test(sql), "a fila do WhatsApp perdeu a idempotência");
+  assert.ok(/SECURITY DEFINER/.test(sql));
+  assert.ok(/SET search_path = public/.test(sql));
+});
+
+test("P0.2 — o anônimo continua sem poder executar as RPCs", () => {
+  const sql = sqlP02();
+  for (const fn of ["sos_open", "sos_cancel", "sos_resolve"]) {
+    const revoke = new RegExp(`REVOKE ALL ON FUNCTION public\\.${fn}\\([^)]*\\) FROM public, anon`);
+    const grant = new RegExp(
+      `GRANT EXECUTE ON FUNCTION public\\.${fn}\\([^)]*\\) TO authenticated, service_role`,
+    );
+    assert.ok(revoke.test(sql), `${fn} sem REVOKE de anon`);
+    assert.ok(grant.test(sql), `${fn} sem GRANT para authenticated`);
+  }
 });
