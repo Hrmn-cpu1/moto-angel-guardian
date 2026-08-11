@@ -567,7 +567,11 @@ test("P0.2 — é aditiva: só CREATE OR REPLACE das três RPCs", () => {
 });
 
 test("P0.2 — nenhuma referência de coluna ambígua sobrou", () => {
-  const sql = sqlP02();
+  // Sem os comentários: o cabeçalho documenta justamente o código velho.
+  const sql = sqlP02()
+    .split("\n")
+    .filter((l) => !l.trimStart().startsWith("--"))
+    .join("\n");
   const proibidos = [
     /WHERE\s+request_id\s*=/i,
     /AND\s+status\s*=\s*'active'/i,
