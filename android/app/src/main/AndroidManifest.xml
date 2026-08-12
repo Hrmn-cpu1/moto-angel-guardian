@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
         android:allowBackup="true"
@@ -51,6 +52,36 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!--
+      POST_NOTIFICATIONS — Android 13+ (API 33).
+      Por que: a notificacao persistente da navegacao protegida e o aviso de
+      possivel queda. Pedida no contexto, quando o recurso e ligado, nunca no
+      primeiro launch. Se negada: o app abre e funciona; a navegacao protegida
+      avisa que nao consegue mostrar o status na barra.
+      Abaixo de 33 o sistema nao pede nada, entao nao ha o que degradar.
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!--
+      FOREGROUND_SERVICE e FOREGROUND_SERVICE_LOCATION.
+      Por que: manter posicao durante a viagem com o app atras ou a tela
+      apagada. FOREGROUND_SERVICE_LOCATION so existe a partir da API 34 e e
+      obrigatoria la; abaixo disso o sistema ignora.
+      Declaradas agora porque o servico entra no proximo checkpoint; sem elas o
+      Manifest teria de mudar junto com o codigo nativo, e prefiro que a
+      mudanca de permissao seja auditada isolada.
+      Se negada/indisponivel: sem rastreamento em segundo plano; o app continua
+      com localizacao em primeiro plano e o SOS manual intacto.
+
+      ACCESS_BACKGROUND_LOCATION NAO foi declarada de proposito. O foreground
+      service com tipo location cobre o caso de uso e nao exige a permissao
+      especial; pedi-la traria revisao adicional na Play sem ganho real.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE_LOCATION"
+        tools:targetApi="34" />
 
     <!-- GPS é desejável, não obrigatório: o app funciona sem ele (envio manual do SOS). -->
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />

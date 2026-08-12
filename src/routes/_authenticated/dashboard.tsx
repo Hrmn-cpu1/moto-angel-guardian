@@ -1,14 +1,16 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useState } from "react";
-import { Crosshair, Flame, Layers, TrafficCone } from "lucide-react";
+import { Crosshair, Flame, Layers, TrafficCone, Users } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { HomeTopBar } from "@/components/HomeTopBar";
 import { SosFab } from "@/components/SosFab";
 import { LocationPermissionGate } from "@/components/LocationPermissionGate";
+import { useLocationPermission } from "@/hooks/useLocationPermission";
 import { useAuth } from "@/hooks/useAuth";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useAlerts } from "@/hooks/useAlerts";
-import { useOnlineRiders } from "@/hooks/useOnlineRiders";
+import { useNearbyRiders } from "@/hooks/useNearbyRiders";
+import { useMapLayers } from "@/hooks/useMapLayers";
 import { useRiskZones } from "@/hooks/useRiskZones";
 import { usePartners } from "@/hooks/usePartners";
 import { useServerFn } from "@tanstack/react-start";
@@ -37,7 +39,9 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 function Dashboard() {
   const { user, loading } = useAuth();
   const { position, capture, startWatch, stopWatch, watching } = useGeolocation();
-  const [granted, setGranted] = useState(false);
+  // A permissão vem do estado compartilhado, não de um useState local: era
+  // isso que fazia o onboarding voltar ao trocar de aba (RC2 checkpoint D).
+  const { concedida: granted } = useLocationPermission();
   const [follow, setFollow] = useState(true);
   const [showTraffic, setShowTraffic] = useState(true);
   const [showHeat, setShowHeat] = useState(true);
@@ -45,7 +49,10 @@ function Dashboard() {
   const [pois, setPois] = useState<POI[]>([]);
   const fetchPOIs = useServerFn(searchPOIs);
   const { alerts } = useAlerts(position);
-  const { riders } = useOnlineRiders(position);
+  // Mesma fonte de verdade da tela /map (P0.5-B): mesma preferência, mesmas
+  // regras de opt-in e a mesma separação entre comunidade e contatos.
+  const { camadas, alternar } = useMapLayers();
+  const { todos: riders, contatos, comunidade } = useNearbyRiders(position, 50, camadas);
   const { risks } = useRiskZones(position);
   const { located: locatedPartners } = usePartners();
 
@@ -69,7 +76,7 @@ function Dashboard() {
     return (
       <AppShell>
         <div className="px-5 pt-8">
-          <LocationPermissionGate onGranted={() => setGranted(true)} />
+          <LocationPermissionGate onGranted={() => undefined} />
         </div>
       </AppShell>
     );
@@ -166,6 +173,12 @@ function Dashboard() {
             icon={<Layers size={14} />}
           />
           <LayerToggle
+            active={camadas.comunidade}
+            onClick={() => alternar("comunidade")}
+            label="Outros motoqueiros"
+            icon={<Users size={14} />}
+          />
+          <LayerToggle
             active={follow}
             onClick={() => {
               setFollow(true);
@@ -179,7 +192,9 @@ function Dashboard() {
         {/* Live summary */}
         <div className="absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+96px)] z-30 flex justify-between gap-2 text-[10px] font-semibold uppercase tracking-widest">
           <span className="rounded-full border border-gold/30 bg-black/75 px-3 py-1.5 text-gold">
-            {riders.length} online
+            {camadas.comunidade
+              ? `${contatos.length + comunidade.length} online`
+              : `${contatos.length} contato${contatos.length === 1 ? "" : "s"}`}
           </span>
           <span className="rounded-full border border-emergency/40 bg-black/75 px-3 py-1.5 text-emergency">
             {alerts.length} ocorrências

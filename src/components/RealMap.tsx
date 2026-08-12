@@ -1,6 +1,7 @@
 /// <reference types="google.maps" />
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { abrirNavegacaoExterna } from "@/lib/external-navigation";
 import type { POI } from "@/lib/pois.functions";
 
 // Premium dark style with gold accents
@@ -184,6 +185,9 @@ function pinSvg(color: string, glyphColor: string, glyph: string): string {
       glyphColor +
       '"/>',
     bloqueio: '<path d="M8 10h8v4H8z" fill="' + glyphColor + '"/>',
+    // RC2 checkpoint B: alerta de SOS da comunidade.
+    sos:
+      '<path d="M11 7h2v6h-2zM11 15h2v2h-2z" fill="' + glyphColor + '"/>',
     roubo:
       '<path d="M12 7c2 0 3.5 1.5 3.5 3.5S14 14 12 14s-3.5-1.5-3.5-3.5S10 7 12 7z" fill="none" stroke="' +
       glyphColor +
@@ -501,7 +505,8 @@ export default function RealMap({
     const g = (window as unknown as { google: typeof google }).google;
     alertMarkersRef.current.forEach((m) => m.setMap(null));
     alertMarkersRef.current = alerts.map((a) => {
-      const color = a.type === "acidente" || a.type === "roubo" ? "#D92323" : "#D4AF37";
+      const color =
+        a.type === "sos" || a.type === "acidente" || a.type === "roubo" ? "#D92323" : "#D4AF37";
       const glyphColor = color === "#D92323" ? "#F5F5F5" : "#D4AF37";
       const m = new g.maps.Marker({
         map,
@@ -715,12 +720,9 @@ export default function RealMap({
           <button
             type="button"
             onClick={() =>
-              window.open(
-                center
-                  ? `https://www.google.com/maps?q=${center.lat},${center.lng}`
-                  : "https://www.google.com/maps",
-                "_blank",
-                "noopener,noreferrer",
+              void abrirNavegacaoExterna(
+                "google",
+                center ? { latitude: center.lat, longitude: center.lng } : null,
               )
             }
             disabled={!center}

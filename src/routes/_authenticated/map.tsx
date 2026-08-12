@@ -18,11 +18,15 @@ import { Header } from "@/components/Header";
 import { GoldButton } from "@/components/GoldButton";
 import { OutlineButton } from "@/components/OutlineButton";
 import { LocationPermissionGate } from "@/components/LocationPermissionGate";
+import { useLocationPermission } from "@/hooks/useLocationPermission";
 import { MapSosButton } from "@/components/MapSosButton";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useHistory } from "@/hooks/useHistory";
 import { useAlerts } from "@/hooks/useAlerts";
-import { useOnlineRiders } from "@/hooks/useOnlineRiders";
+import { useNearbyRiders } from "@/hooks/useNearbyRiders";
+import { useMapLayers } from "@/hooks/useMapLayers";
+import { rotuloDeRiders } from "@/lib/map-layers";
+import { abrirNavegacaoExterna } from "@/lib/external-navigation";
 import { Users, BadgePercent, Phone } from "lucide-react";
 import { usePartners, filterPartners, BENEFIT_FILTERS, type Partner } from "@/hooks/usePartners";
 import { useServerFn } from "@tanstack/react-start";
@@ -64,11 +68,17 @@ function MapPage() {
   const [selected, setSelected] = useState<POI | null>(null);
   const [pois, setPois] = useState<POI[]>([]);
   const [loadingPois, setLoadingPois] = useState(false);
-  const [permissionGranted, setPermissionGranted] = useState(false);
+  // Mesma fonte de verdade da Home (RC2 checkpoint D).
+  const { concedida: permissionGranted } = useLocationPermission();
   const [follow, setFollow] = useState(true);
   const fetchPOIs = useServerFn(searchPOIs);
   const { alerts } = useAlerts(position);
-  const { riders } = useOnlineRiders(position);
+  // Duas fontes separadas (RC2 hotfix P0.3-C): contatos autorizados continuam
+  // aparecendo mesmo sem opt-in comunitário; a camada pública exige opt-in.
+  // O que o mapa DESENHA é decidido pelo controle da interface (P0.4-C).
+  const { camadas, alternar } = useMapLayers();
+  const { todos: riders, contatos, comunidade } = useNearbyRiders(position, 50, camadas);
+  const rotuloRiders = rotuloDeRiders(camadas, contatos.length, comunidade.length);
   const [selectedRider, setSelectedRider] = useState<{ name: string } | null>(null);
   const { located: locatedPartners } = usePartners();
   const [benefitFilter, setBenefitFilter] = useState("todos");
@@ -102,13 +112,14 @@ function MapPage() {
     });
   };
 
+  // Toda navegação externa passa pela ponte central: nunca navega a WebView
+  // no lugar, nunca constrói intent:// (RC2 checkpoint E).
   const openRoute = (target?: POI) => {
     if (!position) return;
-    const dest = target ? `${target.lat},${target.lng}` : "";
-    const url = target
-      ? `https://www.google.com/maps/dir/?api=1&origin=${position.lat},${position.lng}&destination=${dest}`
-      : `https://www.google.com/maps?q=${position.lat},${position.lng}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+    const destino = target
+      ? { latitude: target.lat, longitude: target.lng, label: target.name }
+      : { latitude: position.lat, longitude: position.lng };
+    void abrirNavegacaoExterna("google", destino);
   };
 
   return (
@@ -116,7 +127,7 @@ function MapPage() {
       <Header title="Mapa" subtitle="Onde você está" showBell />
 
       {!permissionGranted ? (
-        <LocationPermissionGate onGranted={() => setPermissionGranted(true)} />
+        <LocationPermissionGate onGranted={() => undefined} />
       ) : (
         <div className="px-5 pt-4">
           <div className="relative aspect-[4/5] overflow-hidden rounded-3xl glass-card">
@@ -257,11 +268,11 @@ function MapPage() {
                     <div className="mt-2 flex items-center gap-2">
                       <button
                         onClick={() =>
-                          window.open(
-                            `https://www.google.com/maps/dir/?api=1&destination=${selectedPartner.lat},${selectedPartner.lng}`,
-                            "_blank",
-                            "noopener,noreferrer",
-                          )
+                          void abrirNavegacaoExterna("google", {
+                            latitude: selectedPartner.lat,
+                            longitude: selectedPartner.lng,
+                            label: selectedPartner.name,
+                          })
                         }
                         className="flex items-center gap-1 rounded-full gold-gradient px-3 py-1.5 text-[11px] font-semibold text-black"
                       >
@@ -287,27 +298,46 @@ function MapPage() {
               </div>
             )}
 
-            {riders.length > 0 && !selected && (
+            {(selectedRider || rotuloRiders) && !selected && (
               <div className="absolute left-3 bottom-3 flex items-center gap-1.5 rounded-full border border-gold/30 bg-black/75 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-gold">
                 <Users size={12} />
-                {selectedRider
-                  ? selectedRider.name
-                  : `${riders.length} ${riders.length === 1 ? "contato online" : "contatos online"}`}
+                {selectedRider ? selectedRider.name : rotuloRiders}
               </div>
             )}
 
-            <button
-              onClick={() => setFollow((f) => !f)}
-              className={`absolute right-3 top-3 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest transition ${
-                follow
-                  ? "border-gold bg-gold/15 text-gold shadow-[0_0_20px_-6px_oklch(0.83_0.169_85/0.6)]"
-                  : "border-white/10 bg-black/70 text-muted-foreground"
-              }`}
-              aria-pressed={follow}
-            >
-              {follow ? <LocateFixed size={12} /> : <LocateOff size={12} />}
-              {follow ? "Seguindo" : "Livre"}
-            </button>
+            {/* Controles do mapa em uma coluna só (P0.5-C).
+                Antes os dois usavam `absolute right-3 top-3` e ficavam um
+                em cima do outro: o de baixo era inalcançável. Um container
+                empilha os dois; F2/F3 revisa tamanho e posição depois. */}
+            <div className="absolute right-3 top-3 z-20 flex flex-col items-end gap-2">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={camadas.comunidade}
+                onClick={() => alternar("comunidade")}
+                className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-widest transition-colors ${
+                  camadas.comunidade
+                    ? "border-gold/50 bg-gold/20 text-gold"
+                    : "border-white/15 bg-black/70 text-muted-foreground"
+                }`}
+              >
+                <Users size={12} />
+                Outros motoqueiros
+              </button>
+
+              <button
+                onClick={() => setFollow((f) => !f)}
+                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest transition ${
+                  follow
+                    ? "border-gold bg-gold/15 text-gold shadow-[0_0_20px_-6px_oklch(0.83_0.169_85/0.6)]"
+                    : "border-white/10 bg-black/70 text-muted-foreground"
+                }`}
+                aria-pressed={follow}
+              >
+                {follow ? <LocateFixed size={12} /> : <LocateOff size={12} />}
+                {follow ? "Seguindo" : "Livre"}
+              </button>
+            </div>
           </div>
 
           <div className="mt-4 space-y-2">
