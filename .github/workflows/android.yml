@@ -73,16 +73,17 @@ jobs:
             echo "package id mudou: $PKG"; exit 1
           fi
 
- - name: Nenhum segredo no repositório
-  run: |
-    set -e
-    if grep -rnoE "AIza[0-9A-Za-z_-]{20,}|sb_secret_[A-Za-z0-9]+|EAA[A-Za-z0-9]{30,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}" \
-        --include="*.ts" --include="*.tsx" --include="*.sql" --include="*.json" \
-        --exclude-dir=node_modules \
-        --include="*.gradle" --include="*.xml" --include="*.yml" . ; then
-      echo "possível segredo commitado"; exit 1
-    fi
-    echo "nenhum segredo encontrado"
+      - name: Nenhum segredo no repositório
+        run: |
+          set -e
+          if grep -rnoE "AIza[0-9A-Za-z_-]{20,}|sb_secret_[A-Za-z0-9]+|EAA[A-Za-z0-9]{30,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}" \
+          --exclude-dir=node_modules \
+        
+              --include="*.ts" --include="*.tsx" --include="*.sql" --include="*.json" \
+              --include="*.gradle" --include="*.xml" --include="*.yml" . ; then
+            echo "possível segredo commitado"; exit 1
+          fi
+          echo "nenhum segredo encontrado"
 
       - name: Migrations presentes e ordenadas
         run: |
