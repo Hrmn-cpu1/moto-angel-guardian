@@ -269,8 +269,8 @@ function MapPage() {
                       <button
                         onClick={() =>
                           void abrirNavegacaoExterna("google", {
-                            latitude: selectedPartner.lat,
-                            longitude: selectedPartner.lng,
+                            latitude: selectedPartner.lat ?? undefined,
+                            longitude: selectedPartner.lng ?? undefined,
                             label: selectedPartner.name,
                           })
                         }
