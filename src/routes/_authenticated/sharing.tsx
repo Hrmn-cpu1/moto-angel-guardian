@@ -10,6 +10,7 @@ import { useGeolocation } from "@/hooks/useGeolocation";
 import { useLiveShare } from "@/hooks/useLiveShare";
 import { useContacts } from "@/hooks/useContacts";
 import { useLocationShares } from "@/hooks/useLocationShares";
+import { useRiderVisibility } from "@/hooks/useRiderVisibility";
 
 export const Route = createFileRoute("/_authenticated/sharing")({
   head: () => ({
@@ -36,6 +37,7 @@ function SharingPage() {
   const { sharing, toggle, lastSync, error } = useLiveShare();
   const { contacts } = useContacts();
   const { pending, approved, approve, revoke, requestAccess, requesting } = useLocationShares();
+  const riders = useRiderVisibility();
 
   useEffect(() => {
     void capture();
@@ -112,6 +114,40 @@ function SharingPage() {
             </p>
           )}
           {error && <p className="mt-2 text-[11px] text-emergency">{error}</p>}
+
+          {/* RC2 checkpoint C — opt-in explícito e reversível. */}
+          <div className="mt-4 rounded-2xl border border-white/10 bg-black/40 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-gold">
+                  Aparecer para outros motoqueiros
+                </p>
+                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                  {riders.visivel
+                    ? "Motociclistas próximos veem seu primeiro nome e sua posição enquanto o compartilhamento estiver ligado."
+                    : "Hoje só seus contatos autorizados enxergam você. Ligue para aparecer também para motociclistas próximos."}
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={riders.visivel}
+                aria-label="Aparecer para outros motoqueiros"
+                disabled={riders.carregando || riders.salvando}
+                onClick={() => void riders.alternar()}
+                className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors ${
+                  riders.visivel ? "border-gold/60 bg-gold/30" : "border-white/15 bg-white/5"
+                } disabled:opacity-50`}
+              >
+                <span
+                  className={`absolute top-0.5 h-4 w-4 rounded-full transition-all ${
+                    riders.visivel ? "left-6 bg-gold" : "left-0.5 bg-muted-foreground"
+                  }`}
+                />
+              </button>
+            </div>
+            {riders.erro && <p className="mt-2 text-[11px] text-emergency">{riders.erro}</p>}
+          </div>
           <div className="mt-4 space-y-2">
             <GoldButton onClick={toggle}>
               {sharing ? "Parar compartilhamento" : "Iniciar compartilhamento"}

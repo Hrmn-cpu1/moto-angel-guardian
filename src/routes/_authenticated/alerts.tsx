@@ -7,7 +7,8 @@ import { Header } from "@/components/Header";
 import { GoldButton } from "@/components/GoldButton";
 import { OutlineButton } from "@/components/OutlineButton";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { ALERT_LABEL, useAlerts, type AlertType } from "@/hooks/useAlerts";
+import { ALERT_LABEL, ehSos, useAlerts, type AlertType } from "@/hooks/useAlerts";
+import { abrirNavegacaoExterna } from "@/lib/external-navigation";
 
 export const Route = createFileRoute("/_authenticated/alerts")({
   head: () => ({
@@ -181,8 +182,10 @@ function AlertsPage() {
 
         <div className="space-y-3 pb-4">
           {visible.map((a) => {
-            const Icon = TYPES.find((t) => t.key === a.type)?.icon ?? AlertTriangle;
-            const critical = a.type === "acidente" || a.type === "roubo";
+            const Icon = ehSos(a.type)
+              ? ShieldAlert
+              : (TYPES.find((t) => t.key === a.type)?.icon ?? AlertTriangle);
+            const critical = ehSos(a.type) || a.type === "acidente" || a.type === "roubo";
             return (
               <article key={a.id} className="glass-card flex gap-3 rounded-xl p-4 animate-fade-up">
                 <div
@@ -215,14 +218,19 @@ function AlertsPage() {
                       })}
                     </span>
                     <div className="flex items-center gap-3">
-                      <a
-                        href={`https://www.google.com/maps?q=${a.lat},${a.lng}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void abrirNavegacaoExterna("google", {
+                            latitude: a.lat,
+                            longitude: a.lng,
+                            label: a.title,
+                          })
+                        }
                         className="flex items-center gap-1 text-gold"
                       >
                         <MapPin size={11} /> Ver
-                      </a>
+                      </button>
                       {a.is_mine && (
                         <button
                           onClick={() => remove.mutate(a.id)}

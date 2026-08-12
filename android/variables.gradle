@@ -1,7 +1,12 @@
 ext {
     minSdkVersion = 23
-    compileSdkVersion = 35
-    targetSdkVersion = 35
+    // Android 16 (API 36). minSdk fica em 23 de proposito: o produto e para
+    // motoboy, e aparelho antigo e a regra, nao a excecao. Nenhuma linha do
+    // app exige API alta para o caminho critico (mapa, GPS, SOS manual).
+    // NAO VALIDADO NESTE AMBIENTE: sem Android SDK aqui. O GitHub Actions e a
+    // prova. Se algum plugin travar em 36, o CI acusa e o numero volta.
+    compileSdkVersion = 36
+    targetSdkVersion = 36
     androidxActivityVersion = '1.9.2'
     androidxAppCompatVersion = '1.7.0'
     androidxCoordinatorLayoutVersion = '1.2.0'

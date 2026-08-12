@@ -1,65 +1,50 @@
 import { useEffect, useState } from "react";
-import { MapPin, ShieldAlert, Loader2, Crosshair } from "lucide-react";
+import { MapPin, ShieldAlert, Loader2, Crosshair, Settings } from "lucide-react";
 import { GoldButton } from "./GoldButton";
 import { OutlineButton } from "./OutlineButton";
-
-type State = "checking" | "prompt" | "denied" | "unsupported" | "granted" | "requesting";
+import { useLocationPermission } from "@/hooks/useLocationPermission";
+import { abrirConfiguracoesDoApp, ofereceConfiguracoes } from "@/lib/location-permission";
 
 interface Props {
   onGranted: () => void;
 }
 
+/**
+ * Onboarding de localização.
+ *
+ * O estado NÃO mora mais aqui: vem de `useLocationPermission`, que consulta a
+ * plataforma e guarda o resultado no módulo. Era isso que fazia o onboarding
+ * reaparecer ao trocar de aba mesmo com a permissão já concedida.
+ */
 export function LocationPermissionGate({ onGranted }: Props) {
-  const [state, setState] = useState<State>("checking");
-  const [accuracy, setAccuracy] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { status, concedida, verificando, pedir } = useLocationPermission();
+  const [pedindo, setPedindo] = useState(false);
+  const [instrucoes, setInstrucoes] = useState<string | null>(null);
 
   useEffect(() => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setState("unsupported");
-      return;
-    }
-    const perms = (navigator as Navigator & { permissions?: Permissions }).permissions;
-    if (!perms?.query) {
-      setState("prompt");
-      return;
-    }
-    perms
-      .query({ name: "geolocation" as PermissionName })
-      .then((status) => {
-        const map = (s: PermissionState): State =>
-          s === "granted" ? "granted" : s === "denied" ? "denied" : "prompt";
-        setState(map(status.state));
-        status.onchange = () => setState(map(status.state));
-      })
-      .catch(() => setState("prompt"));
-  }, []);
+    if (concedida) onGranted();
+  }, [concedida, onGranted]);
 
-  useEffect(() => {
-    if (state === "granted") onGranted();
-  }, [state, onGranted]);
-
-  const request = () => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setState("unsupported");
-      return;
+  const solicitar = async () => {
+    setPedindo(true);
+    setInstrucoes(null);
+    try {
+      await pedir();
+    } finally {
+      setPedindo(false);
     }
-    setState("requesting");
-    setError(null);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setAccuracy(pos.coords.accuracy);
-        setState("granted");
-      },
-      (err) => {
-        setError(err.message);
-        setState(err.code === err.PERMISSION_DENIED ? "denied" : "prompt");
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
-    );
   };
 
-  if (state === "granted" || state === "checking") {
+  const irParaConfiguracoes = async () => {
+    const abriu = await abrirConfiguracoesDoApp();
+    if (!abriu) {
+      setInstrucoes(
+        "Abra Configurações do aparelho > Aplicativos > Moto Anjo > Permissões > Localização > Permitir.",
+      );
+    }
+  };
+
+  if (concedida || verificando) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center gap-2 text-xs uppercase tracking-widest text-gold">
         <Loader2 size={14} className="animate-spin" /> Verificando permissões...
@@ -67,8 +52,9 @@ export function LocationPermissionGate({ onGranted }: Props) {
     );
   }
 
-  const isDenied = state === "denied";
-  const isUnsupported = state === "unsupported";
+  const bloqueada = status === "negada" || status === "negada_permanente";
+  const indisponivel = status === "indisponivel";
+  const mostrarConfiguracoes = ofereceConfiguracoes(status);
 
   return (
     <div className="animate-fade-up px-5 pt-4">
@@ -77,44 +63,45 @@ export function LocationPermissionGate({ onGranted }: Props) {
           <div className="relative mb-4">
             <div
               className={`flex h-20 w-20 items-center justify-center rounded-full border ${
-                isDenied
+                bloqueada
                   ? "border-emergency/40 bg-emergency/5 text-emergency"
                   : "border-gold/30 bg-gold/5 text-gold"
               }`}
             >
-              {isDenied ? <ShieldAlert size={32} /> : <MapPin size={32} />}
+              {bloqueada ? <ShieldAlert size={32} /> : <MapPin size={32} />}
             </div>
-            {!isDenied && <div className="absolute inset-0 animate-ping rounded-full bg-gold/10" />}
+            {!bloqueada && <div className="absolute inset-0 animate-ping rounded-full bg-gold/10" />}
           </div>
 
           <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-            {isDenied
-              ? "Permissão bloqueada"
-              : isUnsupported
-                ? "Não suportado"
-                : "Localização precisa"}
+            {mostrarConfiguracoes
+              ? "Permissão bloqueada no aparelho"
+              : bloqueada
+                ? "Permissão negada"
+                : indisponivel
+                  ? "Não suportado"
+                  : "Localização precisa"}
           </p>
           <h2 className="mt-1 text-xl font-bold tracking-tight text-foreground">
-            {isDenied
-              ? "Ative o GPS nas configurações"
-              : isUnsupported
-                ? "Seu dispositivo não expõe GPS"
-                : "Precisamos da sua localização"}
+            {mostrarConfiguracoes
+              ? "Libere a localização nas configurações"
+              : bloqueada
+                ? "Precisamos tentar de novo"
+                : indisponivel
+                  ? "Seu dispositivo não expõe GPS"
+                  : "Precisamos da sua localização"}
           </h2>
           <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
-            {isDenied
-              ? "Você negou o acesso à localização. Para usar o mapa, pontos de apoio e o SOS com precisão, libere a permissão no navegador."
-              : isUnsupported
-                ? "Não conseguimos acessar o GPS deste navegador. Abra o Moto Anjo em um dispositivo móvel com localização habilitada."
-                : "O mapa usa GPS de alta precisão para mostrar sua posição, pontos de apoio próximos e enviar sua localização exata no SOS."}
+            {mostrarConfiguracoes
+              ? "O aparelho não vai perguntar de novo enquanto a permissão estiver bloqueada. Abra as configurações do Moto Anjo e libere a localização."
+              : bloqueada
+                ? "Sem localização, o mapa e o SOS não conseguem dizer onde você está. Toque abaixo para permitir."
+                : indisponivel
+                  ? "Não conseguimos acessar o GPS aqui. Abra o Moto Anjo no celular com a localização ligada."
+                  : "O mapa usa GPS de alta precisão para mostrar sua posição, pontos de apoio próximos e enviar sua localização exata no SOS."}
           </p>
 
-          {accuracy != null && (
-            <p className="mt-2 text-[11px] text-gold">
-              Precisão detectada: ±{Math.round(accuracy)}m
-            </p>
-          )}
-          {error && <p className="mt-2 text-[11px] text-emergency">{error}</p>}
+          {instrucoes && <p className="mt-3 text-[11px] text-gold">{instrucoes}</p>}
 
           <ul className="mt-5 w-full space-y-2 text-left">
             {[
@@ -132,13 +119,13 @@ export function LocationPermissionGate({ onGranted }: Props) {
           </ul>
 
           <div className="mt-6 w-full space-y-2">
-            {!isUnsupported && (
-              <GoldButton onClick={request} disabled={state === "requesting"}>
-                {state === "requesting" ? (
+            {!indisponivel && (
+              <GoldButton onClick={() => void solicitar()} disabled={pedindo}>
+                {pedindo ? (
                   <>
                     <Loader2 size={14} className="animate-spin" /> Solicitando...
                   </>
-                ) : isDenied ? (
+                ) : bloqueada ? (
                   <>
                     <Crosshair size={14} /> Tentar novamente
                   </>
@@ -149,16 +136,9 @@ export function LocationPermissionGate({ onGranted }: Props) {
                 )}
               </GoldButton>
             )}
-            {isDenied && (
-              <OutlineButton
-                size="sm"
-                onClick={() => {
-                  alert(
-                    "Como liberar:\n\n1. Toque no cadeado ao lado da URL\n2. Permissões do site → Localização → Permitir\n3. Recarregue a página",
-                  );
-                }}
-              >
-                Como liberar nas configurações
+            {mostrarConfiguracoes && (
+              <OutlineButton size="sm" onClick={() => void irParaConfiguracoes()}>
+                <Settings size={14} /> Abrir configurações
               </OutlineButton>
             )}
           </div>

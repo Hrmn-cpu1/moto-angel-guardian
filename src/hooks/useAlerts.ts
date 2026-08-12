@@ -1,12 +1,20 @@
 import { useCallback, useEffect, useId } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { registrarPresenca } from "@/lib/presence";
 
+/** Tipos que o motociclista pode publicar pela tela de alertas. */
 export type AlertType = "perigo" | "acidente" | "bloqueio" | "roubo";
+
+/**
+ * O que pode CHEGAR do banco. "sos" nunca é criado pelo cliente: nasce de um
+ * trigger em sos_events e é bloqueado pela RLS (RC2 checkpoint B).
+ */
+export type AlertKind = AlertType | "sos";
 
 export interface NearbyAlert {
   id: string;
-  type: AlertType;
+  type: AlertKind;
   title: string;
   description: string | null;
   address: string | null;
@@ -18,12 +26,18 @@ export interface NearbyAlert {
   is_mine: boolean;
 }
 
-export const ALERT_LABEL: Record<AlertType, string> = {
+export const ALERT_LABEL: Record<AlertKind, string> = {
   perigo: "Perigo",
   acidente: "Acidente",
   bloqueio: "Bloqueio",
   roubo: "Roubo",
+  sos: "SOS ativo",
 };
+
+/** Um SOS aberto tem prioridade sobre qualquer outro alerta na lista. */
+export function ehSos(tipo: AlertKind): boolean {
+  return tipo === "sos";
+}
 
 export function alertsKey(lat?: number, lng?: number) {
   return [
@@ -42,9 +56,21 @@ export function useAlerts(pos: { lat: number; lng: number } | null, radiusKm = 2
     queryKey: key,
     enabled: !!pos,
     staleTime: 30_000,
+    // Fallback do Realtime (hotfix P0.4-A). A RLS passou a esconder o espelho
+    // do SOS de terceiros, e o Realtime respeita RLS: o evento de um SOS de
+    // outra pessoa não chega mais por postgres_changes. NÃO vamos reabrir o
+    // SELECT para consertar isso — seria vazar posição de emergência para
+    // manter a UI cômoda. Em vez disso, reconsultamos a RPC segura enquanto o
+    // app está em uso. `refetchIntervalInBackground` fica falso: com a tela
+    // desligada ou o app atrás, não gastamos bateria nem chamada.
+    refetchInterval: 45_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
     retry: 1,
     queryFn: async (): Promise<NearbyAlert[]> => {
       if (!pos) return [];
+      // nearby_alerts usa a posição registrada do viewer (P0.5-A).
+      await registrarPresenca(pos);
       const { data, error } = await supabase.rpc("nearby_alerts", {
         _lat: pos.lat,
         _lng: pos.lng,
@@ -61,6 +87,9 @@ export function useAlerts(pos: { lat: number; lng: number } | null, radiusKm = 2
   }, [qc]);
 
   useEffect(() => {
+    // O canal continua útil para alertas manuais, que seguem legíveis por
+    // authenticated. Ele carrega apenas o gatilho de invalidação — os dados
+    // vêm sempre da RPC filtrada, nunca do payload do canal.
     const channel = supabase
       .channel(`community_alerts_feed:${instanceId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "community_alerts" }, () => {

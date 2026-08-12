@@ -15,6 +15,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as McpRouteImport } from './routes/mcp'
+import { Route as MapDebugRouteImport } from './routes/map-debug'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IntroRouteImport } from './routes/intro'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
@@ -68,6 +69,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const McpRoute = McpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MapDebugRoute = MapDebugRouteImport.update({
+  id: '/map-debug',
+  path: '/map-debug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -199,6 +205,7 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/intro': typeof IntroRoute
   '/login': typeof LoginRoute
+  '/map-debug': typeof MapDebugRoute
   '/mcp': typeof McpRoute
   '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
@@ -230,6 +237,7 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/intro': typeof IntroRoute
   '/login': typeof LoginRoute
+  '/map-debug': typeof MapDebugRoute
   '/mcp': typeof McpRoute
   '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
@@ -263,6 +271,7 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/intro': typeof IntroRoute
   '/login': typeof LoginRoute
+  '/map-debug': typeof MapDebugRoute
   '/mcp': typeof McpRoute
   '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
@@ -296,6 +305,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/intro'
     | '/login'
+    | '/map-debug'
     | '/mcp'
     | '/privacy'
     | '/register'
@@ -327,6 +337,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/intro'
     | '/login'
+    | '/map-debug'
     | '/mcp'
     | '/privacy'
     | '/register'
@@ -359,6 +370,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/intro'
     | '/login'
+    | '/map-debug'
     | '/mcp'
     | '/privacy'
     | '/register'
@@ -392,6 +404,7 @@ export interface RootRouteChildren {
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   IntroRoute: typeof IntroRoute
   LoginRoute: typeof LoginRoute
+  MapDebugRoute: typeof MapDebugRoute
   McpRoute: typeof McpRoute
   PrivacyRoute: typeof PrivacyRoute
   RegisterRoute: typeof RegisterRoute
@@ -447,6 +460,13 @@ declare module '@tanstack/react-router' {
       path: '/mcp'
       fullPath: '/mcp'
       preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/map-debug': {
+      id: '/map-debug'
+      path: '/map-debug'
+      fullPath: '/map-debug'
+      preLoaderRoute: typeof MapDebugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -663,6 +683,7 @@ const rootRouteChildren: RootRouteChildren = {
   ForgotPasswordRoute: ForgotPasswordRoute,
   IntroRoute: IntroRoute,
   LoginRoute: LoginRoute,
+  MapDebugRoute: MapDebugRoute,
   McpRoute: McpRoute,
   PrivacyRoute: PrivacyRoute,
   RegisterRoute: RegisterRoute,
