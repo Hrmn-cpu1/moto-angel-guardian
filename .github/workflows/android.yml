@@ -37,7 +37,7 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Instalar dependências
-        run: npm ci
+        run: npm install
 
       # ---- Gates de código. Ordem importa: o barato falha primeiro. ----
       - name: Testes
