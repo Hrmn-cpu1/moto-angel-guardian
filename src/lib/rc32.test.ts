@@ -1,134 +1,118 @@
-import { describe, expect, it } from "vitest";
-import { CAMADAS, camada, classesDeCamadaCompletas, type NomeDeCamada } from "./layers";
-import { abrirFolha, algumaFolhaAberta, fecharFolha, sosFlutuanteVisivel } from "./sheets";
-import { celulaDeBusca } from "./coords";
-import { passosDoEnquadramento } from "./navigation-cue";
-import { LIMITE_DE_PEDIDO_MS } from "./location-permission";
+import test from "node:test";
+import assert from "node:assert/strict";
+import { CAMADAS, camada, classesDeCamadaCompletas, type NomeDeCamada } from "./layers.ts";
+import { abrirFolha, algumaFolhaAberta, fecharFolha, sosFlutuanteVisivel } from "./sheets.ts";
+import { celulaDeBusca } from "./coords.ts";
+import { passosDoEnquadramento } from "./navigation-cue.ts";
+import { LIMITE_DE_PEDIDO_MS } from "./location-permission.ts";
 
-/* ================================================================== *
+/* ============================================================ *
  * #1 — camadas: as classes precisam EXISTIR no CSS gerado
- * ================================================================== */
+ * ============================================================ */
 
-describe("RC3.2 · camadas de z-index", () => {
-  it("nunca devolve uma classe montada em tempo de execução", () => {
-    // O bug era exatamente este: `z-[${n}]`. Se voltar, o Tailwind não gera a
-    // classe e a ordem visual da Home volta a ser a ordem do DOM.
-    for (const nome of Object.keys(CAMADAS) as NomeDeCamada[]) {
-      expect(camada(nome)).toMatch(/^z-(\d+|\[\d+\])$/);
-    }
-  });
-
-  it("tem classe literal para toda camada declarada", () => {
-    expect(classesDeCamadaCompletas()).toBe(true);
-  });
-
-  it("mantém o painel de SOS acima do fundo de modal, e o modal acima do FAB", () => {
-    expect(CAMADAS.painelSos).toBeGreaterThan(CAMADAS.fundoModal);
-    expect(CAMADAS.fundoModal).toBeGreaterThan(CAMADAS.sos);
-    expect(CAMADAS.sos).toBeGreaterThan(CAMADAS.navegacao);
-  });
+test("camada() nunca devolve classe montada em tempo de execução", () => {
+  // O bug era exatamente este: `z-[${n}]`. O Tailwind varre o TEXTO do
+  // código; uma classe montada em runtime nunca é gerada, e a ordem visual
+  // da Home volta a ser a ordem do DOM.
+  for (const nome of Object.keys(CAMADAS) as NomeDeCamada[]) {
+    assert.match(camada(nome), /^z-(\d+|\[\d+\])$/);
+  }
 });
 
-/* ================================================================== *
+test("toda camada declarada tem classe literal", () => {
+  assert.equal(classesDeCamadaCompletas(), true);
+});
+
+test("painel de SOS acima do modal, modal acima do acionador flutuante", () => {
+  assert.ok(CAMADAS.painelSos > CAMADAS.fundoModal);
+  assert.ok(CAMADAS.fundoModal > CAMADAS.sos);
+  assert.ok(CAMADAS.sos > CAMADAS.navegacao);
+});
+
+/* ============================================================ *
  * #4 — uma folha inferior por vez
- * ================================================================== */
+ * ============================================================ */
 
-describe("RC3.2 · bottom sheets", () => {
-  it("abrir uma folha fecha a anterior", () => {
-    expect(abrirFolha("camadas", "destino")).toBe("destino");
-    expect(abrirFolha("destino", "camadas")).toBe("camadas");
-  });
-
-  it("tocar na mesma folha fecha", () => {
-    expect(abrirFolha("camadas", "camadas")).toBe("nenhuma");
-  });
-
-  it("fecha para o estado neutro", () => {
-    expect(fecharFolha()).toBe("nenhuma");
-    expect(algumaFolhaAberta("nenhuma")).toBe(false);
-    expect(algumaFolhaAberta("viagem")).toBe(true);
-  });
+test("abrir uma folha fecha a anterior", () => {
+  assert.equal(abrirFolha("camadas", "destino"), "destino");
+  assert.equal(abrirFolha("destino", "camadas"), "camadas");
 });
 
-/* ================================================================== *
+test("tocar na mesma folha fecha", () => {
+  assert.equal(abrirFolha("camadas", "camadas"), "nenhuma");
+});
+
+test("fechar volta ao estado neutro", () => {
+  assert.equal(fecharFolha(), "nenhuma");
+  assert.equal(algumaFolhaAberta("nenhuma"), false);
+  assert.equal(algumaFolhaAberta("viagem"), true);
+});
+
+/* ============================================================ *
  * #3 — o SOS não cobre modal nem teclado
- * ================================================================== */
+ * ============================================================ */
 
-describe("RC3.2 · SOS flutuante", () => {
-  it("aparece na Home limpa", () => {
-    expect(sosFlutuanteVisivel("nenhuma", false)).toBe(true);
-  });
-
-  it("some com qualquer folha aberta", () => {
-    expect(sosFlutuanteVisivel("destino", false)).toBe(false);
-    expect(sosFlutuanteVisivel("camadas", false)).toBe(false);
-    expect(sosFlutuanteVisivel("viagem", false)).toBe(false);
-  });
-
-  it("some com o teclado aberto", () => {
-    expect(sosFlutuanteVisivel("nenhuma", true)).toBe(false);
-  });
+test("SOS flutuante aparece na Home limpa", () => {
+  assert.equal(sosFlutuanteVisivel("nenhuma", false), true);
 });
 
-/* ================================================================== *
- * #1 — busca de pontos de apoio não pode seguir cada metro do GPS
- * ================================================================== */
-
-describe("RC3.2 · célula de busca", () => {
-  it("não muda com um deslocamento de poucos metros", () => {
-    const a = celulaDeBusca(-23.55052, -46.633308);
-    const b = celulaDeBusca(-23.55061, -46.633401);
-    expect(b).toBe(a);
-  });
-
-  it("muda quando o motociclista sai da célula", () => {
-    const a = celulaDeBusca(-23.55052, -46.633308);
-    const b = celulaDeBusca(-23.58052, -46.633308);
-    expect(b).not.toBe(a);
-  });
-
-  it("é estável e serializável", () => {
-    expect(celulaDeBusca(-23.55052, -46.633308)).toBe(
-      celulaDeBusca(-23.55052, -46.633308),
-    );
-    expect(typeof celulaDeBusca(0.1, 0.1)).toBe("string");
-  });
+test("SOS flutuante some com qualquer folha aberta", () => {
+  assert.equal(sosFlutuanteVisivel("destino", false), false);
+  assert.equal(sosFlutuanteVisivel("camadas", false), false);
+  assert.equal(sosFlutuanteVisivel("viagem", false), false);
 });
 
-/* ================================================================== *
+test("SOS flutuante some com o teclado aberto", () => {
+  assert.equal(sosFlutuanteVisivel("nenhuma", true), false);
+});
+
+/* ============================================================ *
+ * #1 — a busca de apoio não pode seguir cada metro do GPS
+ * ============================================================ */
+
+test("célula de busca não muda com deslocamento de poucos metros", () => {
+  assert.equal(celulaDeBusca(-23.55052, -46.633308), celulaDeBusca(-23.55061, -46.633401));
+});
+
+test("célula de busca muda ao sair da célula", () => {
+  assert.notEqual(celulaDeBusca(-23.55052, -46.633308), celulaDeBusca(-23.58052, -46.633308));
+});
+
+test("célula de busca é estável e serializável", () => {
+  assert.equal(celulaDeBusca(-23.55052, -46.633308), celulaDeBusca(-23.55052, -46.633308));
+  assert.equal(typeof celulaDeBusca(0.1, 0.1), "string");
+});
+
+/* ============================================================ *
  * #10 — enquadramento: usuário + trecho relevante
- * ================================================================== */
+ * ============================================================ */
 
-describe("RC3.2 · enquadramento da rota", () => {
-  it("sem passos, não enquadra nada", () => {
-    expect(passosDoEnquadramento([])).toBe(0);
-  });
-
-  it("inclui pelo menos um passo, mesmo curto", () => {
-    expect(passosDoEnquadramento([80])).toBe(1);
-  });
-
-  it("para de somar ao cobrir o limite", () => {
-    expect(passosDoEnquadramento([400, 400, 400, 400, 5000])).toBe(4);
-  });
-
-  it("não enquadra a rota inteira quando ela é longa", () => {
-    const passos = [300, 900, 600, 12000, 8000];
-    expect(passosDoEnquadramento(passos)).toBeLessThan(passos.length);
-  });
-
-  it("ignora distâncias ausentes sem quebrar", () => {
-    expect(passosDoEnquadramento([0, 0, 0])).toBe(3);
-  });
+test("sem passos, não enquadra nada", () => {
+  assert.equal(passosDoEnquadramento([]), 0);
 });
 
-/* ================================================================== *
- * #2 — o pedido de permissão sempre termina
- * ================================================================== */
+test("inclui pelo menos um passo, mesmo curto", () => {
+  assert.equal(passosDoEnquadramento([80]), 1);
+});
 
-describe("RC3.2 · pedido de permissão", () => {
-  it("tem um limite de tempo finito e maior que o timeout do GPS", () => {
-    expect(Number.isFinite(LIMITE_DE_PEDIDO_MS)).toBe(true);
-    expect(LIMITE_DE_PEDIDO_MS).toBeGreaterThan(10000);
-  });
+test("para de somar ao cobrir o limite", () => {
+  assert.equal(passosDoEnquadramento([400, 400, 400, 400, 5000]), 4);
+});
+
+test("não enquadra a rota inteira quando ela é longa", () => {
+  const passos = [300, 900, 600, 12000, 8000];
+  assert.ok(passosDoEnquadramento(passos) < passos.length);
+});
+
+test("distâncias zeradas não quebram o enquadramento", () => {
+  assert.equal(passosDoEnquadramento([0, 0, 0]), 3);
+});
+
+/* ============================================================ *
+ * #2 — o pedido de permissão sempre termina
+ * ============================================================ */
+
+test("pedido de permissão tem limite finito acima do timeout do GPS", () => {
+  assert.equal(Number.isFinite(LIMITE_DE_PEDIDO_MS), true);
+  assert.ok(LIMITE_DE_PEDIDO_MS > 10000);
 });
