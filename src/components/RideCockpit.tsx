@@ -79,7 +79,9 @@ export function PreparacaoDeViagem({
         {itens.map(([rotulo, valor, ok]) => (
           <li key={rotulo} className="flex items-center justify-between text-[11px]">
             <span className="text-muted-foreground">{rotulo}</span>
-            <span className={ok ? "font-semibold text-gold" : "text-muted-foreground"}>{valor}</span>
+            <span className={ok ? "font-semibold text-gold" : "text-muted-foreground"}>
+              {valor}
+            </span>
           </li>
         ))}
       </ul>
