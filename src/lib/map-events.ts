@@ -48,7 +48,13 @@ const DOURADO = "#D4AF37";
 const AZUL = "#4A9DD4";
 
 export const APARENCIA: Record<CategoriaEvento, AparenciaEvento> = {
-  sos: { prioridade: 0, rotulo: "SOS de motociclista", forma: "losango", cor: VERMELHO, pulsa: true },
+  sos: {
+    prioridade: 0,
+    rotulo: "SOS de motociclista",
+    forma: "losango",
+    cor: VERMELHO,
+    pulsa: true,
+  },
   acidente: { prioridade: 1, rotulo: "Acidente", forma: "triangulo", cor: VERMELHO, pulsa: false },
   roubo: { prioridade: 1, rotulo: "Roubo", forma: "triangulo", cor: VERMELHO, pulsa: false },
   perigo: { prioridade: 2, rotulo: "Perigo", forma: "triangulo", cor: AMBAR, pulsa: false },

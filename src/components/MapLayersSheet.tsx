@@ -12,13 +12,7 @@ export interface CamadaItem {
  * Bottom sheet de camadas. Só entram categorias que existem de verdade no
  * projeto — camada sem fonte de dado é promessa vazia no mapa.
  */
-export function MapLayersSheet({
-  itens,
-  onFechar,
-}: {
-  itens: CamadaItem[];
-  onFechar: () => void;
-}) {
+export function MapLayersSheet({ itens, onFechar }: { itens: CamadaItem[]; onFechar: () => void }) {
   return (
     <div
       className={`fixed inset-0 ${camada("fundoModal")} flex items-end bg-black/70 p-3`}

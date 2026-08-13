@@ -65,7 +65,8 @@ function MapDebugPage() {
     | string
     | undefined;
   const chave = (chavePropria && chavePropria.trim()) || chaveGerenciada;
-  const origemChave = chavePropria && chavePropria.trim() ? "própria" : chaveGerenciada ? "gerenciada" : "nenhuma";
+  const origemChave =
+    chavePropria && chavePropria.trim() ? "própria" : chaveGerenciada ? "gerenciada" : "nenhuma";
 
   // Captura mensagens do Google sem precisar de DevTools (o celular não tem).
   useEffect(() => {
@@ -212,11 +213,7 @@ function MapDebugPage() {
           });
         }
 
-        const montaOverlayDom = (
-          classe: string,
-          html: string,
-          pos: google.maps.LatLngLiteral,
-        ) => {
+        const montaOverlayDom = (classe: string, html: string, pos: google.maps.LatLngLiteral) => {
           class OverlayDom extends g.maps.OverlayView {
             private el: HTMLDivElement | null = null;
             onAdd() {
@@ -279,21 +276,29 @@ function MapDebugPage() {
     linhas.push(`quando: ${new Date().toISOString()}`);
     linhas.push(`origem: ${window.location.origin}`);
     linhas.push(`nível: ${NIVEIS[nivel].nome}`);
-    linhas.push(`layout: ${layout === "fixo" ? "container com altura fixa" : "igual ao Dashboard (min-h + h-full)"}`);
+    linhas.push(
+      `layout: ${layout === "fixo" ? "container com altura fixa" : "igual ao Dashboard (min-h + h-full)"}`,
+    );
     linhas.push(`userAgent: ${navigator.userAgent.slice(0, 160)}`);
     linhas.push(`devicePixelRatio: ${window.devicePixelRatio}`);
     linhas.push("");
 
     linhas.push("— CHAVE E API —");
-    linhas.push(`chave presente: ${chave ? "sim" : "NÃO"} (origem: ${origemChave}, ${chave ? chave.length : 0} caracteres — valor não exibido)`);
+    linhas.push(
+      `chave presente: ${chave ? "sim" : "NÃO"} (origem: ${origemChave}, ${chave ? chave.length : 0} caracteres — valor não exibido)`,
+    );
     const scripts = Array.from(document.querySelectorAll("script")).filter((s) =>
       s.src.includes("maps.googleapis.com"),
     );
-    linhas.push(`script maps/api/js no DOM: ${scripts.length > 0 ? "sim" : "NÃO"} (${scripts.length})`);
+    linhas.push(
+      `script maps/api/js no DOM: ${scripts.length > 0 ? "sim" : "NÃO"} (${scripts.length})`,
+    );
     linhas.push(`window.google.maps disponível: ${g?.maps ? "sim" : "NÃO"}`);
     linhas.push(`versão da Maps JS: ${g?.maps?.version ?? "—"}`);
     linhas.push(`gm_authFailure disparou: ${authFalhouRef.current ? "SIM" : "não"}`);
-    linhas.push(`eventos: ${eventosRef.current.length ? eventosRef.current.join(" | ") : "NENHUM (nem tilesloaded, nem idle)"}`);
+    linhas.push(
+      `eventos: ${eventosRef.current.length ? eventosRef.current.join(" | ") : "NENHUM (nem tilesloaded, nem idle)"}`,
+    );
     linhas.push("");
 
     linhas.push("— CONTAINER E ANCESTRAIS —");
@@ -310,9 +315,12 @@ function MapDebugPage() {
         );
         for (const pe of ["::before", "::after"]) {
           const p = getComputedStyle(node, pe);
-          const temFundo = p.backgroundColor !== "rgba(0, 0, 0, 0)" && p.backgroundColor !== "transparent";
+          const temFundo =
+            p.backgroundColor !== "rgba(0, 0, 0, 0)" && p.backgroundColor !== "transparent";
           if (p.content !== "none" && (temFundo || p.position === "absolute")) {
-            linhas.push(`   ${pe}: content=${p.content} bg=${p.backgroundColor} position=${p.position} inset=${p.inset} z=${p.zIndex}`);
+            linhas.push(
+              `   ${pe}: content=${p.content} bg=${p.backgroundColor} position=${p.position} inset=${p.inset} z=${p.zIndex}`,
+            );
           }
         }
         node = node.parentElement;
@@ -335,11 +343,17 @@ function MapDebugPage() {
       } else {
         pilha.slice(0, 8).forEach((el, idx) => {
           const cs = getComputedStyle(el);
-          linhas.push(`${idx}: ${descreve(el)} bg=${cs.backgroundColor} opacity=${cs.opacity} z=${cs.zIndex}`);
+          linhas.push(
+            `${idx}: ${descreve(el)} bg=${cs.backgroundColor} opacity=${cs.opacity} z=${cs.zIndex}`,
+          );
         });
         const topo = pilha[0];
         const dentro = container.contains(topo);
-        linhas.push(dentro ? "topo da pilha está DENTRO do mapa (sem camada cobrindo)" : ">>> TOPO DA PILHA ESTÁ FORA DO MAPA — existe camada cobrindo os tiles <<<");
+        linhas.push(
+          dentro
+            ? "topo da pilha está DENTRO do mapa (sem camada cobrindo)"
+            : ">>> TOPO DA PILHA ESTÁ FORA DO MAPA — existe camada cobrindo os tiles <<<",
+        );
       }
 
       linhas.push("");
@@ -349,15 +363,21 @@ function MapDebugPage() {
       if (gmStyle) {
         const rg = gmStyle.getBoundingClientRect();
         const cg = getComputedStyle(gmStyle);
-        linhas.push(`.gm-style: ${Math.round(rg.width)}x${Math.round(rg.height)}px bg=${cg.backgroundColor} opacity=${cg.opacity} visibility=${cg.visibility}`);
+        linhas.push(
+          `.gm-style: ${Math.round(rg.width)}x${Math.round(rg.height)}px bg=${cg.backgroundColor} opacity=${cg.opacity} visibility=${cg.visibility}`,
+        );
       }
       const imgs = Array.from(container.querySelectorAll("img"));
       const canvases = container.querySelectorAll("canvas");
       linhas.push(`imagens de tile no DOM: ${imgs.length} · canvas: ${canvases.length}`);
-      const primeira = imgs.find((im) => im.src.includes("googleapis") || im.src.includes("gstatic"));
+      const primeira = imgs.find(
+        (im) => im.src.includes("googleapis") || im.src.includes("gstatic"),
+      );
       if (primeira) {
         const cs = getComputedStyle(primeira);
-        linhas.push(`1ª tile: natural=${primeira.naturalWidth}x${primeira.naturalHeight} render=${Math.round(primeira.getBoundingClientRect().width)}x${Math.round(primeira.getBoundingClientRect().height)} complete=${primeira.complete} max-width=${cs.maxWidth} height=${cs.height} opacity=${cs.opacity} visibility=${cs.visibility} display=${cs.display}`);
+        linhas.push(
+          `1ª tile: natural=${primeira.naturalWidth}x${primeira.naturalHeight} render=${Math.round(primeira.getBoundingClientRect().width)}x${Math.round(primeira.getBoundingClientRect().height)} complete=${primeira.complete} max-width=${cs.maxWidth} height=${cs.height} opacity=${cs.opacity} visibility=${cs.visibility} display=${cs.display}`,
+        );
         if (cs.maxWidth === "100%") {
           linhas.push(">>> ATENÇÃO: max-width:100% aplicado às tiles (preflight do Tailwind). <<<");
         }

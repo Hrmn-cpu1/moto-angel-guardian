@@ -80,7 +80,9 @@ export function HomeTopBar({
 
       {/* Relógio, sinal e bateria já existem na barra do Android: aqui fica
           apenas o que o sistema não mostra — o estado da proteção. */}
-      {!online && <WifiOff size={12} className="shrink-0 text-emergency" aria-label="Sem conexão" />}
+      {!online && (
+        <WifiOff size={12} className="shrink-0 text-emergency" aria-label="Sem conexão" />
+      )}
       <span className="shrink-0 text-[9px] font-bold uppercase tracking-widest text-gold">
         {sharing ? "Compartilhando" : gpsOnline ? "Protegido" : "Sem GPS"}
       </span>

@@ -1,9 +1,4 @@
-import {
-  APARENCIA,
-  distanciaCurta,
-  eventoParaCartao,
-  type EventoNoMapa,
-} from "./map-events.ts";
+import { APARENCIA, distanciaCurta, eventoParaCartao, type EventoNoMapa } from "./map-events.ts";
 
 /**
  * Safety Copilot — o que avisar, quando avisar, e quando calar a boca.
@@ -56,7 +51,7 @@ export function textoDoAviso(e: EventoNoMapa): string {
 export function falaDoAviso(e: EventoNoMapa): string {
   const distancia =
     e.distanciaKm < 1
-      ? `a ${Math.round(e.distanciaKm * 1000 / 50) * 50} metros`
+      ? `a ${Math.round((e.distanciaKm * 1000) / 50) * 50} metros`
       : `a ${e.distanciaKm.toFixed(1).replace(".", ",")} quilômetros`;
   switch (e.categoria) {
     case "sos":
@@ -126,7 +121,10 @@ export function avaliarCopiloto(
   }
 
   const anunciados = falarAgora
-    ? { ...memoria.anunciados, [escolhido.id]: { emMs: agoraMs, distanciaKm: escolhido.distanciaKm } }
+    ? {
+        ...memoria.anunciados,
+        [escolhido.id]: { emMs: agoraMs, distanciaKm: escolhido.distanciaKm },
+      }
     : memoria.anunciados;
 
   return { memoria: { anunciados, atual: aviso }, aviso, falarAgora };

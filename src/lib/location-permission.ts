@@ -195,11 +195,7 @@ export const LIMITE_DE_CONSULTA_MS = 2500;
 export const LIMITE_DE_PEDIDO_MS = 12000;
 
 /** Resolve com `valorPadrao` se a promessa não responder a tempo. */
-export function comTempoLimite<T>(
-  promessa: Promise<T>,
-  ms: number,
-  valorPadrao: T,
-): Promise<T> {
+export function comTempoLimite<T>(promessa: Promise<T>, ms: number, valorPadrao: T): Promise<T> {
   return new Promise<T>((resolve) => {
     let respondido = false;
     const cronometro = setTimeout(() => {
@@ -314,9 +310,9 @@ export async function consultarPermissao(): Promise<LeituraPermissao> {
   const perms = (navigator as Navigator & { permissions?: Permissions }).permissions;
   if (perms?.query) {
     const resultado = await comTempoLimite(
-      perms.query({ name: "geolocation" as PermissionName }).then(
-        (s) => s as PermissionStatus | null,
-      ),
+      perms
+        .query({ name: "geolocation" as PermissionName })
+        .then((s) => s as PermissionStatus | null),
       LIMITE_DE_CONSULTA_MS,
       null,
     );
@@ -407,9 +403,11 @@ export async function abrirConfiguracoesDoApp(): Promise<boolean> {
   // tem. Em vez de inventar dependência, olhamos o que estiver registrado e,
   // se não houver nada, devolvemos false para a tela mostrar o passo a passo.
   const plugins =
-    (window as unknown as {
-      Capacitor?: { Plugins?: Record<string, Record<string, (o?: unknown) => Promise<unknown>>> };
-    }).Capacitor?.Plugins ?? {};
+    (
+      window as unknown as {
+        Capacitor?: { Plugins?: Record<string, Record<string, (o?: unknown) => Promise<unknown>>> };
+      }
+    ).Capacitor?.Plugins ?? {};
   const tentativas: Array<[string, string, unknown]> = [
     ["NativeSettings", "openAndroid", { option: "application_details" }],
     ["App", "openSettings", undefined],

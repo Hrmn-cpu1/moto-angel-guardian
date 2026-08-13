@@ -215,33 +215,63 @@ test("'estou bem' encerra sem SOS", () => {
   assert.equal(e.estado, "countdown");
   const r = e.cancelar();
   assert.equal(r.estado, "cancelled");
-  assert.equal(decidirAcionamento({ deteccaoLigada: true, modoDiagnostico: false, sosAtivo: false, estado: r.estado }).acionar, false);
+  assert.equal(
+    decidirAcionamento({
+      deteccaoLigada: true,
+      modoDiagnostico: false,
+      sosAtivo: false,
+      estado: r.estado,
+    }).acionar,
+    false,
+  );
 });
 
 test("sem resposta, aciona exatamente um SOS pelo caminho manual", () => {
   const e = new CrashDetectionEngine();
   e.processarSerie(serieDeQueda());
   const r = e.confirmar();
-  const d = decidirAcionamento({ deteccaoLigada: true, modoDiagnostico: false, sosAtivo: false, estado: r.estado });
+  const d = decidirAcionamento({
+    deteccaoLigada: true,
+    modoDiagnostico: false,
+    sosAtivo: false,
+    estado: r.estado,
+  });
   assert.equal(d.acionar, true);
   assert.equal(d.origem, "automatic_crash_detection");
 });
 
 test("com SOS já ativo, não abre um segundo", () => {
-  const d = decidirAcionamento({ deteccaoLigada: true, modoDiagnostico: false, sosAtivo: true, estado: "sos" });
+  const d = decidirAcionamento({
+    deteccaoLigada: true,
+    modoDiagnostico: false,
+    sosAtivo: true,
+    estado: "sos",
+  });
   assert.equal(d.acionar, false);
   assert.match(d.motivo, /ja existe/i);
 });
 
 test("detecção desligada nunca aciona", () => {
-  const d = decidirAcionamento({ deteccaoLigada: false, modoDiagnostico: false, sosAtivo: false, estado: "sos" });
+  const d = decidirAcionamento({
+    deteccaoLigada: false,
+    modoDiagnostico: false,
+    sosAtivo: false,
+    estado: "sos",
+  });
   assert.equal(d.acionar, false);
 });
 
 test("MODO DIAGNÓSTICO nunca aciona, em nenhuma combinação", () => {
   for (const deteccaoLigada of [true, false]) {
     for (const sosAtivo of [true, false]) {
-      for (const estado of ["normal", "anomaly", "candidate", "countdown", "cancelled", "sos"] as const) {
+      for (const estado of [
+        "normal",
+        "anomaly",
+        "candidate",
+        "countdown",
+        "cancelled",
+        "sos",
+      ] as const) {
         const d = decidirAcionamento({ deteccaoLigada, modoDiagnostico: true, sosAtivo, estado });
         assert.equal(d.acionar, false, `diagnóstico acionou em ${estado}`);
         assert.equal(d.origem, null);

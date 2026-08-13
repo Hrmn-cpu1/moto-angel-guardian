@@ -68,7 +68,10 @@ export async function publicarPresenca(pos: {
     if (error) return { status: "desconhecido", erro: error.message };
     return { status: interpretarStatus(data), erro: null };
   } catch (e) {
-    return { status: "desconhecido", erro: e instanceof Error ? e.message : "Falha ao enviar posição." };
+    return {
+      status: "desconhecido",
+      erro: e instanceof Error ? e.message : "Falha ao enviar posição.",
+    };
   }
 }
 

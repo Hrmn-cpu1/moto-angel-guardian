@@ -70,7 +70,9 @@ export function LocationPermissionGate({ onGranted }: Props) {
             >
               {bloqueada ? <ShieldAlert size={32} /> : <MapPin size={32} />}
             </div>
-            {!bloqueada && <div className="absolute inset-0 animate-ping rounded-full bg-gold/10" />}
+            {!bloqueada && (
+              <div className="absolute inset-0 animate-ping rounded-full bg-gold/10" />
+            )}
           </div>
 
           <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">

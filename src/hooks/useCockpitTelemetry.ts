@@ -64,8 +64,7 @@ export function useCockpitTelemetry(ativo: boolean) {
           speedMs: pos.coords.speed,
           accuracyM: pos.coords.accuracy,
         });
-        const suave =
-          bruta == null ? null : suavizarVelocidade(historico.current, bruta);
+        const suave = bruta == null ? null : suavizarVelocidade(historico.current, bruta);
         if (suave != null) historico.current = [...historico.current, suave].slice(-3);
         velocidadeRef.current = suave;
         setVelocidade(suave);

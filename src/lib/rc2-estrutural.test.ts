@@ -108,15 +108,14 @@ test("B: cancelar e resolver derrubam o alerta — nada de SOS fantasma", () => 
   assert.ok(/WHEN NEW\.status = 'cancelled' THEN 'cancelled'/i.test(sql));
   assert.ok(/WHEN NEW\.status IN \('resolved','notified'\) THEN 'resolved'/i.test(sql));
   assert.ok(/ELSE 'expired'/i.test(sql), "qualquer outro status final precisa encerrar o alerta");
-  assert.ok(
-    /a\.status = 'active'/i.test(sql),
-    "nearby_alerts só pode devolver alerta ativo",
-  );
+  assert.ok(/a\.status = 'active'/i.test(sql), "nearby_alerts só pode devolver alerta ativo");
 });
 
 test("B: o cliente não cria nem apaga alerta de SOS", () => {
   const sql = sqlB();
-  assert.ok(/WITH CHECK \(auth\.uid\(\) = user_id AND type <> 'sos' AND sos_event_id IS NULL\)/i.test(sql));
+  assert.ok(
+    /WITH CHECK \(auth\.uid\(\) = user_id AND type <> 'sos' AND sos_event_id IS NULL\)/i.test(sql),
+  );
   assert.ok(/FOR DELETE TO authenticated[\s\S]{0,120}sos_event_id IS NULL/i.test(sql));
 });
 
@@ -128,7 +127,10 @@ test("B: o tipo sos entra sem derrubar os quatro existentes", () => {
 test("B: nearby_alerts não vaza nome completo, telefone nem e-mail", () => {
   const sql = sqlB();
   const corpo = corpoDeFuncao(sql, "nearby_alerts");
-  assert.ok(/split_part\(COALESCE\(p\.name,''\), ' ', 1\)/i.test(corpo), "precisa expor só o primeiro nome");
+  assert.ok(
+    /split_part\(COALESCE\(p\.name,''\), ' ', 1\)/i.test(corpo),
+    "precisa expor só o primeiro nome",
+  );
   assert.ok(!/p\.phone/i.test(corpo), "telefone não pode sair da RPC");
   assert.ok(!/p\.email/i.test(corpo), "e-mail não pode sair da RPC");
 });
@@ -212,7 +214,9 @@ test("C4: online_riders nunca devolve o próprio usuário", () => {
 
 test("C5: posição vencida não aparece", () => {
   // O TTL agora vem do teto do servidor (P0.4-B), não do valor cru do cliente.
-  assert.ok(/l\.updated_at > now\(\) - \(lim\.minutos \|\| ' minutes'\)/i.test(corpoDe("online_riders")));
+  assert.ok(
+    /l\.updated_at > now\(\) - \(lim\.minutos \|\| ' minutes'\)/i.test(corpoDe("online_riders")),
+  );
 });
 
 test("C6: fora do raio não aparece", () => {
@@ -267,7 +271,10 @@ test("D: nenhuma rota guarda a permissão em useState local", () => {
       !/useState\(false\)[\s\S]{0,40}(granted|permission)/i.test(src),
       `${arquivo} ainda guarda a permissão em estado local`,
     );
-    assert.ok(src.includes("useLocationPermission"), `${arquivo} precisa usar o estado compartilhado`);
+    assert.ok(
+      src.includes("useLocationPermission"),
+      `${arquivo} precisa usar o estado compartilhado`,
+    );
   }
 });
 
@@ -278,7 +285,10 @@ test("D: o gate consulta a plataforma, não a memória do componente", () => {
   const lib = ler("src/lib/location-permission.ts");
   assert.ok(/checkPermissions/.test(lib), "falta consultar o plugin nativo");
   assert.ok(/permissions[\s\S]{0,40}query/.test(lib), "falta a Permissions API do navegador");
-  assert.ok(/visibilitychange/.test(ler("src/hooks/useLocationPermission.ts")), "falta reconsultar ao voltar");
+  assert.ok(
+    /visibilitychange/.test(ler("src/hooks/useLocationPermission.ts")),
+    "falta reconsultar ao voltar",
+  );
 });
 
 /* ================================================================== *
@@ -338,11 +348,7 @@ test("E2/E3: nenhuma tela abre mapa externo por fora da ponte", () => {
       src.match(/window\.open\([^)]*google\.com\/maps[\s\S]{0,120}?\)/g) ??
       src.match(/window\.open\(\s*\n?\s*(url|`https:\/\/www\.google)/g) ??
       [];
-    assert.deepEqual(
-      aberturasCruas,
-      [],
-      `${arquivo} ainda abre o Google Maps por conta própria`,
-    );
+    assert.deepEqual(aberturasCruas, [], `${arquivo} ainda abre o Google Maps por conta própria`);
     assert.ok(
       !/location\.href\s*=\s*[`"']https:\/\/www\.google\.com\/maps/.test(src),
       `${arquivo} navega a própria WebView para o Google Maps`,
@@ -397,7 +403,9 @@ test("E: o helper nunca constrói esquema proprietário", () => {
 test("P0.4-A.1: a policy USING (true) é substituída, não mantida", () => {
   const sql = sqlB();
   assert.ok(
-    /DROP POLICY IF EXISTS "alerts readable by authenticated" ON public\.community_alerts/i.test(sql),
+    /DROP POLICY IF EXISTS "alerts readable by authenticated" ON public\.community_alerts/i.test(
+      sql,
+    ),
     "a policy aberta precisa ser derrubada nesta migration",
   );
   const nova = /CREATE POLICY "alerts select scoped"[\s\S]*?USING \(([\s\S]*?)\);/i.exec(sql);
@@ -433,7 +441,9 @@ test("P0.4-A.1: nenhuma migration deixa community_alerts com SELECT aberto no fi
 
 test("P0.4-A.2: alertas manuais continuam legíveis, criáveis e removíveis", () => {
   const sql = sqlB();
-  const condicao = /CREATE POLICY "alerts select scoped"[\s\S]*?USING \(([\s\S]*?)\);/i.exec(sql)![1];
+  const condicao = /CREATE POLICY "alerts select scoped"[\s\S]*?USING \(([\s\S]*?)\);/i.exec(
+    sql,
+  )![1];
   assert.ok(
     /sos_event_id IS NULL/i.test(condicao),
     "alerta manual (sem sos_event_id) precisa continuar visível para a comunidade",
@@ -478,9 +488,10 @@ test("P0.4-B.3/5: todas as RPCs impõem raio máximo no servidor", () => {
   for (const { fn, sql, raio } of TETOS) {
     const corpo = corpoDeFuncao(sql(), fn);
     assert.ok(
-      new RegExp(`LEAST\\(GREATEST\\(COALESCE\\(_radius_km[^)]*\\)[^)]*\\),\\s*${raio}\\)`, "i").test(
-        corpo,
-      ),
+      new RegExp(
+        `LEAST\\(GREATEST\\(COALESCE\\(_radius_km[^)]*\\)[^)]*\\),\\s*${raio}\\)`,
+        "i",
+      ).test(corpo),
       `${fn} precisa limitar o raio a ${raio} km no SQL`,
     );
     assert.ok(
@@ -495,9 +506,10 @@ test("P0.4-B.4/6/7: todas as RPCs impõem teto de tempo no servidor", () => {
     const corpo = corpoDeFuncao(sql(), fn);
     const param = unidade === "horas" ? "_hours" : "_minutes";
     assert.ok(
-      new RegExp(`LEAST\\(GREATEST\\(COALESCE\\(${param}[^)]*\\)[^)]*\\),\\s*${tempo}\\)`, "i").test(
-        corpo,
-      ),
+      new RegExp(
+        `LEAST\\(GREATEST\\(COALESCE\\(${param}[^)]*\\)[^)]*\\),\\s*${tempo}\\)`,
+        "i",
+      ).test(corpo),
       `${fn} precisa limitar ${param} a ${tempo}`,
     );
     assert.ok(
@@ -544,7 +556,9 @@ test("P0.4-B: o contrato que a interface usa hoje continua valendo", () => {
 test("P0.4-C.8/9: o hook não liga a comunidade por conta própria", () => {
   const hook = ler("src/hooks/useNearbyRiders.ts");
   assert.ok(
-    !/comunidade:\s*verComunidade\s*=\s*true|comunidade\?\s*:\s*boolean\s*}\s*=\s*\{\s*\}/.test(hook),
+    !/comunidade:\s*verComunidade\s*=\s*true|comunidade\?\s*:\s*boolean\s*}\s*=\s*\{\s*\}/.test(
+      hook,
+    ),
     "nenhum default implícito de camada ligada",
   );
   assert.ok(/consultasHabilitadas\(camadas, !!pos\)/.test(hook), "a decisão vem das camadas");
@@ -557,7 +571,10 @@ test("P0.4-C.8/9: o hook não liga a comunidade por conta própria", () => {
 test("P0.4-C: o mapa tem o controle e passa a preferência ao hook", () => {
   const mapa = ler("src/routes/_authenticated/map.tsx");
   assert.ok(/useMapLayers\(\)/.test(mapa), "falta o hook de camadas");
-  assert.ok(/useNearbyRiders\(position, 50, camadas\)/.test(mapa), "a preferência precisa chegar ao hook");
+  assert.ok(
+    /useNearbyRiders\(position, 50, camadas\)/.test(mapa),
+    "a preferência precisa chegar ao hook",
+  );
   assert.ok(/alternar\("comunidade"\)/.test(mapa), "falta o botão que alterna a camada");
   assert.ok(/role="switch"/.test(mapa) && /aria-checked=\{camadas\.comunidade\}/.test(mapa));
   assert.ok(/Outros motoqueiros/.test(mapa), "falta o rótulo do controle");
@@ -582,10 +599,9 @@ test("db-novo é temporário, documentado e não está crescendo", () => {
   assert.ok(/TODO — REMOVER ESTA PONTE/.test(ponte), "falta o aviso de remoção");
   assert.ok(/typecheck/.test(ponte), "o TODO precisa dizer o que rodar depois");
 
-  const chamadores = [
-    "src/hooks/useRiderVisibility.ts",
-    "src/hooks/useNearbyRiders.ts",
-  ].filter((f) => /from "@\/lib\/db-novo"/.test(ler(f)));
+  const chamadores = ["src/hooks/useRiderVisibility.ts", "src/hooks/useNearbyRiders.ts"].filter(
+    (f) => /from "@\/lib\/db-novo"/.test(ler(f)),
+  );
   assert.deepEqual(
     chamadores.sort(),
     ["src/hooks/useNearbyRiders.ts", "src/hooks/useRiderVisibility.ts"],
@@ -637,11 +653,17 @@ test("P0.5-A.2/3: origem precisa ser recente, válida e fora de Null Island", ()
   for (const { fn, sql } of RPCS_DE_PROXIMIDADE) {
     const eu = /WITH eu AS \(([\s\S]*?)\)\s*,\s*lim/i.exec(corpoEfetivo(sql(), fn))?.[1] ?? "";
     assert.ok(eu.length > 0, `${fn}: bloco de origem não encontrado`);
-    assert.ok(/updated_at > now\(\) - interval '\d+ minutes'/i.test(eu), `${fn}: falta TTL da origem`);
+    assert.ok(
+      /updated_at > now\(\) - interval '\d+ minutes'/i.test(eu),
+      `${fn}: falta TTL da origem`,
+    );
     assert.ok(/me\.lat BETWEEN -90 AND 90/i.test(eu), `${fn}: falta validar a origem`);
     assert.ok(/NOT \(me\.lat = 0 AND me\.lng = 0\)/i.test(eu), `${fn}: Null Island como origem`);
     // CROSS JOIN com bloco vazio = zero linhas: sem posição recente, nada sai.
-    assert.ok(/CROSS JOIN eu/i.test(corpoEfetivo(sql(), fn)), `${fn}: origem precisa ser obrigatória`);
+    assert.ok(
+      /CROSS JOIN eu/i.test(corpoEfetivo(sql(), fn)),
+      `${fn}: origem precisa ser obrigatória`,
+    );
   }
 });
 
@@ -669,17 +691,20 @@ test("P0.5-A.6: a primeira linha de presença nunca nasce publicada", () => {
 
 test("P0.5-A: presence_touch escreve só a própria linha e valida entrada", () => {
   const corpo = corpoEfetivo(sqlRc2(), "presence_touch");
-  assert.ok(/v_uid\s+uuid\s*:=\s*auth\.uid\(\)/i.test(corpo), "falta derivar o usuário de auth.uid()");
-  assert.ok(/IF v_uid IS NULL THEN[\s\S]*?RAISE EXCEPTION/i.test(corpo), "falta exigir autenticação");
+  assert.ok(
+    /v_uid\s+uuid\s*:=\s*auth\.uid\(\)/i.test(corpo),
+    "falta derivar o usuário de auth.uid()",
+  );
+  assert.ok(
+    /IF v_uid IS NULL THEN[\s\S]*?RAISE EXCEPTION/i.test(corpo),
+    "falta exigir autenticação",
+  );
   assert.ok(/_lat BETWEEN -90 AND 90/i.test(corpo) && /_lat = 0 AND _lng = 0/i.test(corpo));
   const assinatura =
     /CREATE OR REPLACE FUNCTION\s+public\.presence_touch\s*\(([\s\S]*?)\)\s*RETURNS/i.exec(
       sqlRc2(),
     )?.[1] ?? "";
-  assert.ok(
-    !/user_id|uuid/i.test(assinatura),
-    "a função não pode aceitar user_id por parâmetro",
-  );
+  assert.ok(!/user_id|uuid/i.test(assinatura), "a função não pode aceitar user_id por parâmetro");
   assert.ok(/SECURITY DEFINER/i.test(sqlRc2()) && /SET search_path = public/i.test(sqlRc2()));
 });
 
@@ -727,10 +752,7 @@ test("P0.5-B.2/8: Home e /map compartilham a mesma preferência", () => {
   const chaves = lib.match(/const CHAVE_CAMADAS = "[^"]+"/g) ?? [];
   assert.equal(chaves.length, 1, "só pode existir uma chave de persistência");
   for (const arquivo of TELAS_DE_MAPA) {
-    assert.ok(
-      !/localStorage/.test(ler(arquivo)),
-      `${arquivo} não pode ter persistência própria`,
-    );
+    assert.ok(!/localStorage/.test(ler(arquivo)), `${arquivo} não pode ter persistência própria`);
   }
 });
 
@@ -788,7 +810,9 @@ test("P0.5-C: os dois controles do mapa vivem no mesmo container empilhado", () 
 
 test("P0.6.1/2/3: authenticated perde INSERT, UPDATE e DELETE em live_locations", () => {
   const sql = semComentarios(sqlRc2());
-  const revoke = /REVOKE\s+([A-Z, ]+?)\s+ON public\.live_locations\s+FROM\s+authenticated/i.exec(sql);
+  const revoke = /REVOKE\s+([A-Z, ]+?)\s+ON public\.live_locations\s+FROM\s+authenticated/i.exec(
+    sql,
+  );
   assert.ok(revoke, "falta revogar a escrita direta");
   const revogados = revoke[1].toUpperCase();
   for (const dml of ["INSERT", "UPDATE", "DELETE"]) {
@@ -815,7 +839,9 @@ test("P0.6.4: service_role continua com acesso", () => {
     "service_role precisa manter acesso",
   );
   assert.ok(
-    !/REVOKE[^;]*ON public\.live_locations[^;]*FROM[^;]*service_role/i.test(semComentarios(sqlRc2())),
+    !/REVOKE[^;]*ON public\.live_locations[^;]*FROM[^;]*service_role/i.test(
+      semComentarios(sqlRc2()),
+    ),
     "nada pode ter sido revogado de service_role",
   );
 });
@@ -836,7 +862,10 @@ test("P0.6.5/6: nenhum arquivo de src/ faz DML direto em live_locations", () => 
   for (const arquivo of arquivos) {
     const src = semComentariosTs(ler(arquivo));
     for (const dml of ["insert", "upsert", "update", "delete"]) {
-      const re = new RegExp(`from\\(\\s*["']live_locations["']\\s*\\)[\\s\\S]{0,120}?\\.${dml}\\(`, "i");
+      const re = new RegExp(
+        `from\\(\\s*["']live_locations["']\\s*\\)[\\s\\S]{0,120}?\\.${dml}\\(`,
+        "i",
+      );
       if (re.test(src)) infratores.push(`${arquivo}: .${dml}()`);
     }
   }
@@ -862,7 +891,8 @@ test("P0.6.10/11/12: set_location_sharing muda só sharing e só do próprio usu
   assert.ok(!/user_id|uuid/i.test(assinatura), "não pode aceitar user_id");
   assert.ok(!/_lat|_lng/i.test(assinatura), "não pode aceitar coordenada");
 
-  const doUpdate = /UPDATE public\.live_locations ll([\s\S]*?)WHERE ll\.user_id = v_uid;/i.exec(corpo)?.[1] ?? "";
+  const doUpdate =
+    /UPDATE public\.live_locations ll([\s\S]*?)WHERE ll\.user_id = v_uid;/i.exec(corpo)?.[1] ?? "";
   assert.ok(/sharing = _enabled/i.test(doUpdate), "precisa alterar sharing");
   assert.ok(!/\blat\s*=|\blng\s*=|updated_at\s*=/i.test(doUpdate), "não pode tocar na posição");
   assert.ok(/WHERE ll\.user_id = v_uid/i.test(corpo), "só a própria linha");
@@ -896,14 +926,24 @@ test("P0.6.14/15: salto impossível é recusado, movimento normal continua aceit
 test("P0.6: a primeira posição é declarada como vinda do cliente", () => {
   const corpo = corpoEfetivo(sqlRc2(), "presence_touch");
   assert.ok(
-    /LIMITAÇÃO ASSUMIDA[\s\S]*?vem do\s*--\s*cliente|LIMITAÇÃO ASSUMIDA[\s\S]*?cliente/i.test(corpo),
+    /LIMITAÇÃO ASSUMIDA[\s\S]*?vem do\s*--\s*cliente|LIMITAÇÃO ASSUMIDA[\s\S]*?cliente/i.test(
+      corpo,
+    ),
     "a limitação da primeira posição precisa estar escrita no código",
   );
 });
 
 test("P0.6.18: nenhuma documentação chama a origem de não spoofável", () => {
-  const docs = ["RC2-ANDROID-RELEASE-AUDIT.md", "RC2-ANDROID-ARCHITECTURE.md", "RC2-MIGRATIONS-FINAL.md"];
-  const proibidas = [/n[ãa]o\s+spoof[áa]vel/i, /n[ãa]o h[áa] o que falsificar/i, /imposs[íi]vel de abusar/i];
+  const docs = [
+    "RC2-ANDROID-RELEASE-AUDIT.md",
+    "RC2-ANDROID-ARCHITECTURE.md",
+    "RC2-MIGRATIONS-FINAL.md",
+  ];
+  const proibidas = [
+    /n[ãa]o\s+spoof[áa]vel/i,
+    /n[ãa]o h[áa] o que falsificar/i,
+    /imposs[íi]vel de abusar/i,
+  ];
   for (const doc of docs) {
     // Citar a frase errada para corrigi-la é o oposto de prometê-la: linhas
     // entre aspas e blocos de citação ficam fora da varredura.
@@ -930,17 +970,26 @@ test("P0.6: existe política de retenção da presença privada", () => {
   const corpo = corpoEfetivo(sqlRc2(), "purge_stale_presence");
   assert.ok(/DELETE FROM public\.live_locations/i.test(corpo));
   assert.ok(
-    /DELETE FROM public\.live_locations ll\s*WHERE ll\.sharing = false/i.test(corpo.replace(/\s+/g, " ")),
+    /DELETE FROM public\.live_locations ll\s*WHERE ll\.sharing = false/i.test(
+      corpo.replace(/\s+/g, " "),
+    ),
     "só a presença privada vencida é apagada inteira",
   );
   assert.ok(
-    /GRANT EXECUTE ON FUNCTION public\.purge_stale_presence\(integer\) TO service_role/i.test(sqlRc2()),
+    /GRANT EXECUTE ON FUNCTION public\.purge_stale_presence\(integer\) TO service_role/i.test(
+      sqlRc2(),
+    ),
     "só service_role pode purgar",
   );
   assert.ok(
-    !/GRANT EXECUTE ON FUNCTION public\.purge_stale_presence\(integer\) TO authenticated/i.test(sqlRc2()),
+    !/GRANT EXECUTE ON FUNCTION public\.purge_stale_presence\(integer\) TO authenticated/i.test(
+      sqlRc2(),
+    ),
   );
-  assert.ok(/reten[çc][ãa]o/i.test(ler("RC2-MIGRATIONS-FINAL.md")), "a política precisa estar documentada");
+  assert.ok(
+    /reten[çc][ãa]o/i.test(ler("RC2-MIGRATIONS-FINAL.md")),
+    "a política precisa estar documentada",
+  );
 });
 
 /* ================================================================== *
@@ -999,7 +1048,10 @@ test("ATOM.2: a migration 30 não mexe no modelo de localização", () => {
 });
 
 test("ATOM.3: nenhum objeto é definido duas vezes na mesma migration", () => {
-  for (const [nome, sql] of [[MIG_B, sqlB()], [MIG_C, sqlC()]] as const) {
+  for (const [nome, sql] of [
+    [MIG_B, sqlB()],
+    [MIG_C, sqlC()],
+  ] as const) {
     const definicoes = [...sql.matchAll(/CREATE OR REPLACE FUNCTION\s+public\.(\w+)\s*\(/gi)].map(
       (m) => m[1],
     );
@@ -1017,7 +1069,10 @@ test("ATOM.4: a parte 1 sozinha já protege live_locations", () => {
   const parte1 = sql.slice(0, sql.search(/CREATE TRIGGER trg_sos_sync_community_alert/i));
   for (const [nome, re] of [
     ["default privado", /ALTER COLUMN sharing SET DEFAULT false/i],
-    ["escrita fechada", /REVOKE INSERT, UPDATE, DELETE ON public\.live_locations FROM authenticated/i],
+    [
+      "escrita fechada",
+      /REVOKE INSERT, UPDATE, DELETE ON public\.live_locations FROM authenticated/i,
+    ],
     ["rate limit", /RETURN 'throttled'/i],
     ["anti-teleporte", /RETURN 'rejected_jump'/i],
     ["retenção", /FUNCTION public\.purge_stale_presence/i],
@@ -1029,21 +1084,34 @@ test("ATOM.4: a parte 1 sozinha já protege live_locations", () => {
 
 test("RETENÇÃO: coordenada vencida não fica guardada por causa de um booleano", () => {
   const corpo = corpoEfetivo(sqlRc2(), "purge_stale_presence");
-  assert.ok(/DELETE FROM public\.live_locations/i.test(corpo), "presença privada vencida é apagada");
+  assert.ok(
+    /DELETE FROM public\.live_locations/i.test(corpo),
+    "presença privada vencida é apagada",
+  );
   assert.ok(/ll\.sharing = false/i.test(corpo));
   // O ponto novo: com sharing ligado, a coordenada vencida é descartada e a
   // preferência fica. Preferência se guarda com booleano, não com posição.
   const update =
-    /UPDATE public\.live_locations ll([\s\S]*?)GET DIAGNOSTICS v_anonimizadas/i.exec(corpo)?.[1] ?? "";
+    /UPDATE public\.live_locations ll([\s\S]*?)GET DIAGNOSTICS v_anonimizadas/i.exec(corpo)?.[1] ??
+    "";
   assert.ok(update.length > 0, "falta a minimização das linhas com sharing ligado");
   // A verificação precisa separar SET de WHERE: filtrar POR sharing é o que
   // se quer; ESCREVER em sharing é o que não pode. Olhar o bloco inteiro de
   // uma vez torna a asserção impossível de satisfazer.
   const setClause = /SET([\s\S]*?)WHERE/i.exec(update)?.[1] ?? "";
   const whereClause = /WHERE([\s\S]*)$/i.exec(update)?.[1] ?? "";
-  assert.ok(/lat = 0/i.test(setClause) && /lng = 0/i.test(setClause), "a coordenada precisa ser descartada");
-  assert.ok(!/sharing\s*=/i.test(setClause), "a preferência do usuário não pode ser alterada pela purga");
-  assert.ok(/ll\.sharing = true/i.test(whereClause), "só as linhas com sharing ligado são minimizadas");
+  assert.ok(
+    /lat = 0/i.test(setClause) && /lng = 0/i.test(setClause),
+    "a coordenada precisa ser descartada",
+  );
+  assert.ok(
+    !/sharing\s*=/i.test(setClause),
+    "a preferência do usuário não pode ser alterada pela purga",
+  );
+  assert.ok(
+    /ll\.sharing = true/i.test(whereClause),
+    "só as linhas com sharing ligado são minimizadas",
+  );
 });
 
 /* ================================================================== *
@@ -1077,7 +1145,10 @@ test("ATOMICIDADE: o endurecimento vem ANTES do SOS comunitário no arquivo", ()
   const posAlerts = sql.search(/CREATE OR REPLACE FUNCTION\s+public\.nearby_alerts/i);
   assert.ok(posRevoke > 0 && posPresence > 0 && posTrigger > 0 && posAlerts > 0);
   assert.ok(posRevoke < posTrigger, "fechar a escrita precisa vir antes do espelho de SOS");
-  assert.ok(posPresence < posAlerts, "presence_touch precisa existir antes de nearby_alerts usá-la");
+  assert.ok(
+    posPresence < posAlerts,
+    "presence_touch precisa existir antes de nearby_alerts usá-la",
+  );
 });
 
 test("ATOMICIDADE: a migration 30 só acrescenta a camada de riders", () => {
@@ -1146,7 +1217,14 @@ test("ANDROID: nenhuma permissão sem justificativa escrita", () => {
 
 test("ANDROID: o CI é gate, não gerador de APK otimista", () => {
   const wf = ler(".github/workflows/android.yml");
-  for (const passo of ["npm ci", "npm test", "npm run typecheck", "npm run build", "cap sync android", "assembleDebug"]) {
+  for (const passo of [
+    "npm ci",
+    "npm test",
+    "npm run typecheck",
+    "npm run build",
+    "cap sync android",
+    "assembleDebug",
+  ]) {
     assert.ok(wf.includes(passo), `o workflow precisa rodar ${passo}`);
   }
   assert.ok(/if: success\(\)/.test(wf), "artefato não pode ser publicado após falha");

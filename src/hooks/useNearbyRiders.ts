@@ -4,11 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { dbNovo } from "@/lib/db-novo";
 import { registrarPresenca } from "@/lib/presence";
 import type { OnlineRider } from "./useOnlineRiders";
-import {
-  CAMADAS_PADRAO,
-  consultasHabilitadas,
-  type CamadasDoMapa,
-} from "@/lib/map-layers";
+import { CAMADAS_PADRAO, consultasHabilitadas, type CamadasDoMapa } from "@/lib/map-layers";
 
 /**
  * Duas visibilidades diferentes, duas fontes diferentes (RC2 hotfix P0.3-C).
@@ -104,7 +100,8 @@ export function useNearbyRiders(
   }, [invalidate, instanceId]);
 
   const listaContatos = useMemo<RiderNoMapa[]>(
-    () => (verContatos ? (contatos.data ?? []).map((r) => ({ ...r, origem: "contato" as const })) : []),
+    () =>
+      verContatos ? (contatos.data ?? []).map((r) => ({ ...r, origem: "contato" as const })) : [],
     [contatos.data, verContatos],
   );
 

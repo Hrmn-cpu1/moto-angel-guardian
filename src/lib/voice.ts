@@ -80,10 +80,6 @@ export function devefalar(ctx: {
   falarAgora: boolean;
 }): boolean {
   return (
-    ctx.vozLigada &&
-    ctx.suportada &&
-    ctx.viagemAtiva &&
-    ctx.modo === "pilotando" &&
-    ctx.falarAgora
+    ctx.vozLigada && ctx.suportada && ctx.viagemAtiva && ctx.modo === "pilotando" && ctx.falarAgora
   );
 }

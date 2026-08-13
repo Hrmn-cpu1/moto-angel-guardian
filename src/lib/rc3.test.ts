@@ -71,7 +71,10 @@ test("BUG1: recusa explícita derruba, porque a pessoa pode ter revogado", () =>
 
 test("BUG1: sem concessão anterior, a leitura nova vale como veio", () => {
   const nada = { status: "desconhecido", origem: "nenhuma" } as const;
-  assert.equal(reconciliarLeitura(nada, { status: "perguntar", origem: "web" }).status, "perguntar");
+  assert.equal(
+    reconciliarLeitura(nada, { status: "perguntar", origem: "web" }).status,
+    "perguntar",
+  );
 });
 
 test("BUG1: trocar de aba e voltar não reabre o onboarding", () => {
@@ -341,7 +344,11 @@ const lerSemComentarios = (p: string) =>
     .replace(/\/\*[\s\S]*?\*\//g, " ")
     .replace(/(^|[^:])\/\/[^\n]*/g, "$1 ");
 
-const ev = (categoria: EventoNoMapa["categoria"], distanciaKm: number, id: string = categoria): EventoNoMapa => ({
+const ev = (
+  categoria: EventoNoMapa["categoria"],
+  distanciaKm: number,
+  id: string = categoria,
+): EventoNoMapa => ({
   id,
   categoria,
   distanciaKm,
@@ -360,7 +367,11 @@ test("MAPA: cada categoria tem ícone, forma e cor próprios", () => {
 test("MAPA: SOS tem prioridade máxima e é o único que pulsa", () => {
   assert.equal(APARENCIA.sos.prioridade, 0);
   const pulsantes = Object.entries(APARENCIA).filter(([, a]) => a.pulsa);
-  assert.deepEqual(pulsantes.map(([n]) => n), ["sos"], "só o SOS pode pulsar");
+  assert.deepEqual(
+    pulsantes.map(([n]) => n),
+    ["sos"],
+    "só o SOS pode pulsar",
+  );
 });
 
 test("MAPA: um SOS longe vem antes de um buraco perto", () => {
@@ -531,7 +542,10 @@ test("HOME: finalizar viagem informa se há SOS ativo", () => {
 
 test("HOME: o cockpit só liga sensores com a viagem ativa", () => {
   const home = ler("src/routes/_authenticated/dashboard.tsx");
-  assert.ok(/useCockpitTelemetry\(viagemAtiva\)/.test(home), "sensor ligado fora da viagem gasta bateria");
+  assert.ok(
+    /useCockpitTelemetry\(viagemAtiva\)/.test(home),
+    "sensor ligado fora da viagem gasta bateria",
+  );
   const telemetria = ler("src/hooks/useCockpitTelemetry.ts");
   assert.ok(/clearWatch/.test(telemetria), "o watch precisa ser limpo");
   assert.ok(/removeEventListener\("deviceorientation"/.test(telemetria), "listener precisa sair");
@@ -581,7 +595,9 @@ test("FGS.4: o serviço só sobe com viagem ativa", () => {
   assert.equal(/servicoDeveEstarAtivo/.test(ponte), true);
   const hook = ler("src/hooks/useTrip.ts");
   assert.ok(
-    /anterior\.estado !== "ativa" && v\.estado === "ativa"[\s\S]{0,120}iniciarServicoDeViagem/.test(hook),
+    /anterior\.estado !== "ativa" && v\.estado === "ativa"[\s\S]{0,120}iniciarServicoDeViagem/.test(
+      hook,
+    ),
     "iniciar só na transição para ativa",
   );
   assert.ok(
@@ -593,7 +609,9 @@ test("FGS.4: o serviço só sobe com viagem ativa", () => {
 test("FGS.5: finalizar a viagem pede a parada do serviço", () => {
   const hook = ler("src/hooks/useTrip.ts");
   assert.ok(
-    /anterior\.estado === "ativa" && v\.estado !== "ativa"[\s\S]{0,120}pararServicoDeViagem/.test(hook),
+    /anterior\.estado === "ativa" && v\.estado !== "ativa"[\s\S]{0,120}pararServicoDeViagem/.test(
+      hook,
+    ),
   );
   const servico = ler(`${ANDROID_JAVA}/ViagemSeguraService.java`);
   assert.ok(/ACAO_PARAR/.test(servico) && /stopSelf\(\)/.test(servico));
@@ -639,7 +657,10 @@ test("FGS: a notificação carrega destino e próximo alerta", () => {
   assert.ok(/EXTRA_ALERTA/.test(servico) && /EXTRA_DISTANCIA/.test(servico));
   assert.ok(/setContentIntent/.test(servico), "precisa ter como voltar ao cockpit");
   const home = ler("src/routes/_authenticated/dashboard.tsx");
-  assert.ok(/atualizarServicoDeViagem/.test(home), "o aviso do copiloto precisa chegar à notificação");
+  assert.ok(
+    /atualizarServicoDeViagem/.test(home),
+    "o aviso do copiloto precisa chegar à notificação",
+  );
 });
 
 test("FGS: fora do Android tudo é inerte, sem quebrar a viagem", () => {
@@ -703,10 +724,13 @@ test("NATIVO.2: parar e destruir removem os updates", () => {
   assert.ok(/removeUpdates\(/.test(servico), "GPS ligado depois da viagem é vazamento");
   assert.ok(/pararCaptura\(\)/.test(servico));
   // pararTudo é chamado por ACAO_PARAR, onDestroy e onTaskRemoved.
-  const pararTudo = /private void pararTudo\(\)\s*\{([\s\S]*?)\n    \}/.exec(servico)?.[1] ?? "";
+  const pararTudo = /private void pararTudo\(\)\s*\{([\s\S]*?)\n {4}\}/.exec(servico)?.[1] ?? "";
   assert.ok(/pararCaptura\(\)/.test(pararTudo), "parar o serviço precisa parar o GPS");
   for (const gatilho of ["onDestroy", "onTaskRemoved"]) {
-    assert.ok(new RegExp(`${gatilho}[\\s\\S]{0,220}pararTudo\\(\\)`).test(servico), `${gatilho} não limpa`);
+    assert.ok(
+      new RegExp(`${gatilho}[\\s\\S]{0,220}pararTudo\\(\\)`).test(servico),
+      `${gatilho} não limpa`,
+    );
   }
 });
 
@@ -821,10 +845,7 @@ test("LOOP.6: 'desconhecido' é o único estado que mostra spinner — e ele ago
 test("LOOP.7: web e Android são caminhos separados", () => {
   const lib = lerSemComentarios("src/lib/location-permission.ts");
   assert.ok(/if \(isNativeApp\(\)\) \{/.test(lib), "o caminho nativo precisa ser explícito");
-  assert.ok(
-    /perms\?\.query/.test(lib),
-    "e o navegador não pode depender do plugin do Capacitor",
-  );
+  assert.ok(/perms\?\.query/.test(lib), "e o navegador não pode depender do plugin do Capacitor");
   // Sem Permissions API o fluxo continua: cai no estado determinístico.
   assert.ok(/estadoQuandoNaoSabemos\(anterior\)/.test(lib));
 });
@@ -845,20 +866,32 @@ test("LOOP.8: trocar de aba com permissão concedida continua sem onboarding", (
 
 test("APK: a URL do WebView é configurável em tempo de build", () => {
   const config = ler("capacitor.config.ts");
-  assert.ok(/process\.env\.MOTOANJO_WEB_URL/.test(config), "URL fixa no código impede o CI de apontar para o commit certo");
+  assert.ok(
+    /process\.env\.MOTOANJO_WEB_URL/.test(config),
+    "URL fixa no código impede o CI de apontar para o commit certo",
+  );
   assert.ok(/url: urlDoApp/.test(config));
-  assert.ok(/URL_PADRAO = "https:\/\//.test(config), "precisa de padrão para não quebrar quem não define a variável");
+  assert.ok(
+    /URL_PADRAO = "https:\/\//.test(config),
+    "precisa de padrão para não quebrar quem não define a variável",
+  );
 });
 
 test("APK: o host configurado entra na navegação permitida", () => {
   const config = ler("capacitor.config.ts");
-  assert.ok(/hostDe\(urlDoApp\)/.test(config), "domínio próprio seria bloqueado pelo próprio WebView");
+  assert.ok(
+    /hostDe\(urlDoApp\)/.test(config),
+    "domínio próprio seria bloqueado pelo próprio WebView",
+  );
 });
 
 test("APK: o motivo de não embutir o frontend está escrito, não subentendido", () => {
   const config = ler("capacitor.config.ts");
   assert.ok(/createServerFn|server function/i.test(config));
-  assert.ok(/triggerSos/.test(config), "quem tentar remover server.url precisa saber que o SOS depende disso");
+  assert.ok(
+    /triggerSos/.test(config),
+    "quem tentar remover server.url precisa saber que o SOS depende disso",
+  );
 });
 
 test("APK: o CI declara qual frontend o APK carrega e nomeia o artefato", () => {
@@ -878,7 +911,7 @@ test("APK: o CI declara qual frontend o APK carrega e nomeia o artefato", () => 
 test("HOME: o caminho de render chega ao cockpit", () => {
   const home = ler("src/routes/_authenticated/dashboard.tsx");
   // Sem permissão: gate. Com permissão: mapa + estados da viagem.
-  const semPermissao = /if \(!granted\) \{([\s\S]*?)\n  \}/.exec(home)?.[1] ?? "";
+  const semPermissao = /if \(!granted\) \{([\s\S]*?)\n {2}\}/.exec(home)?.[1] ?? "";
   assert.ok(/LocationPermissionGate/.test(semPermissao), "sem permissão precisa mostrar o gate");
 
   const posGate = home.slice(home.indexOf("if (!granted)"));

@@ -25,7 +25,11 @@ export interface PosicaoNativa {
 
 type PluginViagem = {
   iniciar: (o: { destino?: string }) => Promise<{ ativo: boolean }>;
-  atualizar: (o: { destino?: string; alerta?: string; distancia?: string }) => Promise<{ ativo: boolean }>;
+  atualizar: (o: {
+    destino?: string;
+    alerta?: string;
+    distancia?: string;
+  }) => Promise<{ ativo: boolean }>;
   parar: () => Promise<{ ativo: boolean }>;
   addListener: (
     evento: string,
