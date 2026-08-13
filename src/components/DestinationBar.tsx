@@ -72,12 +72,8 @@ export function DestinationBar({
         )}
       </button>
 
-      {rota?.proximaInstrucao && viagem.estado === "ativa" && (
-        <p className="mt-1.5 truncate rounded-xl border border-white/10 bg-black/70 px-3 py-1.5 text-[11px] text-foreground backdrop-blur">
-          {rota.proximaInstrucao}
-        </p>
-      )}
-
+      {/* A próxima manobra vive em <NextManeuver/>, logo abaixo desta faixa:
+          duplicar a instrução aqui só roubava altura do mapa. */}
       {viagem.estado === "preparando" && (
         <button
           type="button"

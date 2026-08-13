@@ -19,24 +19,24 @@ export function CopilotCard({
   className?: string;
 }) {
   const cor = aviso ? APARENCIA[aviso.categoria].cor : "#D4AF37";
+  const mensagem = aviso
+    ? `${APARENCIA[aviso.categoria].rotulo} a ${distanciaCurta(aviso.distanciaKm)} • atenção`
+    : viagemAtiva
+      ? "Rota tranquila • próximo alerta: nenhum"
+      : "Pronto para a viagem";
 
   return (
     <div
-      className={`${camada("cartoesDoMapa")} flex items-center gap-2.5 rounded-2xl border bg-black/80 px-3 py-2 backdrop-blur-md ${className ?? ""}`}
+      data-testid="copiloto-compacto"
+      className={`${camada("cartoesDoMapa")} flex h-9 items-center gap-2 rounded-full border bg-black/80 px-3 backdrop-blur-md ${className ?? ""}`}
       style={{ borderColor: `${cor}55` }}
       aria-live="polite"
     >
-      <ShieldCheck size={16} className="shrink-0" style={{ color: cor }} />
-      <div className="min-w-0">
-        <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-gold">Copiloto</p>
-        <p className="truncate text-[11px] text-foreground">
-          {aviso
-            ? `${APARENCIA[aviso.categoria].rotulo} a ${distanciaCurta(aviso.distanciaKm)}`
-            : viagemAtiva
-              ? "Rota tranquila até agora."
-              : "Pronto para a viagem."}
-        </p>
-      </div>
+      <ShieldCheck size={13} className="shrink-0" style={{ color: cor }} />
+      <span className="shrink-0 text-[9px] font-semibold uppercase tracking-[0.22em] text-gold">
+        Copiloto
+      </span>
+      <span className="min-w-0 flex-1 truncate text-[11px] text-foreground">{mensagem}</span>
     </div>
   );
 }
