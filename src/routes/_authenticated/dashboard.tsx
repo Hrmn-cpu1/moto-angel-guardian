@@ -1,9 +1,12 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useState } from "react";
-import { Crosshair, Flame, Layers, TrafficCone, Users } from "lucide-react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { Crosshair, Fuel, Layers, Users } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { HomeTopBar } from "@/components/HomeTopBar";
 import { SosFab } from "@/components/SosFab";
+import { DestinationBar } from "@/components/DestinationBar";
+import { CopilotCard } from "@/components/CopilotCard";
+import { MapLayersSheet } from "@/components/MapLayersSheet";
 import { LocationPermissionGate } from "@/components/LocationPermissionGate";
 import { useLocationPermission } from "@/hooks/useLocationPermission";
 import { useAuth } from "@/hooks/useAuth";
@@ -29,6 +32,7 @@ import { usePartners } from "@/hooks/usePartners";
 import { useServerFn } from "@tanstack/react-start";
 import { searchPOIs, type POI } from "@/lib/pois.functions";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import type { RouteInfo } from "@/components/RealMap";
 
 const RealMap = lazy(() => import("@/components/RealMap"));
 
@@ -59,6 +63,9 @@ function Dashboard() {
   const [showTraffic, setShowTraffic] = useState(true);
   const [showHeat, setShowHeat] = useState(true);
   const [showSupport, setShowSupport] = useState(true);
+  const [showAlerts, setShowAlerts] = useState(true);
+  const [layersOpen, setLayersOpen] = useState(false);
+  const [rota, setRota] = useState<RouteInfo | null>(null);
   const [pois, setPois] = useState<POI[]>([]);
   const fetchPOIs = useServerFn(searchPOIs);
   const { alerts } = useAlerts(position);
@@ -91,6 +98,10 @@ function Dashboard() {
     modo,
   });
   const { located: locatedPartners } = usePartners();
+
+  // A rota vem do Google pelo mapa; guardá-la aqui é o que permite mostrar
+  // distância e ETA reais na faixa de destino.
+  const aoCalcularRota = useCallback((r: RouteInfo | null) => setRota(r), []);
 
   // A notificação da viagem mostra o próximo alerta — é o que aparece na tela
   // de bloqueio. Só atualiza durante a viagem, e só quando o aviso muda.
@@ -155,13 +166,27 @@ function Dashboard() {
               showHeatmap={showHeat}
               riskPoints={risks}
               pois={showSupport ? pois : []}
-              alerts={alerts.map((a) => ({
-                id: a.id,
-                type: a.type,
-                title: a.title,
-                lat: a.lat,
-                lng: a.lng,
-              }))}
+              destination={
+                viagem.destino
+                  ? {
+                      lat: viagem.destino.latitude,
+                      lng: viagem.destino.longitude,
+                      address: viagem.destino.address,
+                    }
+                  : null
+              }
+              onRoute={aoCalcularRota}
+              alerts={
+                showAlerts
+                  ? alerts.map((a) => ({
+                      id: a.id,
+                      type: a.type,
+                      title: a.title,
+                      lat: a.lat,
+                      lng: a.lng,
+                    }))
+                  : []
+              }
               riders={riders.map((r) => ({
                 id: r.user_id,
                 name: r.name,
@@ -196,33 +221,38 @@ function Dashboard() {
           </div>
         )}
 
-        <HomeTopBar gpsOnline={watching && !!position} />
+        <HomeTopBar
+          gpsOnline={watching && !!position}
+          copilotOnline={!!position}
+          tripActive={viagemAtiva}
+        />
 
-        {/* Layer controls */}
-        <div className="absolute right-3 top-[76px] z-30 flex flex-col gap-2">
-          <LayerToggle
-            active={showTraffic}
-            onClick={() => setShowTraffic((v) => !v)}
-            label="Trânsito"
-            icon={<TrafficCone size={14} />}
-          />
-          <LayerToggle
-            active={showHeat}
-            onClick={() => setShowHeat((v) => !v)}
-            label="Áreas de risco"
-            icon={<Flame size={14} />}
-          />
-          <LayerToggle
-            active={showSupport}
-            onClick={() => setShowSupport((v) => !v)}
-            label="Apoio"
-            icon={<Layers size={14} />}
-          />
+        <DestinationBar
+          viagem={viagem}
+          rota={rota}
+          onAbrirDestino={() => setBuscandoDestino(true)}
+          onIniciar={iniciar}
+        />
+
+        {/* Controles do mapa: anjos, camadas, combustível e centralizar. */}
+        <div className="absolute right-3 top-[140px] z-30 flex flex-col gap-2">
           <LayerToggle
             active={camadas.comunidade}
             onClick={() => alternar("comunidade")}
             label="Outros motoqueiros"
             icon={<Users size={14} />}
+          />
+          <LayerToggle
+            active={layersOpen}
+            onClick={() => setLayersOpen(true)}
+            label="Camadas do mapa"
+            icon={<Layers size={14} />}
+          />
+          <LayerToggle
+            active={showSupport}
+            onClick={() => setShowSupport((v) => !v)}
+            label="Pontos de apoio"
+            icon={<Fuel size={14} />}
           />
           <LayerToggle
             active={follow}
@@ -235,10 +265,73 @@ function Dashboard() {
           />
         </div>
 
+        {/* Estado da camada de anjos: sem inventar ninguém no mapa. */}
+        <div
+          className={`absolute right-3 top-[104px] ${camada(
+            "cartoesDoMapa",
+          )} rounded-full border border-gold/25 bg-black/75 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-widest text-gold`}
+        >
+          Anjos perto de mim ·{" "}
+          {camadas.comunidade
+            ? riders.length > 0
+              ? `${riders.length}`
+              : "ninguém agora"
+            : "desativado"}
+        </div>
+
+        {layersOpen && (
+          <MapLayersSheet
+            onFechar={() => setLayersOpen(false)}
+            itens={[
+              {
+                chave: "riscos",
+                rotulo: "Áreas de risco",
+                ativa: showHeat,
+                alternar: () => setShowHeat((v) => !v),
+              },
+              {
+                chave: "ocorrencias",
+                rotulo: "Ocorrências (acidentes, perigo, roubo)",
+                ativa: showAlerts,
+                alternar: () => setShowAlerts((v) => !v),
+              },
+              {
+                chave: "anjos",
+                rotulo: "Moto Anjos próximos",
+                ativa: camadas.comunidade,
+                alternar: () => alternar("comunidade"),
+              },
+              {
+                chave: "apoio",
+                rotulo: "Pontos de apoio e postos",
+                ativa: showSupport,
+                alternar: () => setShowSupport((v) => !v),
+              },
+              {
+                chave: "transito",
+                rotulo: "Trânsito",
+                ativa: showTraffic,
+                alternar: () => setShowTraffic((v) => !v),
+              },
+            ]}
+          />
+        )}
+
         {/* ---- Viagem Segura na Home (RC3) ---- */}
         {viagem.estado === "ocioso" && (
           <ChamadaViagemSegura onAbrir={() => setBuscandoDestino(true)} />
         )}
+
+        {/* O copiloto acompanha a Home inteira, com ou sem viagem. */}
+        <CopilotCard
+          aviso={aviso}
+          viagemAtiva={viagemAtiva}
+          className={`absolute inset-x-3 ${
+            viagemAtiva
+              ? "bottom-[calc(env(safe-area-inset-bottom)+430px)]"
+              : "bottom-[calc(env(safe-area-inset-bottom)+256px)]"
+          }`}
+        />
 
         {viagem.estado === "preparando" && (
           <PreparacaoDeViagem

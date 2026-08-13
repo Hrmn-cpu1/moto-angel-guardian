@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useId } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Contact } from "@/types";
@@ -46,6 +46,10 @@ export function useContacts() {
   }, [qc]);
 
   // Realtime keeps the cache fresh across devices without polling.
+  // O tópico leva o id da instância: duas telas usando o hook ao mesmo tempo
+  // reaproveitariam o mesmo canal já inscrito e o segundo `.on()` seria
+  // recusado pelo Supabase.
+  const instanceId = useId();
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
     let cancelled = false;
@@ -55,7 +59,7 @@ export function useContacts() {
       } = await supabase.auth.getUser();
       if (!user || cancelled) return;
       channel = supabase
-        .channel(`emergency_contacts:${user.id}`)
+        .channel(`emergency_contacts:${user.id}:${instanceId}`)
         .on(
           "postgres_changes",
           {
@@ -72,7 +76,7 @@ export function useContacts() {
       cancelled = true;
       if (channel) supabase.removeChannel(channel);
     };
-  }, [invalidate]);
+  }, [invalidate, instanceId]);
 
   const addMutation = useMutation({
     mutationFn: async (c: Omit<Contact, "id">) => {
