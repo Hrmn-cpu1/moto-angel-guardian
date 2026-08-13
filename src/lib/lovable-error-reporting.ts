@@ -68,7 +68,11 @@ export function installGlobalErrorReporting(): () => void {
   globalReportingInstalled = true;
 
   const onError = (event: ErrorEvent) => {
-    reportLovableError(event.error ?? new Error(event.message), { boundary: "window.onerror" }, "onerror");
+    reportLovableError(
+      event.error ?? new Error(event.message),
+      { boundary: "window.onerror" },
+      "onerror",
+    );
   };
   const onRejection = (event: PromiseRejectionEvent) => {
     const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason));

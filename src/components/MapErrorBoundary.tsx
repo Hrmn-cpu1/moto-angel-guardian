@@ -7,6 +7,7 @@ interface Props {
   children: ReactNode;
 }
 
+
 interface State {
   error: Error | null;
 }
