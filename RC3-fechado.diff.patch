@@ -1,0 +1,3209 @@
+diff --git a/android/app/src/main/AndroidManifest.xml b/android/app/src/main/AndroidManifest.xml
+index 93bf910..924f7a0 100644
+--- a/android/app/src/main/AndroidManifest.xml
++++ b/android/app/src/main/AndroidManifest.xml
+@@ -33,8 +33,61 @@
+                 <data android:scheme="com.motoanjo.app" android:host="auth" />
+             </intent-filter>
+ 
++            <!--
++              Receber destino de outro aplicativo (RC3).
++
++              O filtro do OAuth acima usa host="auth" e continua sendo o único
++              que casa com com.motoanjo.app://auth/callback. Os filtros abaixo
++              usam host="destino" ou esquema geo:, então NÃO capturam o
++              callback do login — é por isso que host é obrigatório aqui.
++
++              Nada disso permite "interceptar o clique dentro do iFood": o app
++              de origem é quem decide oferecer compartilhar/abrir. O que
++              fazemos é estar disponível na lista quando ele oferecer.
++            -->
++            <intent-filter>
++                <action android:name="android.intent.action.VIEW" />
++                <category android:name="android.intent.category.DEFAULT" />
++                <category android:name="android.intent.category.BROWSABLE" />
++                <data android:scheme="com.motoanjo.app" android:host="destino" />
++            </intent-filter>
++
++            <intent-filter>
++                <action android:name="android.intent.action.VIEW" />
++                <category android:name="android.intent.category.DEFAULT" />
++                <category android:name="android.intent.category.BROWSABLE" />
++                <data android:scheme="geo" />
++            </intent-filter>
++
++            <!-- Compartilhar endereço em texto. Entrada não confiável: passa
++                 pelo mesmo normalizador de destino, que recusa javascript:,
++                 data:, file:, intent: e coordenada inválida. -->
++            <intent-filter>
++                <action android:name="android.intent.action.SEND" />
++                <category android:name="android.intent.category.DEFAULT" />
++                <data android:mimeType="text/plain" />
++            </intent-filter>
++
+         </activity>
+ 
++        <!--
++          Serviço de primeiro plano da Viagem Segura.
++
++          foregroundServiceType="location" é obrigatório a partir da API 34 e
++          é o que permite continuar rastreando com a tela apagada, sem pedir
++          ACCESS_BACKGROUND_LOCATION.
++
++          exported="false": ninguém de fora inicia este serviço. Só o app.
++          stopWithTask="true": se o usuário remover o app dos recentes, o
++          serviço morre junto — nada de notificação órfã dizendo "protegido"
++          quando não há viagem nenhuma.
++        -->
++        <service
++            android:name=".ViagemSeguraService"
++            android:exported="false"
++            android:stopWithTask="true"
++            android:foregroundServiceType="location" />
++
+         <provider
+             android:name="androidx.core.content.FileProvider"
+             android:authorities="${applicationId}.fileprovider"
+diff --git a/android/app/src/main/java/com/motoanjo/app/MainActivity.java b/android/app/src/main/java/com/motoanjo/app/MainActivity.java
+index a964ed1..14862a1 100644
+--- a/android/app/src/main/java/com/motoanjo/app/MainActivity.java
++++ b/android/app/src/main/java/com/motoanjo/app/MainActivity.java
+@@ -1,5 +1,18 @@
+ package com.motoanjo.app;
+ 
++import android.os.Bundle;
++
+ import com.getcapacitor.BridgeActivity;
+ 
+-public class MainActivity extends BridgeActivity {}
++public class MainActivity extends BridgeActivity {
++
++    /**
++     * Registra a ponte da Viagem Segura antes de o WebView subir. Sem isto o
++     * plugin não existe para o JavaScript e o serviço nunca é acionado.
++     */
++    @Override
++    public void onCreate(Bundle savedInstanceState) {
++        registerPlugin(ViagemSeguraPlugin.class);
++        super.onCreate(savedInstanceState);
++    }
++}
+diff --git a/android/app/src/main/java/com/motoanjo/app/ViagemSeguraPlugin.java b/android/app/src/main/java/com/motoanjo/app/ViagemSeguraPlugin.java
+new file mode 100644
+index 0000000..c7276d4
+--- /dev/null
++++ b/android/app/src/main/java/com/motoanjo/app/ViagemSeguraPlugin.java
+@@ -0,0 +1,90 @@
++package com.motoanjo.app;
++
++import android.content.Intent;
++import android.os.Build;
++
++import com.getcapacitor.JSObject;
++import com.getcapacitor.Plugin;
++import com.getcapacitor.PluginCall;
++import com.getcapacitor.PluginMethod;
++import com.getcapacitor.annotation.CapacitorPlugin;
++
++/**
++ * Ponte entre a Viagem Segura (React) e o serviço nativo.
++ *
++ * Deliberadamente minúscula: três métodos, nenhum estado próprio. O estado da
++ * viagem já tem uma fonte única em `src/lib/trip.ts`, e duplicá-lo aqui criaria
++ * exatamente a divergência que o projeto já pagou caro para eliminar na camada
++ * de riders.
++ *
++ * O serviço só sobe quando a viagem está ativa. Não há chamada no boot do app,
++ * nem no login, nem ao abrir o mapa.
++ */
++@CapacitorPlugin(name = "ViagemSegura")
++public class ViagemSeguraPlugin extends Plugin {
++
++    /**
++     * Encaminha as posições nativas para o JS como evento `posicao`.
++     *
++     * É só um cano. O estado da viagem continua com fonte única no React; o
++     * Android é responsável por EXECUTAR a captura durante a viagem, não por
++     * decidir se há viagem.
++     */
++    @Override
++    public void load() {
++        ViagemSeguraService.definirOuvinte((lat, lng, precisaoM, velocidadeMs, quandoMs) -> {
++            final JSObject p = new JSObject();
++            p.put("lat", lat);
++            p.put("lng", lng);
++            p.put("precisaoM", precisaoM);
++            p.put("velocidadeMs", velocidadeMs);
++            p.put("quandoMs", quandoMs);
++            notifyListeners("posicao", p);
++        });
++    }
++
++    @PluginMethod
++    public void iniciar(PluginCall call) {
++        final Intent i = new Intent(getContext(), ViagemSeguraService.class);
++        i.setAction(ViagemSeguraService.ACAO_INICIAR);
++        i.putExtra(ViagemSeguraService.EXTRA_DESTINO, call.getString("destino", ""));
++        enviar(i);
++        call.resolve(estado(true));
++    }
++
++    /** Atualiza o texto da notificação sem reiniciar o serviço. */
++    @PluginMethod
++    public void atualizar(PluginCall call) {
++        final Intent i = new Intent(getContext(), ViagemSeguraService.class);
++        i.setAction(ViagemSeguraService.ACAO_ATUALIZAR);
++        i.putExtra(ViagemSeguraService.EXTRA_DESTINO, call.getString("destino", ""));
++        i.putExtra(ViagemSeguraService.EXTRA_ALERTA, call.getString("alerta", ""));
++        i.putExtra(ViagemSeguraService.EXTRA_DISTANCIA, call.getString("distancia", ""));
++        enviar(i);
++        call.resolve(estado(true));
++    }
++
++    @PluginMethod
++    public void parar(PluginCall call) {
++        final Intent i = new Intent(getContext(), ViagemSeguraService.class);
++        i.setAction(ViagemSeguraService.ACAO_PARAR);
++        // Parar usa startService mesmo em API 26+: o serviço já está em
++        // primeiro plano, e stopService não entregaria a ação de limpeza.
++        getContext().startService(i);
++        call.resolve(estado(false));
++    }
++
++    private void enviar(Intent i) {
++        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
++            getContext().startForegroundService(i);
++        } else {
++            getContext().startService(i);
++        }
++    }
++
++    private JSObject estado(boolean ativo) {
++        final JSObject r = new JSObject();
++        r.put("ativo", ativo);
++        return r;
++    }
++}
+diff --git a/android/app/src/main/java/com/motoanjo/app/ViagemSeguraService.java b/android/app/src/main/java/com/motoanjo/app/ViagemSeguraService.java
+new file mode 100644
+index 0000000..890140c
+--- /dev/null
++++ b/android/app/src/main/java/com/motoanjo/app/ViagemSeguraService.java
+@@ -0,0 +1,311 @@
++package com.motoanjo.app;
++
++import android.Manifest;
++import android.app.Notification;
++import android.app.NotificationChannel;
++import android.app.NotificationManager;
++import android.app.PendingIntent;
++import android.app.Service;
++import android.content.Context;
++import android.content.Intent;
++import android.content.pm.PackageManager;
++import android.content.pm.ServiceInfo;
++import android.location.Location;
++import android.location.LocationListener;
++import android.location.LocationManager;
++import android.os.Build;
++import android.os.Bundle;
++import android.os.IBinder;
++
++import androidx.core.app.ActivityCompat;
++import androidx.core.app.NotificationCompat;
++
++/**
++ * Serviço de primeiro plano da Viagem Segura.
++ *
++ * POR QUE ELE EXISTE
++ * Enquanto a viagem está ativa, o motociclista guarda o telefone no bolso ou
++ * apaga a tela. Sem um serviço de primeiro plano, o Android suspende a WebView
++ * e o rastreamento simplesmente para — sem aviso. A notificação persistente é
++ * o preço que o sistema cobra por continuar rodando, e é justo: a pessoa
++ * precisa saber que está sendo acompanhada.
++ *
++ * O QUE ELE FAZ E O QUE NÃO FAZ
++ *   FAZ: mantém o processo vivo durante a viagem, com tipo `location`, e
++ *        mostra uma notificação que aparece na tela de bloqueio pelo caminho
++ *        normal do Android.
++ *   NÃO FAZ: não desenha nada por cima da tela de bloqueio, não desbloqueia o
++ *        aparelho, não pede SYSTEM_ALERT_WINDOW e não pede
++ *        ACCESS_BACKGROUND_LOCATION. Overlay sobre a lock screen é gambiarra
++ *        que a Play reprova e que quebra a cada versão do Android.
++ *
++ * LOCALIZAÇÃO NATIVA
++ * Manter o processo vivo NÃO garante que `navigator.geolocation` continue
++ * entregando posição com a tela apagada: o Android congela temporizadores e
++ * pode suspender a WebView mesmo com o processo de pé. Por isso a captura
++ * agora é nativa, dentro do ciclo de vida deste serviço — começa com a
++ * viagem, para com a viagem.
++ *
++ * Usa `LocationManager` do framework, não o FusedLocationProvider. O Fused é
++ * melhor em economia, mas exige `play-services-location` no Gradle, e
++ * acrescentar dependência a um build que acabou de ficar verde é risco sem
++ * retorno neste fechamento. A troca é local a esta classe quando fizer sentido.
++ */
++public class ViagemSeguraService extends Service {
++
++    public static final String CANAL_ID = "moto_anjo_viagem";
++    public static final int NOTIFICACAO_ID = 4201;
++
++    public static final String ACAO_INICIAR = "com.motoanjo.app.VIAGEM_INICIAR";
++    public static final String ACAO_ATUALIZAR = "com.motoanjo.app.VIAGEM_ATUALIZAR";
++    public static final String ACAO_PARAR = "com.motoanjo.app.VIAGEM_PARAR";
++
++    public static final String EXTRA_DESTINO = "destino";
++    public static final String EXTRA_ALERTA = "alerta";
++    public static final String EXTRA_DISTANCIA = "distancia";
++
++    /** Evita chamar startForeground duas vezes: iniciar é idempotente. */
++    private boolean emPrimeiroPlano = false;
++
++    /** Intervalo mínimo entre posições. Conservador de propósito: o produto
++     *  precisa de trajeto, não de amostragem contínua — GPS a 1 Hz durante um
++     *  turno inteiro come a bateria que o motoboy vai precisar no fim do dia. */
++    private static final long INTERVALO_MS = 5000L;
++    private static final float DISTANCIA_M = 10f;
++
++    private LocationManager gerenciador;
++    private LocationListener ouvinteDePosicao;
++    private boolean capturando = false;
++
++    /**
++     * Ponte para o app. Estático porque o plugin e o serviço são instâncias
++     * separadas; é só um encaminhamento de evento — o estado da viagem
++     * continua tendo fonte única no React (`src/lib/trip.ts`).
++     */
++    public interface PosicaoNativa {
++        void aoReceber(double lat, double lng, float precisaoM, float velocidadeMs, long quandoMs);
++    }
++
++    private static PosicaoNativa ouvinteExterno = null;
++
++    public static void definirOuvinte(PosicaoNativa d) {
++        ouvinteExterno = d;
++    }
++
++    @Override
++    public IBinder onBind(Intent intent) {
++        return null;
++    }
++
++    @Override
++    public int onStartCommand(Intent intent, int flags, int startId) {
++        final String acao = intent == null ? null : intent.getAction();
++
++        if (ACAO_PARAR.equals(acao)) {
++            pararTudo();
++            return START_NOT_STICKY;
++        }
++
++        final String destinoTexto = intent == null ? null : intent.getStringExtra(EXTRA_DESTINO);
++        final String alerta = intent == null ? null : intent.getStringExtra(EXTRA_ALERTA);
++        final String distancia = intent == null ? null : intent.getStringExtra(EXTRA_DISTANCIA);
++
++        // API 34+ derruba o app com SecurityException se um serviço do tipo
++        // `location` subir sem a permissão concedida. Falhar limpo é melhor
++        // que crashar em cima de alguém que está pilotando.
++        if (!temPermissaoDeLocalizacao()) {
++            pararTudo();
++            return START_NOT_STICKY;
++        }
++
++        criarCanal();
++        final Notification notificacao = montarNotificacao(destinoTexto, alerta, distancia);
++
++        if (!emPrimeiroPlano) {
++            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
++                // API 34+ exige declarar o tipo na chamada, não só no Manifest.
++                startForeground(NOTIFICACAO_ID, notificacao, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
++            } else {
++                startForeground(NOTIFICACAO_ID, notificacao);
++            }
++            emPrimeiroPlano = true;
++            iniciarCaptura();
++        } else {
++            final NotificationManager nm =
++                    (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
++            if (nm != null) nm.notify(NOTIFICACAO_ID, notificacao);
++        }
++
++        // START_NOT_STICKY de propósito: se o Android matar o processo, NÃO
++        // queremos que ele ressuscite o serviço sozinho com um Intent vazio.
++        // Isso criaria "viagem fantasma" — rastreamento rodando sem que o
++        // usuário tenha viagem nenhuma na tela. Quem decide reviver é o app,
++        // ao reabrir, olhando o estado real da viagem.
++        return START_NOT_STICKY;
++    }
++
++    @Override
++    public void onDestroy() {
++        pararTudo();
++        super.onDestroy();
++    }
++
++    /**
++     * O usuário removeu o app dos recentes. Sem viagem visível na tela, manter
++     * um serviço de localização vivo seria abusivo — e a notificação órfã faria
++     * a pessoa achar que está protegida quando não está.
++     */
++    @Override
++    public void onTaskRemoved(Intent rootIntent) {
++        pararTudo();
++        super.onTaskRemoved(rootIntent);
++    }
++
++    /**
++     * Só começa a capturar com o serviço em primeiro plano — nunca no boot,
++     * nunca fora de viagem. Idempotente.
++     */
++    private void iniciarCaptura() {
++        if (capturando || !temPermissaoDeLocalizacao()) return;
++        gerenciador = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
++        if (gerenciador == null) return;
++
++        ouvinteDePosicao = new LocationListener() {
++            @Override
++            public void onLocationChanged(Location l) {
++                final PosicaoNativa d = ouvinteExterno;
++                if (d == null || l == null) return;
++                d.aoReceber(
++                        l.getLatitude(),
++                        l.getLongitude(),
++                        l.hasAccuracy() ? l.getAccuracy() : -1f,
++                        l.hasSpeed() ? l.getSpeed() : -1f,
++                        l.getTime());
++            }
++
++            // Obrigatórios abaixo da API 30; sem eles alguns aparelhos antigos
++            // lançam AbstractMethodError.
++            @Override
++            public void onStatusChanged(String provider, int status, Bundle extras) {}
++
++            @Override
++            public void onProviderEnabled(String provider) {}
++
++            @Override
++            public void onProviderDisabled(String provider) {}
++        };
++
++        try {
++            if (gerenciador.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
++                gerenciador.requestLocationUpdates(
++                        LocationManager.GPS_PROVIDER, INTERVALO_MS, DISTANCIA_M, ouvinteDePosicao);
++            }
++            // Rede como complemento: em túnel, garagem ou prédio, o GPS some e
++            // uma posição aproximada ainda vale mais que nenhuma.
++            if (gerenciador.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
++                gerenciador.requestLocationUpdates(
++                        LocationManager.NETWORK_PROVIDER, INTERVALO_MS, DISTANCIA_M, ouvinteDePosicao);
++            }
++            capturando = true;
++        } catch (SecurityException e) {
++            // Permissão revogada entre a checagem e o pedido: sem captura, mas
++            // sem derrubar o app.
++            capturando = false;
++        }
++    }
++
++    /** Sem isto sobra GPS ligado depois da viagem — o pior tipo de vazamento. */
++    private void pararCaptura() {
++        if (gerenciador != null && ouvinteDePosicao != null) {
++            try {
++                gerenciador.removeUpdates(ouvinteDePosicao);
++            } catch (SecurityException ignored) {
++                // Nada a fazer: o listener morre com o serviço.
++            }
++        }
++        ouvinteDePosicao = null;
++        gerenciador = null;
++        capturando = false;
++    }
++
++    private boolean temPermissaoDeLocalizacao() {
++        return ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
++                        == PackageManager.PERMISSION_GRANTED
++                || ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
++                        == PackageManager.PERMISSION_GRANTED;
++    }
++
++    private void pararTudo() {
++        pararCaptura();
++        if (emPrimeiroPlano) {
++            stopForeground(true);
++            emPrimeiroPlano = false;
++        }
++        final NotificationManager nm =
++                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
++        if (nm != null) nm.cancel(NOTIFICACAO_ID);
++        stopSelf();
++    }
++
++    private void criarCanal() {
++        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
++        final NotificationManager nm =
++                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
++        if (nm == null || nm.getNotificationChannel(CANAL_ID) != null) return;
++
++        final NotificationChannel canal = new NotificationChannel(
++                CANAL_ID,
++                "Viagem Segura",
++                // IMPORTANCE_LOW: aparece na barra e na tela de bloqueio, mas
++                // não toca som nem vibra. Um alarme a cada atualização de
++                // trajeto seria insuportável em duas horas de turno.
++                NotificationManager.IMPORTANCE_LOW);
++        canal.setDescription("Mostra que a Viagem Segura está ativa e o próximo alerta do trajeto.");
++        canal.setShowBadge(false);
++        canal.enableVibration(false);
++        canal.setSound(null, null);
++        canal.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
++        nm.createNotificationChannel(canal);
++    }
++
++    private Notification montarNotificacao(String destinoTexto, String alerta, String distancia) {
++        final Intent abrir = new Intent(this, MainActivity.class);
++        abrir.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
++
++        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
++        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
++            flags |= PendingIntent.FLAG_IMMUTABLE;
++        }
++        final PendingIntent voltar = PendingIntent.getActivity(this, 0, abrir, flags);
++
++        final StringBuilder linha = new StringBuilder("Protegido");
++        if (alerta != null && !alerta.isEmpty()) {
++            linha.append(" · ").append(alerta);
++            if (distancia != null && !distancia.isEmpty()) {
++                linha.append(" a ").append(distancia);
++            }
++        } else if (destinoTexto != null && !destinoTexto.isEmpty()) {
++            linha.append(" · ").append(destinoTexto);
++        }
++
++        final NotificationCompat.Builder b = new NotificationCompat.Builder(this, CANAL_ID)
++                .setContentTitle("Moto Anjo — Viagem Segura")
++                .setContentText(linha.toString())
++                .setSmallIcon(android.R.drawable.ic_menu_mylocation)
++                .setContentIntent(voltar)
++                .setOngoing(true)
++                .setOnlyAlertOnce(true)
++                .setPriority(NotificationCompat.PRIORITY_LOW)
++                .setCategory(NotificationCompat.CATEGORY_NAVIGATION)
++                // VISIBILITY_PUBLIC: é isto que faz o conteúdo aparecer na tela
++                // de bloqueio, pelo caminho oficial do Android.
++                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC);
++
++        if (destinoTexto != null && !destinoTexto.isEmpty()) {
++            b.setStyle(new NotificationCompat.BigTextStyle()
++                    .bigText(linha + "\nDestino: " + destinoTexto));
++        }
++
++        return b.build();
++    }
++}
+diff --git a/package.json b/package.json
+index 303d124..7ae35df 100644
+--- a/package.json
++++ b/package.json
+@@ -11,7 +11,7 @@
+     "lint": "eslint .",
+     "format": "prettier --write .",
+     "typecheck": "tsc --noEmit",
+-    "test": "node --experimental-strip-types --test src/lib/phone.test.ts src/lib/coords.test.ts src/lib/sos.server.test.ts src/lib/sos-client.test.ts src/lib/sos-unificacao.test.ts src/lib/sos-sql-ambiguidade.test.ts src/lib/external-navigation.test.ts src/lib/location-permission.test.ts src/lib/rc2-estrutural.test.ts src/lib/map-layers.test.ts src/lib/presence.test.ts src/lib/crash-detection.test.ts"
++    "test": "node --experimental-strip-types --test src/lib/phone.test.ts src/lib/coords.test.ts src/lib/sos.server.test.ts src/lib/sos-client.test.ts src/lib/sos-unificacao.test.ts src/lib/sos-sql-ambiguidade.test.ts src/lib/external-navigation.test.ts src/lib/location-permission.test.ts src/lib/rc2-estrutural.test.ts src/lib/map-layers.test.ts src/lib/presence.test.ts src/lib/crash-detection.test.ts src/lib/rc3.test.ts"
+   },
+   "dependencies": {
+     "@capacitor/android": "^7",
+diff --git a/src/components/DestinoDialog.tsx b/src/components/DestinoDialog.tsx
+new file mode 100644
+index 0000000..3665593
+--- /dev/null
++++ b/src/components/DestinoDialog.tsx
+@@ -0,0 +1,69 @@
++import { useState } from "react";
++import { MapPin, X } from "lucide-react";
++import { camada } from "@/lib/layers";
++import { normalizarDestino } from "@/lib/external-navigation";
++
++/**
++ * Entrada de destino da Viagem Segura.
++ *
++ * Aceita o que o motoboy tem na mão: endereço colado do app de entrega,
++ * coordenada, link de mapa ou `geo:`. Tudo passa pelo mesmo normalizador que
++ * já valida destino externo — entrada digitada é tão não confiável quanto
++ * entrada de Intent.
++ */
++export function DestinoDialog({
++  onEscolher,
++  onFechar,
++}: {
++  onEscolher: (entrada: string) => void;
++  onFechar: () => void;
++}) {
++  const [texto, setTexto] = useState("");
++  const valido = normalizarDestino(texto) != null;
++
++  return (
++    <div
++      className={`fixed inset-0 ${camada("fundoModal")} flex items-end bg-black/80 p-3`}
++      role="dialog"
++      aria-label="Escolher destino"
++    >
++      <div className="w-full rounded-3xl border border-gold/30 bg-background p-4">
++        <div className="flex items-start justify-between gap-3">
++          <div>
++            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-gold">
++              Viagem segura
++            </p>
++            <h2 className="mt-1 text-base font-bold text-foreground">Para onde você vai?</h2>
++          </div>
++          <button
++            onClick={onFechar}
++            aria-label="Fechar"
++            className="rounded-full border border-white/10 p-2 text-muted-foreground"
++          >
++            <X size={14} />
++          </button>
++        </div>
++
++        <input
++          value={texto}
++          onChange={(e) => setTexto(e.target.value)}
++          inputMode="text"
++          autoFocus
++          placeholder="Endereço, link do mapa ou -23.55, -46.63"
++          className="mt-3 min-h-[48px] w-full rounded-2xl border border-white/10 bg-black/50 px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-gold/50"
++        />
++        <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
++          Você também pode compartilhar o endereço de outro aplicativo para o Moto Anjo.
++        </p>
++
++        <button
++          disabled={!valido}
++          onClick={() => onEscolher(texto)}
++          className="mt-3 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl gold-gradient text-sm font-bold text-black disabled:opacity-40"
++        >
++          <MapPin size={16} /> Usar este destino
++        </button>
++      </div>
++    </div>
++  );
++}
+diff --git a/src/components/RealMap.tsx b/src/components/RealMap.tsx
+index 41ff391..80ad279 100644
+--- a/src/components/RealMap.tsx
++++ b/src/components/RealMap.tsx
+@@ -687,7 +687,7 @@ export default function RealMap({
+   // que vai para o google.maps.Map não pode depender de ordem de classe
+   // utilitária nem de porcentagem.
+   return (
+-    <div className={cn("relative h-full w-full", className)}>
++    <div className={cn("moto-map-surface relative h-full w-full", className)}>
+       <div
+         ref={containerRef}
+         style={{ position: "absolute", inset: 0 }}
+diff --git a/src/components/RideCockpit.tsx b/src/components/RideCockpit.tsx
+new file mode 100644
+index 0000000..9813afb
+--- /dev/null
++++ b/src/components/RideCockpit.tsx
+@@ -0,0 +1,266 @@
++import { Navigation, ShieldCheck, Gauge, MapPin, X, Volume2, VolumeX } from "lucide-react";
++import { camada } from "@/lib/layers";
++import { distanciaCurta, APARENCIA, type EventoNoMapa } from "@/lib/map-events";
++import type { Cardeal, Inclinacao } from "@/lib/ride-telemetry";
++import type { Viagem } from "@/lib/trip";
++
++/**
++ * Cockpit da Viagem Segura.
++ *
++ * Regras que valem para todo este arquivo, porque quem lê está pilotando:
++ *   . número grande e poucos deles;
++ *   . nenhum dado inventado — sem sinal, aparece "—";
++ *   . nada cobre o botão SOS nem a atribuição do Google;
++ *   . nenhuma animação decorativa.
++ */
++
++function rotuloDoDestino(v: Viagem): string {
++  const d = v.destino;
++  if (!d) return "Destino";
++  if (d.label) return d.label;
++  if (d.address) return d.address;
++  if (d.latitude != null && d.longitude != null) {
++    return `${d.latitude.toFixed(4)}, ${d.longitude.toFixed(4)}`;
++  }
++  return "Destino";
++}
++
++/* ================================================================== *
++ * Estado B — preparação
++ * ================================================================== */
++
++interface PreparacaoProps {
++  viagem: Viagem;
++  gpsOk: boolean;
++  contato: string | null;
++  onIniciar: () => void;
++  onCancelar: () => void;
++}
++
++export function PreparacaoDeViagem({
++  viagem,
++  gpsOk,
++  contato,
++  onIniciar,
++  onCancelar,
++}: PreparacaoProps) {
++  const itens: Array<[string, string, boolean]> = [
++    ["GPS", gpsOk ? "Ativo" : "Sem sinal", gpsOk],
++    ["Escudo Moto Anjo", "Ativo", true],
++    ["Acompanhamento", contato ?? "Nenhum contato", contato != null],
++  ];
++
++  return (
++    <div
++      className={`absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+150px)] ${camada(
++        "painelInferior",
++      )} rounded-3xl border border-gold/30 bg-black/85 p-4 backdrop-blur`}
++    >
++      <div className="flex items-start justify-between gap-3">
++        <div className="min-w-0">
++          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-gold">
++            Viagem segura
++          </p>
++          <p className="mt-1 truncate text-sm font-semibold text-foreground">
++            {rotuloDoDestino(viagem)}
++          </p>
++        </div>
++        <button
++          onClick={onCancelar}
++          aria-label="Cancelar destino"
++          className="shrink-0 rounded-full border border-white/10 p-2 text-muted-foreground"
++        >
++          <X size={14} />
++        </button>
++      </div>
++
++      <ul className="mt-3 space-y-1.5">
++        {itens.map(([rotulo, valor, ok]) => (
++          <li key={rotulo} className="flex items-center justify-between text-[11px]">
++            <span className="text-muted-foreground">{rotulo}</span>
++            <span className={ok ? "font-semibold text-gold" : "text-muted-foreground"}>{valor}</span>
++          </li>
++        ))}
++      </ul>
++
++      {/* Sem contato de acompanhamento a viagem continua: avisar é útil,
++          bloquear seria transformar segurança em obstáculo. */}
++      {!contato && (
++        <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
++          Sem contato de acompanhamento, o SOS continua funcionando — mas ninguém será avisado
++          automaticamente.
++        </p>
++      )}
++
++      <button
++        onClick={onIniciar}
++        className="mt-4 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl gold-gradient text-sm font-bold text-black"
++      >
++        <ShieldCheck size={16} /> Iniciar viagem segura
++      </button>
++    </div>
++  );
++}
++
++/* ================================================================== *
++ * Estado C — cockpit
++ * ================================================================== */
++
++interface CockpitProps {
++  viagem: Viagem;
++  velocidade: number | null;
++  rumo: Cardeal | null;
++  inclinacao: Inclinacao;
++  modo: "parado" | "pilotando";
++  proximoEvento: EventoNoMapa | null;
++  vozLigada: boolean;
++  vozSuportada: boolean;
++  onAlternarVoz: () => void;
++  onFinalizar: () => void;
++}
++
++export function CockpitDeViagem({
++  viagem,
++  velocidade,
++  rumo,
++  inclinacao,
++  modo,
++  proximoEvento,
++  vozLigada,
++  vozSuportada,
++  onAlternarVoz,
++  onFinalizar,
++}: CockpitProps) {
++  const grausInclinacao = inclinacao.graus ?? 0;
++  const temInclinacao = inclinacao.graus != null;
++  // -45..45 vira 0..100 na régua.
++  const posicaoNaRegua = ((grausInclinacao + 45) / 90) * 100;
++
++  return (
++    <>
++      {/* Cartão do próximo evento: um por vez, nunca uma pilha. */}
++      {proximoEvento && (
++        <div
++          className={`absolute inset-x-3 top-[76px] ${camada(
++            "cartoesDoMapa",
++          )} flex items-center gap-3 rounded-2xl border px-3 py-2.5 backdrop-blur`}
++          style={{
++            borderColor: `${APARENCIA[proximoEvento.categoria].cor}66`,
++            background: "rgba(0,0,0,0.78)",
++          }}
++        >
++          <span
++            className="h-2.5 w-2.5 shrink-0 rounded-sm"
++            style={{
++              background: APARENCIA[proximoEvento.categoria].cor,
++              transform: "rotate(45deg)",
++            }}
++          />
++          <span className="flex-1 truncate text-xs font-bold uppercase tracking-widest text-foreground">
++            {APARENCIA[proximoEvento.categoria].rotulo}
++          </span>
++          <span className="text-sm font-bold text-gold">
++            {distanciaCurta(proximoEvento.distanciaKm)}
++          </span>
++        </div>
++      )}
++
++      <div
++        className={`absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+150px)] ${camada(
++          "painelInferior",
++        )} rounded-3xl border border-gold/30 bg-black/85 p-4 backdrop-blur`}
++      >
++        <div className="flex items-center justify-between">
++          <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-gold">
++            <ShieldCheck size={12} /> Protegido
++          </span>
++          <div className="flex items-center gap-2">
++            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
++              {modo === "pilotando" ? "Em movimento" : "Parado"}
++            </span>
++            {/* O botão só existe se o aparelho realmente tiver voz. Sem TTS,
++                não oferecemos algo que não vai acontecer. */}
++            {vozSuportada && (
++              <button
++                onClick={onAlternarVoz}
++                role="switch"
++                aria-checked={vozLigada}
++                aria-label="Avisos por voz"
++                className={`rounded-full border p-1.5 ${
++                  vozLigada ? "border-gold/50 text-gold" : "border-white/15 text-muted-foreground"
++                }`}
++              >
++                {vozLigada ? <Volume2 size={12} /> : <VolumeX size={12} />}
++              </button>
++            )}
++          </div>
++        </div>
++
++        {/* Velocidade: o número que se lê de relance. */}
++        <div className="mt-2 flex items-end justify-center gap-2">
++          <span className="text-[56px] font-bold leading-none tracking-tight text-foreground tabular-nums">
++            {velocidade ?? "—"}
++          </span>
++          <span className="pb-2 text-xs uppercase tracking-widest text-muted-foreground">km/h</span>
++        </div>
++
++        {/* Régua de inclinação. O rótulo diz de onde vem o dado. */}
++        <div className="mt-3">
++          <div className="relative h-1.5 rounded-full bg-white/10">
++            <span className="absolute left-1/2 top-1/2 h-3 w-px -translate-x-1/2 -translate-y-1/2 bg-white/25" />
++            {temInclinacao && (
++              <span
++                className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold transition-all duration-200"
++                style={{ left: `${posicaoNaRegua}%` }}
++              />
++            )}
++          </div>
++          <div className="mt-1 flex items-center justify-between text-[10px] uppercase tracking-widest text-muted-foreground">
++            <span>Esq</span>
++            <span className={inclinacao.confianca === "boa" ? "text-gold" : ""}>
++              {temInclinacao ? `${grausInclinacao}°` : "—"}
++              {inclinacao.confianca === "baixa" && " (aparelho)"}
++            </span>
++            <span>Dir</span>
++          </div>
++        </div>
++
++        <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
++          <div className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-black/40 px-2.5 py-2">
++            <Navigation size={12} className="shrink-0 text-gold" />
++            <span className="text-muted-foreground">Rumo</span>
++            <span className="ml-auto font-bold text-foreground">{rumo ?? "—"}</span>
++          </div>
++          <div className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-black/40 px-2.5 py-2">
++            <MapPin size={12} className="shrink-0 text-gold" />
++            <span className="truncate text-muted-foreground">{rotuloDoDestino(viagem)}</span>
++          </div>
++        </div>
++
++        <button
++          onClick={onFinalizar}
++          className="mt-3 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl border border-white/15 text-xs font-bold uppercase tracking-widest text-muted-foreground"
++        >
++          Finalizar viagem
++        </button>
++      </div>
++    </>
++  );
++}
++
++/* ================================================================== *
++ * Estado A — chamada para começar
++ * ================================================================== */
++
++export function ChamadaViagemSegura({ onAbrir }: { onAbrir: () => void }) {
++  return (
++    <button
++      onClick={onAbrir}
++      className={`absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+150px)] ${camada(
++        "painelInferior",
++      )} flex min-h-[52px] items-center justify-center gap-2 rounded-2xl border border-gold/40 bg-black/80 text-sm font-bold uppercase tracking-widest text-gold backdrop-blur`}
++    >
++      <Gauge size={16} /> Iniciar viagem segura
++    </button>
++  );
++}
+diff --git a/src/components/SosPanel.tsx b/src/components/SosPanel.tsx
+index e53d09b..25f48d6 100644
+--- a/src/components/SosPanel.tsx
++++ b/src/components/SosPanel.tsx
+@@ -9,6 +9,7 @@ import {
+   X,
+ } from "lucide-react";
+ import { cn } from "@/lib/utils";
++import { camada } from "@/lib/layers";
+ import { allowsManualSend, claimsDelivery, sosDeliveryLabel } from "@/lib/sos-client";
+ import type { SosController } from "@/hooks/useSosController";
+ 
+@@ -249,8 +250,11 @@ export function SosPanel({ sos, layout = "overlay", onAddContacts, className }:
+   return (
+     <div
+       className={cn(
+-        "z-[60] flex items-end bg-black/80 p-3 animate-fade-up",
+-        layout === "overlay" ? "fixed inset-0" : "absolute inset-0 z-30",
++        // Camada do topo, da escala única. O mapa está isolado, então nada
++        // de dentro dele alcança este painel (RC3 bug #2).
++        camada("painelSos"),
++        "flex items-end bg-black/80 p-3 animate-fade-up",
++        layout === "overlay" ? "fixed inset-0" : "absolute inset-0",
+         className,
+       )}
+     >
+diff --git a/src/hooks/useCockpitTelemetry.ts b/src/hooks/useCockpitTelemetry.ts
+new file mode 100644
+index 0000000..6f3682c
+--- /dev/null
++++ b/src/hooks/useCockpitTelemetry.ts
+@@ -0,0 +1,117 @@
++import { useEffect, useRef, useState } from "react";
++import { ouvirPosicaoNativa } from "@/lib/trip-service";
++import {
++  MODO_INICIAL,
++  calcularInclinacao,
++  proximoModo,
++  rumoCardeal,
++  suavizarVelocidade,
++  velocidadeKmh,
++  type Cardeal,
++  type EstadoModo,
++  type Inclinacao,
++} from "@/lib/ride-telemetry";
++
++/**
++ * Telemetria do cockpit a partir de sensores REAIS.
++ *
++ * Nada aqui é simulado. Sem GPS com velocidade, `velocidade` é `null` e a
++ * tela mostra "—". Sem sensor de orientação, a inclinação vem `indisponivel`.
++ * Um painel que inventa número para parecer completo é pior que um painel
++ * incompleto — quem está pilotando acredita no que lê.
++ *
++ * O sensor de orientação só é ligado quando a viagem está ativa: manter
++ * `deviceorientation` rodando o dia todo gasta bateria sem servir para nada.
++ */
++export function useCockpitTelemetry(ativo: boolean) {
++  const [velocidade, setVelocidade] = useState<number | null>(null);
++  const [rumo, setRumo] = useState<Cardeal | null>(null);
++  const [inclinacao, setInclinacao] = useState<Inclinacao>({
++    graus: null,
++    confianca: "indisponivel",
++    aviso: "sem sensor de orientação",
++  });
++  const [modo, setModo] = useState<EstadoModo>(MODO_INICIAL);
++
++  const historico = useRef<number[]>([]);
++  const gamma = useRef<number | null>(null);
++  const velocidadeRef = useRef<number | null>(null);
++
++  // Posição nativa do serviço de primeiro plano. É a única que continua
++  // chegando com a tela apagada; o watchPosition abaixo cobre o navegador e o
++  // caso de o serviço não estar disponível.
++  useEffect(() => {
++    if (!ativo) return;
++    return ouvirPosicaoNativa((p) => {
++      const bruta = velocidadeKmh({
++        speedMs: p.velocidadeMs >= 0 ? p.velocidadeMs : null,
++        accuracyM: p.precisaoM >= 0 ? p.precisaoM : null,
++      });
++      const suave = bruta == null ? null : suavizarVelocidade(historico.current, bruta);
++      if (suave != null) historico.current = [...historico.current, suave].slice(-3);
++      velocidadeRef.current = suave;
++      setVelocidade(suave);
++      setModo((m) => proximoModo(m, suave, Date.now()));
++    });
++  }, [ativo]);
++
++  // GPS: velocidade e rumo.
++  useEffect(() => {
++    if (!ativo || typeof navigator === "undefined" || !navigator.geolocation) return;
++    const id = navigator.geolocation.watchPosition(
++      (pos) => {
++        const bruta = velocidadeKmh({
++          speedMs: pos.coords.speed,
++          accuracyM: pos.coords.accuracy,
++        });
++        const suave =
++          bruta == null ? null : suavizarVelocidade(historico.current, bruta);
++        if (suave != null) historico.current = [...historico.current, suave].slice(-3);
++        velocidadeRef.current = suave;
++        setVelocidade(suave);
++        setRumo(rumoCardeal(pos.coords.heading, suave));
++        setModo((m) => proximoModo(m, suave, Date.now()));
++        setInclinacao(calcularInclinacao(gamma.current, suave));
++      },
++      () => {
++        // Falha de GPS não zera a tela com número falso: some o valor.
++        velocidadeRef.current = null;
++        setVelocidade(null);
++        setRumo(null);
++      },
++      { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 },
++    );
++    return () => navigator.geolocation.clearWatch(id);
++  }, [ativo]);
++
++  // Orientação: só durante a viagem.
++  useEffect(() => {
++    if (!ativo || typeof window === "undefined" || !("DeviceOrientationEvent" in window)) return;
++    let ultimo = 0;
++    const aoGirar = (e: DeviceOrientationEvent) => {
++      gamma.current = e.gamma;
++      // O sensor dispara dezenas de vezes por segundo. Reagir a tudo isso no
++      // React derruba o desempenho num aparelho intermediário.
++      const agora = Date.now();
++      if (agora - ultimo < 250) return;
++      ultimo = agora;
++      setInclinacao(calcularInclinacao(e.gamma, velocidadeRef.current));
++    };
++    window.addEventListener("deviceorientation", aoGirar);
++    return () => window.removeEventListener("deviceorientation", aoGirar);
++  }, [ativo]);
++
++  // Ao encerrar a viagem, nada fica pendurado nem congelado na tela.
++  useEffect(() => {
++    if (ativo) return;
++    historico.current = [];
++    gamma.current = null;
++    velocidadeRef.current = null;
++    setVelocidade(null);
++    setRumo(null);
++    setModo(MODO_INICIAL);
++    setInclinacao({ graus: null, confianca: "indisponivel", aviso: "sem sensor de orientação" });
++  }, [ativo]);
++
++  return { velocidade, rumo, inclinacao, modo: modo.modo };
++}
+diff --git a/src/hooks/useSafetyCopilot.ts b/src/hooks/useSafetyCopilot.ts
+new file mode 100644
+index 0000000..a76e6aa
+--- /dev/null
++++ b/src/hooks/useSafetyCopilot.ts
+@@ -0,0 +1,93 @@
++import { useCallback, useEffect, useRef, useState } from "react";
++import {
++  MEMORIA_INICIAL,
++  avaliarCopiloto,
++  limparMemoria,
++  type MemoriaCopiloto,
++} from "@/lib/safety-copilot";
++import { devefalar, vozDoNavegador } from "@/lib/voice";
++import type { CategoriaEvento, EventoNoMapa } from "@/lib/map-events";
++
++/**
++ * Safety Copilot ligado aos dados que o app já tem.
++ *
++ * Não inventa categoria: só converte o que vem de `nearby_alerts`, dos POIs e
++ * dos riders. Categorias que o banco ainda não tem (buraco, blitz) nunca
++ * aparecem, porque não existe linha para virar evento.
++ */
++
++interface Entrada {
++  alerts: Array<{ id: string; type: string; distance_km: number }>;
++  pois: Array<{ id?: string; name: string; type?: string; distanceKm?: number }>;
++  riders: Array<{ user_id: string; distance_km: number }>;
++  viagemAtiva: boolean;
++  modo: "parado" | "pilotando";
++}
++
++const MAPA_DE_TIPOS: Record<string, CategoriaEvento> = {
++  sos: "sos",
++  acidente: "acidente",
++  perigo: "perigo",
++  roubo: "roubo",
++  bloqueio: "bloqueio",
++};
++
++export function useSafetyCopilot({ alerts, pois, riders, viagemAtiva, modo }: Entrada) {
++  const memoria = useRef<MemoriaCopiloto>(MEMORIA_INICIAL);
++  const [aviso, setAviso] = useState<EventoNoMapa | null>(null);
++  const [vozLigada, setVozLigada] = useState(false);
++  const vozSuportada = useRef(false);
++
++  useEffect(() => {
++    vozSuportada.current = vozDoNavegador.disponivel();
++  }, []);
++
++  useEffect(() => {
++    const eventos: EventoNoMapa[] = [
++      ...alerts
++        .filter((a) => MAPA_DE_TIPOS[a.type])
++        .map((a) => ({
++          id: a.id,
++          categoria: MAPA_DE_TIPOS[a.type],
++          distanciaKm: a.distance_km,
++        })),
++      ...riders.map((r) => ({
++        id: `rider:${r.user_id}`,
++        categoria: "rider" as const,
++        distanciaKm: r.distance_km,
++      })),
++    ];
++
++    const agora = Date.now();
++    const r = avaliarCopiloto(limparMemoria(memoria.current, agora), eventos, agora, modo);
++    memoria.current = r.memoria;
++    setAviso(
++      r.aviso
++        ? { id: r.aviso.id, categoria: r.aviso.categoria, distanciaKm: r.aviso.distanciaKm }
++        : null,
++    );
++
++    if (
++      devefalar({
++        vozLigada,
++        suportada: vozSuportada.current,
++        viagemAtiva,
++        modo,
++        falarAgora: r.falarAgora,
++      }) &&
++      r.aviso
++    ) {
++      vozDoNavegador.falar(r.aviso.fala);
++    }
++  }, [alerts, riders, pois, viagemAtiva, modo, vozLigada]);
++
++  // Sair da viagem cala a voz na hora: nada de frase tocando depois do fim.
++  useEffect(() => {
++    if (!viagemAtiva) vozDoNavegador.calar();
++    return () => vozDoNavegador.calar();
++  }, [viagemAtiva]);
++
++  const alternarVoz = useCallback(() => setVozLigada((v) => !v), []);
++
++  return { aviso, vozLigada, vozSuportada: vozSuportada.current, alternarVoz };
++}
+diff --git a/src/hooks/useTrip.ts b/src/hooks/useTrip.ts
+new file mode 100644
+index 0000000..4b228ac
+--- /dev/null
++++ b/src/hooks/useTrip.ts
+@@ -0,0 +1,95 @@
++import { useCallback, useEffect, useState } from "react";
++import {
++  iniciarServicoDeViagem,
++  pararServicoDeViagem,
++} from "@/lib/trip-service";
++import {
++  VIAGEM_INICIAL,
++  cancelarPreparacao,
++  carregarViagem,
++  finalizarViagem,
++  iniciarViagem,
++  receberDestino,
++  salvarViagem,
++  type Viagem,
++} from "@/lib/trip";
++
++/**
++ * Fonte única da Viagem Segura.
++ *
++ * O estado vive no módulo, e não dentro da Home: trocar de aba desmonta a
++ * Home, e a viagem não pode morrer com isso. O espelho em `localStorage`
++ * cobre o remount completo.
++ *
++ * A rota /trip continua existindo, mas passa a ler daqui. Duas
++ * implementações da mesma viagem divergiriam — já aconteceu com a camada de
++ * riders neste projeto.
++ */
++
++let viagemAtual: Viagem = { ...VIAGEM_INICIAL };
++let hidratado = false;
++const assinantes = new Set<(v: Viagem) => void>();
++
++function rotuloDoDestino(v: Viagem): string {
++  const d = v.destino;
++  if (!d) return "";
++  if (d.label) return d.label;
++  if (d.address) return d.address;
++  if (d.latitude != null && d.longitude != null) {
++    return `${d.latitude.toFixed(3)}, ${d.longitude.toFixed(3)}`;
++  }
++  return "";
++}
++
++function publicar(v: Viagem) {
++  const anterior = viagemAtual;
++  viagemAtual = v;
++  salvarViagem(v);
++
++  // O serviço nativo acompanha o estado, não o contrário. Idempotente: só age
++  // quando a viagem realmente entra ou sai do estado ativo.
++  if (anterior.estado !== "ativa" && v.estado === "ativa") {
++    void iniciarServicoDeViagem(rotuloDoDestino(v));
++  } else if (anterior.estado === "ativa" && v.estado !== "ativa") {
++    void pararServicoDeViagem();
++  }
++
++  for (const a of assinantes) a(v);
++}
++
++export function useTrip() {
++  const [viagem, setViagem] = useState<Viagem>(viagemAtual);
++
++  useEffect(() => {
++    assinantes.add(setViagem);
++    // A leitura do armazenamento acontece depois da montagem: esta rota roda
++    // com SSR, e tocar em localStorage na renderização do servidor quebraria
++    // a hidratação.
++    if (!hidratado) {
++      hidratado = true;
++      const recuperada = carregarViagem();
++      if (recuperada.estado !== "ocioso") publicar(recuperada);
++      else void pararServicoDeViagem(); // sem viagem, nenhum serviço órfão
++    }
++    setViagem(viagemAtual);
++    return () => {
++      assinantes.delete(setViagem);
++    };
++  }, []);
++
++  const definirDestino = useCallback(
++    (entrada: unknown, origem: "manual" | "externo" = "manual") => {
++      publicar(receberDestino(viagemAtual, entrada, origem));
++    },
++    [],
++  );
++
++  const iniciar = useCallback(() => publicar(iniciarViagem(viagemAtual, Date.now())), []);
++  const cancelar = useCallback(() => publicar(cancelarPreparacao(viagemAtual)), []);
++  const finalizar = useCallback(
++    (sosAtivo: boolean) => publicar(finalizarViagem(viagemAtual, sosAtivo)),
++    [],
++  );
++
++  return { viagem, definirDestino, iniciar, cancelar, finalizar };
++}
+diff --git a/src/lib/layers.ts b/src/lib/layers.ts
+new file mode 100644
+index 0000000..62727bb
+--- /dev/null
++++ b/src/lib/layers.ts
+@@ -0,0 +1,61 @@
++/**
++ * Escala de camadas da interface — fonte única.
++ *
++ * BUG REAL (RC3 #2): com o SOS aberto, o marcador da posição do usuário
++ * aparecia POR CIMA do painel. A causa não era o número: era o contexto de
++ * empilhamento. `.moto-user-location-marker` usa `z-index: 100000` porque
++ * precisa ficar acima das tiles dentro do painel do Google — mas o container
++ * do mapa não criava contexto próprio, então esse 100000 escapava e passava a
++ * competir de igual para igual com o painel do SOS, que vive muito mais
++ * acima na árvore.
++ *
++ * A correção certa não é baixar o z-index do marcador (isso quebraria a
++ * ordem dentro do mapa e voltaria na próxima camada nova). É:
++ *
++ *   1. isolar o mapa (`isolation: isolate` em `.moto-map-surface`), para que
++ *      nada de dentro dele escape;
++ *   2. ter UMA escala para o que fica fora do mapa, aqui neste arquivo.
++ *
++ * Dentro do mapa, a ordem é assunto do Google (panes) e do CSS do overlay.
++ * Fora do mapa, é esta escala — e ela é a única.
++ */
++
++export const CAMADAS = {
++  /** Superfície do mapa. Tudo do Google e dos overlays vive isolado aqui. */
++  mapa: 0,
++  /** Cartões de contexto que flutuam sobre o mapa (próximo risco, destino). */
++  cartoesDoMapa: 10,
++  /** Botões do mapa: camadas, centralizar, seguir. */
++  controlesDoMapa: 20,
++  /** Barra inferior de navegação. */
++  navegacao: 30,
++  /** Painel de preparação/cockpit ancorado embaixo. */
++  painelInferior: 40,
++  /** Botão SOS: sempre alcançável, acima da navegação. */
++  sos: 50,
++  /** Fundo escurecido de um modal. */
++  fundoModal: 60,
++  /** Painel do SOS ativo. Acima de tudo, sem exceção. */
++  painelSos: 70,
++} as const;
++
++export type NomeDeCamada = keyof typeof CAMADAS;
++
++/** Classe Tailwind arbitrária para a camada. Evita número solto no JSX. */
++export function camada(nome: NomeDeCamada): string {
++  return `z-[${CAMADAS[nome]}]`;
++}
++
++/**
++ * O painel do SOS precisa estar acima de tudo que o mapa desenha.
++ * Usado em teste: se alguém criar uma camada nova acima dele, o teste falha.
++ */
++export function sosEstaNoTopo(): boolean {
++  const valores = Object.entries(CAMADAS).filter(([nome]) => nome !== "painelSos");
++  return valores.every(([, v]) => v < CAMADAS.painelSos);
++}
++
++/** Ordem de pintura, do fundo para a frente. */
++export function ordemDeCamadas(): NomeDeCamada[] {
++  return (Object.keys(CAMADAS) as NomeDeCamada[]).sort((a, b) => CAMADAS[a] - CAMADAS[b]);
++}
+diff --git a/src/lib/location-permission.ts b/src/lib/location-permission.ts
+index 72220c4..152e5ac 100644
+--- a/src/lib/location-permission.ts
++++ b/src/lib/location-permission.ts
+@@ -84,6 +84,44 @@ export function precisaMostrarGate(status: StatusPermissao): boolean {
+   return status !== "concedida" && status !== "verificando";
+ }
+ 
++/**
++ * Reconcilia a leitura nova com a que já tínhamos.
++ *
++ * BUG REAL (RC3 #1): o gate voltava a aparecer depois de trocar de aba, mesmo
++ * com a permissão concedida. A causa não era o estado local — isso já tinha
++ * sido corrigido. Era a fonte: dentro de um WebView, a Permissions API
++ * responde pela permissão da ORIGEM WEB, que é uma coisa diferente da
++ * permissão do sistema Android. Depois de o usuário conceder no diálogo do
++ * Android, `navigator.permissions.query({name:"geolocation"})` ainda pode
++ * responder `prompt`. Ao voltar para o app, o `visibilitychange` reconsultava,
++ * recebia `prompt`, e o onboarding reaparecia por cima de uma permissão que
++ * já existia.
++ *
++ * A regra que corrige isso de forma estrutural:
++ *
++ *   uma concessão confirmada só é revogada por evidência EXPLÍCITA de recusa.
++ *
++ * Ambiguidade (`perguntar`, `desconhecido`) nunca rebaixa. Recusa explícita
++ * (`negada`, `negada_permanente`) sempre rebaixa — porque a pessoa pode ter
++ * revogado nas Configurações, e esconder isso seria pior.
++ *
++ * A leitura nativa tem prioridade sobre a web: ela fala do sistema, que é o
++ * que de fato manda no GPS.
++ */
++export function reconciliarLeitura(
++  anterior: LeituraPermissao,
++  nova: LeituraPermissao,
++): LeituraPermissao {
++  if (anterior.status !== "concedida") return nova;
++
++  // Já estava concedida: só uma recusa explícita derruba.
++  if (nova.status === "negada" || nova.status === "negada_permanente") return nova;
++  if (nova.status === "indisponivel" && nova.origem === "nativo") return nova;
++
++  // Qualquer outra coisa é ambiguidade — mantemos o que sabíamos.
++  return anterior;
++}
++
+ /** Só faz sentido oferecer "Abrir configurações" quando o pedido não volta mais. */
+ export function ofereceConfiguracoes(status: StatusPermissao): boolean {
+   return status === "negada_permanente";
+@@ -101,6 +139,17 @@ export function leituraAtual(): LeituraPermissao {
+ }
+ 
+ export function definirLeitura(leitura: LeituraPermissao): void {
++  const proxima = reconciliarLeitura(atual, leitura);
++  if (proxima.status === atual.status && proxima.origem === atual.origem) return;
++  atual = proxima;
++  for (const assinante of assinantes) assinante(proxima);
++}
++
++/**
++ * Escreve sem reconciliar. Usado só quando a evidência é de primeira mão —
++ * um fix de GPS que voltou, ou o resultado do diálogo do sistema.
++ */
++export function definirLeituraDireta(leitura: LeituraPermissao): void {
+   atual = leitura;
+   for (const assinante of assinantes) assinante(leitura);
+ }
+@@ -218,8 +267,10 @@ export async function pedirPermissao(): Promise<LeituraPermissao> {
+     }
+     navigator.geolocation.getCurrentPosition(
+       () => {
++        // Uma posição voltou: é a prova mais forte que existe de que a
++        // permissão está de pé. Entra sem reconciliação.
+         const leitura: LeituraPermissao = { status: "concedida", origem: "web" };
+-        definirLeitura(leitura);
++        definirLeituraDireta(leitura);
+         resolve(leitura);
+       },
+       (err) => {
+@@ -227,7 +278,7 @@ export async function pedirPermissao(): Promise<LeituraPermissao> {
+           status: traduzirErroDeGps(err.code, err.PERMISSION_DENIED),
+           origem: "web",
+         };
+-        definirLeitura(leitura);
++        definirLeituraDireta(leitura);
+         resolve(leitura);
+       },
+       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+diff --git a/src/lib/map-events.ts b/src/lib/map-events.ts
+new file mode 100644
+index 0000000..ea366ea
+--- /dev/null
++++ b/src/lib/map-events.ts
+@@ -0,0 +1,173 @@
++/**
++ * Eventos do mapa — categoria, prioridade e o que mostrar.
++ *
++ * O mapa hoje parece "Google Maps escuro com círculos". O problema não é
++ * estético: manchas grandes escondem nome de rua e não respondem as únicas
++ * perguntas que importam para quem está pilotando — o que é, onde, a que
++ * distância e se precisa agir agora.
++ *
++ * Este módulo é a linguagem visual em forma de dado. Ele decide a categoria,
++ * a prioridade e qual é o único evento que merece um cartão na tela.
++ *
++ * CATEGORIAS SUPORTADAS PELO BANCO HOJE: sos, acidente, perigo, bloqueio,
++ * roubo (community_alerts) e os POIs de apoio. `buraco` e `blitz` estão
++ * modelados aqui porque a interface precisa deles, mas **o banco ainda não
++ * tem esses tipos** — nenhum dado é inventado: sem linha no banco, nenhum
++ * pino aparece. Ver "o que falta" no fim do arquivo.
++ */
++
++export type CategoriaEvento =
++  | "sos"
++  | "acidente"
++  | "perigo"
++  | "roubo"
++  | "bloqueio"
++  | "buraco"
++  | "blitz"
++  | "posto"
++  | "oficina"
++  | "hospital"
++  | "rider";
++
++/** P0 é o mais urgente. A ordem aqui é a ordem de atenção. */
++export type Prioridade = 0 | 1 | 2 | 3 | 4 | 5;
++
++export interface AparenciaEvento {
++  prioridade: Prioridade;
++  rotulo: string;
++  /** Forma do pino: cor sozinha não diferencia para quem não distingue cores. */
++  forma: "losango" | "triangulo" | "circulo" | "quadrado" | "gota";
++  cor: string;
++  /** Só o topo da lista pulsa. Mapa inteiro piscando não comunica nada. */
++  pulsa: boolean;
++}
++
++const VERMELHO = "#D92323";
++const AMBAR = "#E8A317";
++const DOURADO = "#D4AF37";
++const AZUL = "#4A9DD4";
++
++export const APARENCIA: Record<CategoriaEvento, AparenciaEvento> = {
++  sos: { prioridade: 0, rotulo: "SOS de motociclista", forma: "losango", cor: VERMELHO, pulsa: true },
++  acidente: { prioridade: 1, rotulo: "Acidente", forma: "triangulo", cor: VERMELHO, pulsa: false },
++  roubo: { prioridade: 1, rotulo: "Roubo", forma: "triangulo", cor: VERMELHO, pulsa: false },
++  perigo: { prioridade: 2, rotulo: "Perigo", forma: "triangulo", cor: AMBAR, pulsa: false },
++  blitz: { prioridade: 3, rotulo: "Fiscalização", forma: "quadrado", cor: AMBAR, pulsa: false },
++  bloqueio: { prioridade: 3, rotulo: "Bloqueio", forma: "quadrado", cor: AMBAR, pulsa: false },
++  buraco: { prioridade: 3, rotulo: "Buraco", forma: "circulo", cor: AMBAR, pulsa: false },
++  hospital: { prioridade: 4, rotulo: "Hospital", forma: "gota", cor: AZUL, pulsa: false },
++  posto: { prioridade: 5, rotulo: "Posto", forma: "gota", cor: DOURADO, pulsa: false },
++  oficina: { prioridade: 5, rotulo: "Oficina", forma: "gota", cor: DOURADO, pulsa: false },
++  rider: { prioridade: 5, rotulo: "Motociclista", forma: "circulo", cor: DOURADO, pulsa: false },
++};
++
++export interface EventoNoMapa {
++  id: string;
++  categoria: CategoriaEvento;
++  distanciaKm: number;
++  criadoEm?: number;
++}
++
++/** Categorias que o banco realmente alimenta hoje. */
++export const CATEGORIAS_COM_DADOS: CategoriaEvento[] = [
++  "sos",
++  "acidente",
++  "perigo",
++  "roubo",
++  "bloqueio",
++  "posto",
++  "oficina",
++  "hospital",
++  "rider",
++];
++
++export function temDadosNoBackend(c: CategoriaEvento): boolean {
++  return CATEGORIAS_COM_DADOS.includes(c);
++}
++
++/**
++ * Ordena por atenção: prioridade primeiro, distância como desempate.
++ * Um SOS a 3 km vem antes de um buraco a 100 m — e é isso que se quer.
++ */
++export function ordenarPorAtencao(eventos: EventoNoMapa[]): EventoNoMapa[] {
++  return [...eventos].sort((a, b) => {
++    const pa = APARENCIA[a.categoria].prioridade;
++    const pb = APARENCIA[b.categoria].prioridade;
++    if (pa !== pb) return pa - pb;
++    return a.distanciaKm - b.distanciaKm;
++  });
++}
++
++/** Além disto, o evento não é problema de agora. */
++export const ALCANCE_DO_CARTAO_KM: Record<Prioridade, number> = {
++  0: 5,
++  1: 3,
++  2: 2,
++  3: 1,
++  4: 1.5,
++  5: 0,
++};
++
++/**
++ * O ÚNICO evento que ganha cartão na tela.
++ *
++ * Um por vez, sempre. Cinco cartões concorrendo é ruído; e ruído durante
++ * pilotagem faz a pessoa parar de olhar — inclusive quando aparecer o que
++ * importa. POIs (prioridade 5) nunca viram cartão: são consulta, não alerta.
++ */
++export function eventoParaCartao(
++  eventos: EventoNoMapa[],
++  modo: "parado" | "pilotando" = "pilotando",
++): EventoNoMapa | null {
++  const candidatos = ordenarPorAtencao(eventos).filter((e) => {
++    const p = APARENCIA[e.categoria].prioridade;
++    const alcance = ALCANCE_DO_CARTAO_KM[p];
++    if (alcance === 0) return false;
++    // Parado, faz sentido enxergar um pouco mais longe: dá para decidir rota.
++    return e.distanciaKm <= (modo === "parado" ? alcance * 2 : alcance);
++  });
++  return candidatos[0] ?? null;
++}
++
++/** Distância em texto curto, do jeito que se lê de relance. */
++export function distanciaCurta(km: number): string {
++  if (!Number.isFinite(km) || km < 0) return "—";
++  if (km < 1) return `${Math.round(km * 1000)} m`;
++  return `${km.toFixed(1).replace(".", ",")} km`;
++}
++
++/* ================================================================== *
++ * Áreas de risco
++ * ================================================================== */
++
++/**
++ * Raio da mancha de risco.
++ *
++ * Antes eram círculos de 600 m em três faixas sobrepostas, o que pintava
++ * bairros inteiros de vermelho e apagava o nome das ruas. O raio agora é
++ * contextual e limitado: risco é contexto, não é a informação principal.
++ */
++export function raioDeRisco(ocorrencias: number): number {
++  const base = 120;
++  const porOcorrencia = 40;
++  return Math.min(400, base + ocorrencias * porOcorrencia);
++}
++
++/** Opacidade máxima da mancha. Acima disto, o mapa vira decoração. */
++export const OPACIDADE_MAXIMA_RISCO = 0.14;
++
++export function opacidadeDeRisco(ocorrencias: number): number {
++  return Math.min(OPACIDADE_MAXIMA_RISCO, 0.05 + ocorrencias * 0.02);
++}
++
++/* ================================================================== *
++ * O QUE FALTA NO BACKEND (não inventar dado)
++ *
++ *   buraco  — não existe em community_alerts.type. Precisa de migration
++ *             aditiva no CHECK e de um item no formulário de alertas.
++ *   blitz   — idem.
++ *
++ * Enquanto não existirem, a interface está pronta e nenhum pino aparece,
++ * porque não há linha no banco. É o comportamento correto: melhor faltar
++ * categoria do que inventar ocorrência que ninguém reportou.
++ * ================================================================== */
+diff --git a/src/lib/rc3.test.ts b/src/lib/rc3.test.ts
+new file mode 100644
+index 0000000..89090dd
+--- /dev/null
++++ b/src/lib/rc3.test.ts
+@@ -0,0 +1,768 @@
++import test from "node:test";
++import assert from "node:assert/strict";
++import { CAMADAS, ordemDeCamadas, sosEstaNoTopo } from "./layers.ts";
++import {
++  _resetarPermissao,
++  definirLeitura,
++  definirLeituraDireta,
++  leituraAtual,
++  precisaMostrarGate,
++  reconciliarLeitura,
++} from "./location-permission.ts";
++import {
++  MODO_INICIAL,
++  calcularInclinacao,
++  inclinacaoIndicaQueda,
++  proximoModo,
++  rumoCardeal,
++  suavizarVelocidade,
++  velocidadeKmh,
++} from "./ride-telemetry.ts";
++import {
++  VIAGEM_INICIAL,
++  cancelarPreparacao,
++  carregarViagem,
++  deveRastrear,
++  finalizarViagem,
++  iniciarViagem,
++  receberDestino,
++  salvarViagem,
++  type ArmazenamentoSimples,
++} from "./trip.ts";
++import { readFileSync, readdirSync } from "node:fs";
++import { join } from "node:path";
++import { MEMORIA_INICIAL, avaliarCopiloto, limparMemoria } from "./safety-copilot.ts";
++import { devefalar } from "./voice.ts";
++import {
++  APARENCIA,
++  distanciaCurta,
++  eventoParaCartao,
++  opacidadeDeRisco,
++  ordenarPorAtencao,
++  raioDeRisco,
++  temDadosNoBackend,
++  type EventoNoMapa,
++} from "./map-events.ts";
++
++/* ================================================================== *
++ * BUG 1 — o gate não pode reaparecer
++ * ================================================================== */
++
++test("BUG1: concessão confirmada não cai por resposta ambígua", () => {
++  const concedida = { status: "concedida", origem: "nativo" } as const;
++  // É exatamente isto que acontecia: a Permissions API do WebView responde
++  // pela origem web e devolve "perguntar" mesmo com o Android já concedido.
++  for (const ambigua of ["perguntar", "desconhecido", "verificando"] as const) {
++    const r = reconciliarLeitura(concedida, { status: ambigua, origem: "web" });
++    assert.equal(r.status, "concedida", `${ambigua} não pode derrubar uma concessão`);
++  }
++});
++
++test("BUG1: recusa explícita derruba, porque a pessoa pode ter revogado", () => {
++  const concedida = { status: "concedida", origem: "nativo" } as const;
++  assert.equal(reconciliarLeitura(concedida, { status: "negada", origem: "web" }).status, "negada");
++  assert.equal(
++    reconciliarLeitura(concedida, { status: "negada_permanente", origem: "nativo" }).status,
++    "negada_permanente",
++  );
++});
++
++test("BUG1: sem concessão anterior, a leitura nova vale como veio", () => {
++  const nada = { status: "desconhecido", origem: "nenhuma" } as const;
++  assert.equal(reconciliarLeitura(nada, { status: "perguntar", origem: "web" }).status, "perguntar");
++});
++
++test("BUG1: trocar de aba e voltar não reabre o onboarding", () => {
++  _resetarPermissao();
++  definirLeituraDireta({ status: "concedida", origem: "web" });
++  assert.equal(precisaMostrarGate(leituraAtual().status), false);
++
++  // Volta do segundo plano: o visibilitychange reconsulta e a API responde
++  // "prompt". Antes, isto trazia o gate de volta por cima da permissão.
++  definirLeitura({ status: "perguntar", origem: "web" });
++  assert.equal(leituraAtual().status, "concedida");
++  assert.equal(precisaMostrarGate(leituraAtual().status), false, "o gate voltou — bug de novo");
++  _resetarPermissao();
++});
++
++test("BUG1: 'verificando' nunca é lido como negado", () => {
++  assert.equal(precisaMostrarGate("verificando"), false);
++  assert.equal(precisaMostrarGate("concedida"), false);
++  assert.equal(precisaMostrarGate("negada"), true);
++});
++
++test("BUG1: uma posição real re-afirma a concessão sem reconciliar", () => {
++  _resetarPermissao();
++  definirLeituraDireta({ status: "negada", origem: "web" });
++  definirLeituraDireta({ status: "concedida", origem: "web" });
++  assert.equal(leituraAtual().status, "concedida");
++  _resetarPermissao();
++});
++
++/* ================================================================== *
++ * BUG 2 — o SOS fica acima de tudo
++ * ================================================================== */
++
++test("BUG2: o painel do SOS é a camada mais alta", () => {
++  assert.equal(sosEstaNoTopo(), true);
++  for (const [nome, valor] of Object.entries(CAMADAS)) {
++    if (nome === "painelSos") continue;
++    assert.ok(valor < CAMADAS.painelSos, `${nome} está acima do painel do SOS`);
++  }
++});
++
++test("BUG2: o marcador e os overlays ficam abaixo do SOS", () => {
++  // Tudo que o mapa desenha vive dentro da camada `mapa`, que é a mais baixa.
++  assert.ok(CAMADAS.mapa < CAMADAS.painelSos);
++  assert.ok(CAMADAS.controlesDoMapa < CAMADAS.painelSos);
++  assert.ok(CAMADAS.cartoesDoMapa < CAMADAS.painelSos);
++});
++
++test("BUG2: o botão SOS fica acima da navegação, para continuar alcançável", () => {
++  assert.ok(CAMADAS.sos > CAMADAS.navegacao);
++  assert.ok(CAMADAS.sos > CAMADAS.painelInferior);
++});
++
++test("BUG2: a ordem de pintura é coerente do fundo para a frente", () => {
++  assert.deepEqual(ordemDeCamadas()[0], "mapa");
++  assert.deepEqual(ordemDeCamadas().at(-1), "painelSos");
++});
++
++/* ================================================================== *
++ * Telemetria
++ * ================================================================== */
++
++test("velocidade: parado não fica piscando 0-2-0-3", () => {
++  for (const ms of [0, 0.2, 0.5, 0.8]) {
++    assert.equal(velocidadeKmh({ speedMs: ms }), 0, `${ms} m/s deveria virar 0`);
++  }
++  assert.equal(velocidadeKmh({ speedMs: 11.1 }), 40);
++});
++
++test("velocidade: sem dado é null, nunca um número inventado", () => {
++  assert.equal(velocidadeKmh({ speedMs: null }), null);
++  assert.equal(velocidadeKmh({ speedMs: NaN }), null);
++  assert.equal(velocidadeKmh({ speedMs: -1 }), null);
++  assert.equal(velocidadeKmh({ speedMs: 11, accuracyM: 300 }), null, "fix ruim não vira painel");
++});
++
++test("velocidade: a suavização tira o tremor", () => {
++  assert.equal(suavizarVelocidade([40, 42], 41), 41);
++  assert.equal(suavizarVelocidade([], 37), 37);
++});
++
++test("rumo: só aparece com movimento", () => {
++  assert.equal(rumoCardeal(0, 40), "N");
++  assert.equal(rumoCardeal(90, 40), "L");
++  assert.equal(rumoCardeal(225, 40), "SO");
++  assert.equal(rumoCardeal(360, 40), "N");
++  assert.equal(rumoCardeal(90, 0), null, "parado, o heading gira sozinho");
++  assert.equal(rumoCardeal(null, 40), null);
++});
++
++test("inclinação: sem sensor, a interface recebe null e um aviso honesto", () => {
++  const i = calcularInclinacao(null, 40);
++  assert.equal(i.graus, null);
++  assert.equal(i.confianca, "indisponivel");
++  assert.ok(i.aviso);
++});
++
++test("inclinação: parado, a leitura é do aparelho e é dito na cara", () => {
++  const i = calcularInclinacao(30, 0);
++  assert.equal(i.confianca, "baixa");
++  assert.match(i.aviso ?? "", /parado/i);
++});
++
++test("inclinação: em movimento é limitada à faixa da interface", () => {
++  assert.equal(calcularInclinacao(80, 40).graus, 45);
++  assert.equal(calcularInclinacao(-90, 40).graus, -45);
++  assert.equal(calcularInclinacao(-12, 40).confianca, "boa");
++});
++
++test("SEGURANÇA: inclinação isolada nunca indica queda", () => {
++  assert.equal(inclinacaoIndicaQueda(), false);
++});
++
++test("modo: só entra em pilotagem com velocidade de verdade", () => {
++  assert.equal(proximoModo(MODO_INICIAL, 8, 0).modo, "parado");
++  assert.equal(proximoModo(MODO_INICIAL, 20, 0).modo, "pilotando");
++});
++
++test("modo: jitter de GPS não faz o painel trocar de layout", () => {
++  let e = proximoModo(MODO_INICIAL, 30, 0);
++  assert.equal(e.modo, "pilotando");
++  // Semáforo: cai a zero, mas volta antes do tempo. Continua pilotando.
++  e = proximoModo(e, 0, 1000);
++  e = proximoModo(e, 1, 3000);
++  e = proximoModo(e, 18, 5000);
++  assert.equal(e.modo, "pilotando", "oscilou e trocou de modo");
++});
++
++test("modo: parado de verdade volta para o layout completo", () => {
++  let e = proximoModo(MODO_INICIAL, 30, 0);
++  e = proximoModo(e, 0, 1000);
++  e = proximoModo(e, 0, 6000);
++  assert.equal(e.modo, "pilotando", "ainda dentro da carência");
++  e = proximoModo(e, 0, 9500);
++  assert.equal(e.modo, "parado");
++});
++
++/* ================================================================== *
++ * Viagem Segura
++ * ================================================================== */
++
++test("VIAGEM: destino recebido NUNCA inicia a viagem sozinho", () => {
++  const v = receberDestino(VIAGEM_INICIAL, "geo:-23.5,-46.6", "externo");
++  assert.equal(v.estado, "preparando", "só pode preparar, nunca começar");
++  assert.equal(v.destino?.latitude, -23.5);
++  assert.equal(v.origemDoDestino, "externo");
++});
++
++test("VIAGEM: destino inválido ou perigoso não muda nada", () => {
++  for (const ruim of ["javascript:alert(1)", "", "  ", "geo:999,999", null, 42]) {
++    assert.equal(receberDestino(VIAGEM_INICIAL, ruim, "externo").estado, "ocioso");
++  }
++});
++
++test("VIAGEM: ciclo completo", () => {
++  const preparando = receberDestino(VIAGEM_INICIAL, "-23.5,-46.6", "manual");
++  const ativa = iniciarViagem(preparando, 1000);
++  assert.equal(ativa.estado, "ativa");
++  assert.equal(ativa.iniciadaEm, 1000);
++  assert.equal(deveRastrear(ativa), true);
++
++  const fim = finalizarViagem(ativa, false);
++  assert.deepEqual(fim, VIAGEM_INICIAL);
++  assert.equal(deveRastrear(fim), false, "listeners da viagem precisam parar");
++});
++
++test("VIAGEM: não dá para iniciar sem destino", () => {
++  assert.equal(iniciarViagem(VIAGEM_INICIAL, 1000).estado, "ocioso");
++});
++
++test("VIAGEM: destino novo não sequestra viagem em curso", () => {
++  const ativa = iniciarViagem(receberDestino(VIAGEM_INICIAL, "-23.5,-46.6", "manual"), 1000);
++  const depois = receberDestino(ativa, "-22.9,-43.2", "externo");
++  assert.equal(depois.estado, "ativa");
++  assert.equal(depois.destino?.latitude, -23.5, "o destino da viagem em curso mudou");
++});
++
++test("VIAGEM: finalizar viagem não encerra um SOS ativo", () => {
++  const ativa = iniciarViagem(receberDestino(VIAGEM_INICIAL, "-23.5,-46.6", "manual"), 1000);
++  const fim = finalizarViagem(ativa, true);
++  // A viagem acaba; o SOS é assunto de sos_cancel/sos_resolve, e nada aqui
++  // encosta nele.
++  assert.equal(fim.estado, "ocioso");
++});
++
++test("VIAGEM: cancelar a preparação limpa o destino", () => {
++  const p = receberDestino(VIAGEM_INICIAL, "-23.5,-46.6", "manual");
++  assert.deepEqual(cancelarPreparacao(p), VIAGEM_INICIAL);
++});
++
++test("VIAGEM: sobrevive a trocar de aba e remontar a Home", () => {
++  const dados: Record<string, string> = {};
++  const store: ArmazenamentoSimples = {
++    getItem: (k) => dados[k] ?? null,
++    setItem: (k, v) => {
++      dados[k] = v;
++    },
++    removeItem: (k) => {
++      delete dados[k];
++    },
++  };
++  const ativa = iniciarViagem(receberDestino(VIAGEM_INICIAL, "-23.5,-46.6", "manual"), 1000);
++  salvarViagem(ativa, store);
++
++  // Home desmontou e montou de novo:
++  const recuperada = carregarViagem(2000, store);
++  assert.equal(recuperada.estado, "ativa");
++  assert.equal(recuperada.destino?.latitude, -23.5);
++});
++
++test("VIAGEM: resquício de 12 h atrás não volta como viagem ativa", () => {
++  const dados: Record<string, string> = {};
++  const store: ArmazenamentoSimples = {
++    getItem: (k) => dados[k] ?? null,
++    setItem: (k, v) => {
++      dados[k] = v;
++    },
++    removeItem: (k) => {
++      delete dados[k];
++    },
++  };
++  salvarViagem(iniciarViagem(receberDestino(VIAGEM_INICIAL, "-23.5,-46.6", "manual"), 0), store);
++  assert.equal(carregarViagem(13 * 60 * 60 * 1000, store).estado, "ocioso");
++});
++
++test("VIAGEM: armazenamento corrompido não derruba a Home", () => {
++  const store: ArmazenamentoSimples = {
++    getItem: () => "{isso não é json",
++    setItem: () => {},
++    removeItem: () => {},
++  };
++  assert.deepEqual(carregarViagem(0, store), VIAGEM_INICIAL);
++});
++
++test("VIAGEM: destino vindo do armazenamento passa pelo mesmo saneamento", () => {
++  const store: ArmazenamentoSimples = {
++    getItem: () =>
++      JSON.stringify({ estado: "preparando", destino: { address: "javascript:alert(1)" } }),
++    setItem: () => {},
++    removeItem: () => {},
++  };
++  const v = carregarViagem(0, store);
++  // O endereço é texto, não URL executável — e mesmo assim: se não normalizar
++  // para um destino utilizável, a viagem não volta.
++  assert.ok(v.estado === "ocioso" || v.destino?.address !== undefined);
++});
++
++/* ================================================================== *
++ * Eventos do mapa
++ * ================================================================== */
++
++const ler = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
++
++/**
++ * Lê ignorando comentários — de TS/JSX, de XML e de Java.
++ *
++ * Esta armadilha já pegou este projeto quatro vezes: um comentário que
++ * EXPLICA o problema antigo ("ACCESS_BACKGROUND_LOCATION não foi declarada de
++ * propósito", "quem encerra é sos_cancel") é lido como se fosse código e
++ * reprova o arquivo justamente por ele estar certo. Toda checagem de
++ * "isto não pode existir" precisa passar por aqui.
++ */
++const lerSemComentarios = (p: string) =>
++  ler(p)
++    .replace(/<!--[\s\S]*?-->/g, " ")
++    .replace(/\{\/\*[\s\S]*?\*\/\}/g, " ")
++    .replace(/\/\*[\s\S]*?\*\//g, " ")
++    .replace(/(^|[^:])\/\/[^\n]*/g, "$1 ");
++
++const ev = (categoria: EventoNoMapa["categoria"], distanciaKm: number, id = categoria): EventoNoMapa => ({
++  id,
++  categoria,
++  distanciaKm,
++});
++
++test("MAPA: cada categoria tem ícone, forma e cor próprios", () => {
++  const combinacoes = new Set(
++    Object.values(APARENCIA).map((a) => `${a.forma}|${a.cor}|${a.prioridade}`),
++  );
++  assert.ok(combinacoes.size >= 6, "categorias diferentes não podem parecer iguais");
++  // Cor sozinha não diferencia para quem não distingue cores.
++  const formas = new Set(Object.values(APARENCIA).map((a) => a.forma));
++  assert.ok(formas.size >= 4);
++});
++
++test("MAPA: SOS tem prioridade máxima e é o único que pulsa", () => {
++  assert.equal(APARENCIA.sos.prioridade, 0);
++  const pulsantes = Object.entries(APARENCIA).filter(([, a]) => a.pulsa);
++  assert.deepEqual(pulsantes.map(([n]) => n), ["sos"], "só o SOS pode pulsar");
++});
++
++test("MAPA: um SOS longe vem antes de um buraco perto", () => {
++  const ordenado = ordenarPorAtencao([ev("buraco", 0.1), ev("sos", 3), ev("posto", 0.05)]);
++  assert.equal(ordenado[0].categoria, "sos");
++  assert.equal(ordenado.at(-1)?.categoria, "posto");
++});
++
++test("MAPA: só um cartão por vez, e POI nunca vira alerta", () => {
++  const cartao = eventoParaCartao([ev("posto", 0.1), ev("oficina", 0.2)]);
++  assert.equal(cartao, null, "apoio é consulta, não alerta");
++
++  const comRisco = eventoParaCartao([ev("posto", 0.1), ev("acidente", 0.5), ev("buraco", 0.2)]);
++  assert.equal(comRisco?.categoria, "acidente");
++});
++
++test("MAPA: evento distante demais não vira cartão", () => {
++  assert.equal(eventoParaCartao([ev("buraco", 8)]), null);
++  assert.equal(eventoParaCartao([ev("sos", 4)])?.categoria, "sos");
++  assert.equal(eventoParaCartao([ev("sos", 40)]), null);
++});
++
++test("MAPA: parado, o alcance do cartão é maior", () => {
++  assert.equal(eventoParaCartao([ev("buraco", 1.5)], "pilotando"), null);
++  assert.equal(eventoParaCartao([ev("buraco", 1.5)], "parado")?.categoria, "buraco");
++});
++
++test("MAPA: mapa vazio não quebra nada", () => {
++  assert.equal(eventoParaCartao([]), null);
++  assert.deepEqual(ordenarPorAtencao([]), []);
++});
++
++test("MAPA: as manchas de risco deixaram de cobrir bairros", () => {
++  assert.ok(raioDeRisco(0) <= 200, "mancha inicial precisa ser pequena");
++  assert.ok(raioDeRisco(50) <= 400, "e ter teto, por mais ocorrências que existam");
++  assert.ok(opacidadeDeRisco(50) <= 0.14, "opacidade não pode esconder o nome da rua");
++});
++
++test("MAPA: categorias sem dado no banco são declaradas, não inventadas", () => {
++  assert.equal(temDadosNoBackend("sos"), true);
++  assert.equal(temDadosNoBackend("buraco"), false, "buraco ainda não existe em community_alerts");
++  assert.equal(temDadosNoBackend("blitz"), false);
++});
++
++test("MAPA: distância é escrita do jeito que se lê de relance", () => {
++  assert.equal(distanciaCurta(0.18), "180 m");
++  assert.equal(distanciaCurta(2.74), "2,7 km");
++  assert.equal(distanciaCurta(-1), "—");
++});
++
++/* ================================================================== *
++ * Safety Copilot
++ * ================================================================== */
++
++test("COPILOTO: um aviso por vez, o de maior prioridade", () => {
++  const r = avaliarCopiloto(MEMORIA_INICIAL, [ev("buraco", 0.1), ev("sos", 0.3)], 0);
++  assert.equal(r.aviso?.categoria, "sos");
++  assert.equal(r.falarAgora, true);
++});
++
++test("COPILOTO: não repete o mesmo evento antes do cooldown", () => {
++  const primeira = avaliarCopiloto(MEMORIA_INICIAL, [ev("acidente", 0.8)], 0);
++  assert.equal(primeira.falarAgora, true);
++  const segunda = avaliarCopiloto(primeira.memoria, [ev("acidente", 0.79)], 30_000);
++  assert.equal(segunda.falarAgora, false, "falou de novo em 30 s");
++  assert.equal(segunda.aviso?.categoria, "acidente", "mas continua na tela");
++});
++
++test("COPILOTO: repete depois do cooldown", () => {
++  const primeira = avaliarCopiloto(MEMORIA_INICIAL, [ev("acidente", 0.8)], 0);
++  const depois = avaliarCopiloto(primeira.memoria, [ev("acidente", 0.8)], 120_000);
++  assert.equal(depois.falarAgora, true);
++});
++
++test("COPILOTO: repete se o perigo ficou bem mais perto", () => {
++  const primeira = avaliarCopiloto(MEMORIA_INICIAL, [ev("acidente", 1.2)], 0);
++  const perto = avaliarCopiloto(primeira.memoria, [ev("acidente", 0.3)], 10_000);
++  assert.equal(perto.falarAgora, true, "chegou perto e ficou calado");
++});
++
++test("COPILOTO: eventos diferentes são anunciados separadamente", () => {
++  const a = avaliarCopiloto(MEMORIA_INICIAL, [ev("acidente", 0.8, "a1")], 0);
++  const b = avaliarCopiloto(a.memoria, [ev("acidente", 0.8, "a1"), ev("sos", 0.5, "s1")], 5_000);
++  assert.equal(b.aviso?.id, "s1");
++  assert.equal(b.falarAgora, true);
++});
++
++test("COPILOTO: sem evento relevante, a tela fica limpa", () => {
++  const r = avaliarCopiloto(MEMORIA_INICIAL, [ev("posto", 0.2)], 0);
++  assert.equal(r.aviso, null);
++  assert.equal(r.falarAgora, false);
++});
++
++test("COPILOTO: a memória não cresce para sempre", () => {
++  const cheia = { anunciados: { velho: { emMs: 0, distanciaKm: 1 } }, atual: null };
++  assert.deepEqual(limparMemoria(cheia, 10_000_000).anunciados, {});
++});
++
++test("COPILOTO: a fala é curta e sem sigla", () => {
++  const r = avaliarCopiloto(MEMORIA_INICIAL, [ev("buraco", 0.18)], 0, "parado");
++  assert.match(r.aviso?.fala ?? "", /^Buraco a \d+ metros\.$/);
++  const sos = avaliarCopiloto(MEMORIA_INICIAL, [ev("sos", 0.3)], 0);
++  assert.match(sos.aviso?.fala ?? "", /ajuda/i);
++});
++
++/* ================================================================== *
++ * Voz
++ * ================================================================== */
++
++test("VOZ: só fala com viagem ativa, em movimento e com suporte real", () => {
++  const base = {
++    vozLigada: true,
++    suportada: true,
++    viagemAtiva: true,
++    modo: "pilotando" as const,
++    falarAgora: true,
++  };
++  assert.equal(devefalar(base), true);
++  assert.equal(devefalar({ ...base, suportada: false }), false, "sem TTS não promete voz");
++  assert.equal(devefalar({ ...base, vozLigada: false }), false);
++  assert.equal(devefalar({ ...base, viagemAtiva: false }), false);
++  assert.equal(devefalar({ ...base, modo: "parado" }), false, "parado, a pessoa olha a tela");
++  assert.equal(devefalar({ ...base, falarAgora: false }), false, "cooldown manda");
++});
++
++/* ================================================================== *
++ * Android — o OAuth não pode quebrar
++ * ================================================================== */
++
++test("ANDROID: o filtro do OAuth continua único e intacto", () => {
++  const manifest = ler("android/app/src/main/AndroidManifest.xml");
++  const comAuth = [
++    ...manifest.matchAll(/<data android:scheme="com\.motoanjo\.app" android:host="([^"]+)"/g),
++  ].map((m) => m[1]);
++  assert.ok(comAuth.includes("auth"), "o callback do login sumiu");
++  // Nenhum filtro novo pode casar com o callback: todos precisam de host, e
++  // um esquema sem host capturaria com.motoanjo.app://auth/callback também.
++  const semHost = /<data android:scheme="com\.motoanjo\.app"\s*\/>/.test(manifest);
++  assert.equal(semHost, false, "filtro sem host captura o callback do OAuth");
++  assert.equal(new Set(comAuth).size, comAuth.length, "host duplicado gera ambiguidade");
++});
++
++test("ANDROID: filtros de destino declarados e distintos do OAuth", () => {
++  const manifest = ler("android/app/src/main/AndroidManifest.xml");
++  assert.ok(/android:scheme="geo"/.test(manifest), "geo: não foi declarado");
++  assert.ok(/android:host="destino"/.test(manifest), "deep link próprio de destino");
++  assert.ok(/action android:name="android\.intent\.action\.SEND"/.test(manifest));
++  assert.ok(/android:mimeType="text\/plain"/.test(manifest));
++});
++
++/* ================================================================== *
++ * Integração: a Home usa a fonte única
++ * ================================================================== */
++
++test("HOME: a Viagem Segura mora na Home, com fonte única", () => {
++  const home = ler("src/routes/_authenticated/dashboard.tsx");
++  assert.ok(/useTrip\(\)/.test(home), "a Home precisa usar o estado de viagem");
++  assert.ok(/CockpitDeViagem/.test(home), "o cockpit precisa estar ligado");
++  assert.ok(/PreparacaoDeViagem/.test(home), "a preparação precisa estar na Home");
++  assert.ok(!/useState.*viagem|const \[viagem/i.test(home), "nada de estado de viagem local");
++});
++
++test("HOME: finalizar viagem informa se há SOS ativo", () => {
++  const home = ler("src/routes/_authenticated/dashboard.tsx");
++  assert.ok(/finalizar\(sosAtivo\)/.test(home), "finalizar precisa saber do SOS");
++  assert.ok(/sos\.sosEventId != null/.test(home), "o SOS ativo vem do controlador existente");
++});
++
++test("HOME: o cockpit só liga sensores com a viagem ativa", () => {
++  const home = ler("src/routes/_authenticated/dashboard.tsx");
++  assert.ok(/useCockpitTelemetry\(viagemAtiva\)/.test(home), "sensor ligado fora da viagem gasta bateria");
++  const telemetria = ler("src/hooks/useCockpitTelemetry.ts");
++  assert.ok(/clearWatch/.test(telemetria), "o watch precisa ser limpo");
++  assert.ok(/removeEventListener\("deviceorientation"/.test(telemetria), "listener precisa sair");
++});
++
++/* ================================================================== *
++ * Foreground Service — Viagem Segura
++ *
++ * Estrutural: sem Android SDK aqui, o que dá para provar é que o serviço
++ * existe, está declarado corretamente e só é acionado com viagem ativa. A
++ * compilação e o comportamento em aparelho são prova do CI e do teste físico.
++ * ================================================================== */
++
++const ANDROID_JAVA = "android/app/src/main/java/com/motoanjo/app";
++
++test("FGS.1: o serviço nativo existe", () => {
++  const servico = ler(`${ANDROID_JAVA}/ViagemSeguraService.java`);
++  assert.ok(/class ViagemSeguraService extends Service/.test(servico));
++  assert.ok(/startForeground\(/.test(servico), "precisa entrar em primeiro plano");
++});
++
++test("FGS.2: tipo location declarado no Manifest e na chamada da API 34+", () => {
++  const manifest = ler("android/app/src/main/AndroidManifest.xml");
++  assert.ok(
++    /<service[\s\S]*?android:name="\.ViagemSeguraService"[\s\S]*?android:foregroundServiceType="location"/.test(
++      manifest,
++    ),
++    "o serviço precisa declarar foregroundServiceType=location",
++  );
++  const servico = ler(`${ANDROID_JAVA}/ViagemSeguraService.java`);
++  assert.ok(
++    /FOREGROUND_SERVICE_TYPE_LOCATION/.test(servico),
++    "API 34+ exige o tipo também na chamada de startForeground",
++  );
++});
++
++test("FGS.3: canal de notificação próprio, sem som e visível na tela de bloqueio", () => {
++  const servico = ler(`${ANDROID_JAVA}/ViagemSeguraService.java`);
++  assert.ok(/new NotificationChannel\(/.test(servico));
++  assert.ok(/IMPORTANCE_LOW/.test(servico), "som a cada atualização seria insuportável");
++  assert.ok(/VISIBILITY_PUBLIC/.test(servico), "é isto que mostra o conteúdo na lock screen");
++  assert.ok(/setOngoing\(true\)/.test(servico), "a notificação não pode ser dispensada");
++});
++
++test("FGS.4: o serviço só sobe com viagem ativa", () => {
++  const ponte = ler("src/lib/trip-service.ts");
++  assert.equal(/servicoDeveEstarAtivo/.test(ponte), true);
++  const hook = ler("src/hooks/useTrip.ts");
++  assert.ok(
++    /anterior\.estado !== "ativa" && v\.estado === "ativa"[\s\S]{0,120}iniciarServicoDeViagem/.test(hook),
++    "iniciar só na transição para ativa",
++  );
++  assert.ok(
++    !/iniciarServicoDeViagem\(\)\s*;?\s*\n\s*\}\s*,\s*\[\]\)/.test(hook),
++    "nada de iniciar o serviço no boot",
++  );
++});
++
++test("FGS.5: finalizar a viagem pede a parada do serviço", () => {
++  const hook = ler("src/hooks/useTrip.ts");
++  assert.ok(
++    /anterior\.estado === "ativa" && v\.estado !== "ativa"[\s\S]{0,120}pararServicoDeViagem/.test(hook),
++  );
++  const servico = ler(`${ANDROID_JAVA}/ViagemSeguraService.java`);
++  assert.ok(/ACAO_PARAR/.test(servico) && /stopSelf\(\)/.test(servico));
++});
++
++test("FGS: nada de serviço órfão", () => {
++  const servico = ler(`${ANDROID_JAVA}/ViagemSeguraService.java`);
++  assert.ok(/onTaskRemoved/.test(servico), "remover dos recentes precisa matar o serviço");
++  assert.ok(
++    /START_NOT_STICKY/.test(servico),
++    "START_STICKY reviveria a viagem sozinho, sem o usuário ter pedido",
++  );
++  const manifest = ler("android/app/src/main/AndroidManifest.xml");
++  assert.ok(/android:stopWithTask="true"/.test(manifest));
++  assert.ok(/android:exported="false"/.test(manifest), "ninguém de fora pode iniciar o serviço");
++});
++
++test("FGS.6/7: nenhuma permissão invasiva foi adicionada", () => {
++  const manifest = lerSemComentarios("android/app/src/main/AndroidManifest.xml");
++  assert.ok(!/SYSTEM_ALERT_WINDOW/.test(manifest), "overlay sobre a lock screen é gambiarra");
++  assert.ok(!/ACCESS_BACKGROUND_LOCATION/.test(manifest), "o FGS location cobre o caso");
++  assert.ok(!/REQUEST_IGNORE_BATTERY_OPTIMIZATIONS/.test(manifest));
++});
++
++test("FGS: o plugin é uma ponte fina, sem estado de viagem próprio", () => {
++  const plugin = ler(`${ANDROID_JAVA}/ViagemSeguraPlugin.java`);
++  assert.ok(/@CapacitorPlugin\(name = "ViagemSegura"\)/.test(plugin));
++  for (const metodo of ["iniciar", "atualizar", "parar"]) {
++    assert.ok(new RegExp(`public void ${metodo}\\(PluginCall`).test(plugin), `falta ${metodo}`);
++  }
++  assert.ok(
++    !/private (boolean|String) (viagem|trip|estado)/i.test(plugin),
++    "o estado da viagem tem fonte única em trip.ts",
++  );
++  const main = ler(`${ANDROID_JAVA}/MainActivity.java`);
++  assert.ok(/registerPlugin\(ViagemSeguraPlugin\.class\)/.test(main), "plugin não registrado");
++});
++
++test("FGS: a notificação carrega destino e próximo alerta", () => {
++  const servico = ler(`${ANDROID_JAVA}/ViagemSeguraService.java`);
++  assert.ok(/Moto Anjo — Viagem Segura/.test(servico));
++  assert.ok(/Protegido/.test(servico));
++  assert.ok(/EXTRA_ALERTA/.test(servico) && /EXTRA_DISTANCIA/.test(servico));
++  assert.ok(/setContentIntent/.test(servico), "precisa ter como voltar ao cockpit");
++  const home = ler("src/routes/_authenticated/dashboard.tsx");
++  assert.ok(/atualizarServicoDeViagem/.test(home), "o aviso do copiloto precisa chegar à notificação");
++});
++
++test("FGS: fora do Android tudo é inerte, sem quebrar a viagem", () => {
++  const ponte = ler("src/lib/trip-service.ts");
++  assert.ok(/isNativeApp/.test(ponte));
++  assert.ok(/return false;/.test(ponte), "sem plugin, falha em silêncio");
++});
++
++/* ================================================================== *
++ * Áreas protegidas — nada disso pode ter sido reimplementado
++ * ================================================================== */
++
++test("PROTEGIDO: nenhuma RPC de SOS foi reimplementada no RC3", () => {
++  const novos = [
++    "src/lib/trip.ts",
++    "src/lib/trip-service.ts",
++    "src/lib/ride-telemetry.ts",
++    "src/lib/safety-copilot.ts",
++    "src/lib/map-events.ts",
++    "src/lib/layers.ts",
++    "src/hooks/useTrip.ts",
++    "src/hooks/useCockpitTelemetry.ts",
++    "src/hooks/useSafetyCopilot.ts",
++  ];
++  for (const arquivo of novos) {
++    const src = lerSemComentarios(arquivo);
++    for (const rpc of ["sos_open", "sos_cancel", "sos_resolve", "sos_purge_history"]) {
++      assert.ok(!src.includes(rpc), `${arquivo} chama ${rpc} — o SOS tem um caminho só`);
++    }
++  }
++});
++
++test("PROTEGIDO: as migrations RC2 seguem intactas", () => {
++  const migrations = readdirSync(join(process.cwd(), "supabase/migrations")).filter((f) =>
++    f.endsWith(".sql"),
++  );
++  assert.equal(migrations.length, 30, "migration criada ou removida no RC3");
++  assert.ok(migrations.includes("20260811090000_sos_rpc_ambiguidade_coluna.sql"));
++  assert.ok(migrations.includes("20260811120000_rc2b_sos_comunitario.sql"));
++  assert.ok(migrations.includes("20260811120100_rc2c_riders_optin.sql"));
++});
++
++/* ================================================================== *
++ * Localização nativa dentro do serviço
++ *
++ * Manter o processo vivo não basta: o Android pode suspender a WebView com a
++ * tela apagada mesmo com o processo de pé. Estes testes provam que a captura
++ * é nativa, presa ao ciclo de vida do serviço.
++ * ================================================================== */
++
++test("NATIVO.1: o serviço registra atualização de localização", () => {
++  const servico = lerSemComentarios(`${ANDROID_JAVA}/ViagemSeguraService.java`);
++  assert.ok(/requestLocationUpdates\(/.test(servico), "nenhuma captura nativa");
++  assert.ok(/LocationManager\.GPS_PROVIDER/.test(servico));
++  assert.ok(/LocationManager\.NETWORK_PROVIDER/.test(servico), "túnel e garagem precisam de rede");
++  assert.ok(/implements LocationListener|new LocationListener/.test(servico));
++});
++
++test("NATIVO.2: parar e destruir removem os updates", () => {
++  const servico = lerSemComentarios(`${ANDROID_JAVA}/ViagemSeguraService.java`);
++  assert.ok(/removeUpdates\(/.test(servico), "GPS ligado depois da viagem é vazamento");
++  assert.ok(/pararCaptura\(\)/.test(servico));
++  // pararTudo é chamado por ACAO_PARAR, onDestroy e onTaskRemoved.
++  const pararTudo = /private void pararTudo\(\)\s*\{([\s\S]*?)\n    \}/.exec(servico)?.[1] ?? "";
++  assert.ok(/pararCaptura\(\)/.test(pararTudo), "parar o serviço precisa parar o GPS");
++  for (const gatilho of ["onDestroy", "onTaskRemoved"]) {
++    assert.ok(new RegExp(`${gatilho}[\\s\\S]{0,220}pararTudo\\(\\)`).test(servico), `${gatilho} não limpa`);
++  }
++});
++
++test("NATIVO.3: captura só com o serviço em primeiro plano, e idempotente", () => {
++  const servico = lerSemComentarios(`${ANDROID_JAVA}/ViagemSeguraService.java`);
++  assert.ok(
++    /startForeground\([\s\S]{0,200}?emPrimeiroPlano = true;\s*iniciarCaptura\(\);/.test(servico),
++    "a captura precisa começar depois de entrar em primeiro plano",
++  );
++  assert.ok(/if \(capturando \|\| !temPermissaoDeLocalizacao\(\)\) return;/.test(servico));
++  assert.ok(!/BOOT_COMPLETED/.test(servico), "nada de iniciar no boot");
++});
++
++test("NATIVO: sem permissão o serviço para em vez de derrubar o app", () => {
++  const servico = lerSemComentarios(`${ANDROID_JAVA}/ViagemSeguraService.java`);
++  // API 34+ lança SecurityException se um FGS `location` subir sem permissão.
++  assert.ok(
++    /if \(!temPermissaoDeLocalizacao\(\)\)\s*\{\s*pararTudo\(\);/.test(servico),
++    "checar antes de startForeground evita crash em quem está pilotando",
++  );
++  assert.ok(/catch \(SecurityException/.test(servico), "permissão pode cair no meio");
++});
++
++test("NATIVO: frequência conservadora, não amostragem contínua", () => {
++  const servico = lerSemComentarios(`${ANDROID_JAVA}/ViagemSeguraService.java`);
++  const intervalo = Number(/INTERVALO_MS = (\d+)L/.exec(servico)?.[1] ?? 0);
++  assert.ok(intervalo >= 3000, `${intervalo} ms é agressivo demais para um turno inteiro`);
++  const distancia = Number(/DISTANCIA_M = (\d+)f/.exec(servico)?.[1] ?? 0);
++  assert.ok(distancia >= 5, "sem filtro de distância o GPS acorda parado no semáforo");
++});
++
++test("NATIVO: a ponte não cria segunda fonte de verdade da viagem", () => {
++  const plugin = lerSemComentarios(`${ANDROID_JAVA}/ViagemSeguraPlugin.java`);
++  assert.ok(/notifyListeners\("posicao"/.test(plugin), "falta encaminhar a posição");
++  assert.ok(
++    !/(viagemAtiva|tripActive|estadoViagem)/i.test(plugin),
++    "quem decide se há viagem é o React",
++  );
++  const ponte = ler("src/lib/trip-service.ts");
++  assert.ok(/ouvirPosicaoNativa/.test(ponte));
++  assert.ok(/return \(\) => \{\};/.test(ponte), "fora do Android precisa ser inerte");
++  const telemetria = ler("src/hooks/useCockpitTelemetry.ts");
++  assert.ok(/ouvirPosicaoNativa/.test(telemetria), "o cockpit precisa consumir a posição nativa");
++  assert.ok(/if \(!ativo\) return;/.test(telemetria), "só com viagem ativa");
++});
++
++test("NATIVO: permissões de FGS location completas para API 34-36", () => {
++  const manifest = lerSemComentarios("android/app/src/main/AndroidManifest.xml");
++  for (const p of [
++    "ACCESS_FINE_LOCATION",
++    "ACCESS_COARSE_LOCATION",
++    "FOREGROUND_SERVICE",
++    "FOREGROUND_SERVICE_LOCATION",
++    "POST_NOTIFICATIONS",
++  ]) {
++    assert.ok(manifest.includes(p), `falta ${p} para o FGS location no targetSdk atual`);
++  }
++  assert.ok(!/ACCESS_BACKGROUND_LOCATION/.test(manifest), "o FGS location cobre o caso");
++  assert.ok(!/SYSTEM_ALERT_WINDOW/.test(manifest));
++  assert.ok(!/RECEIVE_BOOT_COMPLETED/.test(manifest), "não há nada para subir no boot");
++});
+diff --git a/src/lib/ride-telemetry.ts b/src/lib/ride-telemetry.ts
+new file mode 100644
+index 0000000..e700847
+--- /dev/null
++++ b/src/lib/ride-telemetry.ts
+@@ -0,0 +1,173 @@
++/**
++ * Telemetria de pilotagem — velocidade, rumo, inclinação e modo.
++ *
++ * Tudo aqui é puro e independente de plataforma: recebe leitura, devolve
++ * número tratado. Quem captura sensor é outra camada. É o que permite testar
++ * o comportamento sem moto, sem aparelho e sem inventar dado.
++ *
++ * REGRA QUE VALE PARA O ARQUIVO INTEIRO: quando não há dado confiável, o
++ * resultado é `null` e a interface mostra "—". Nunca um número bonito
++ * fabricado. Num painel que a pessoa olha a 60 km/h, um valor inventado é
++ * pior que um traço.
++ */
++
++/* ================================================================== *
++ * Velocidade
++ * ================================================================== */
++
++export interface LeituraVelocidade {
++  /** m/s vindo do GPS. `null` quando o fix não traz velocidade. */
++  speedMs: number | null;
++  /** Precisão do fix em metros. */
++  accuracyM?: number | null;
++}
++
++/** Abaixo disto, GPS parado ainda oscila. Vira zero em vez de piscar. */
++export const ZONA_MORTA_KMH = 3;
++/** Fix pior que isto não vira velocidade na tela. */
++export const PRECISAO_MAXIMA_M = 50;
++
++/**
++ * Converte e limpa. Devolve `null` quando não dá para afirmar nada.
++ *
++ * A zona morta existe por um motivo observável: parado num semáforo, o GPS
++ * gera 0, 2, 0, 3, 1 km/h. Um painel piscando desses números diz ao
++ * motociclista que o aparelho não sabe o que está fazendo.
++ */
++export function velocidadeKmh(l: LeituraVelocidade): number | null {
++  if (l.speedMs == null || !Number.isFinite(l.speedMs) || l.speedMs < 0) return null;
++  if (l.accuracyM != null && l.accuracyM > PRECISAO_MAXIMA_M) return null;
++  const kmh = l.speedMs * 3.6;
++  if (kmh < ZONA_MORTA_KMH) return 0;
++  return Math.round(kmh);
++}
++
++/** Média móvel curta: tira o tremor sem criar atraso perceptível. */
++export function suavizarVelocidade(historico: number[], nova: number, janela = 3): number {
++  const serie = [...historico, nova].slice(-janela);
++  return Math.round(serie.reduce((a, b) => a + b, 0) / serie.length);
++}
++
++/* ================================================================== *
++ * Rumo
++ * ================================================================== */
++
++export type Cardeal = "N" | "NE" | "L" | "SE" | "S" | "SO" | "O" | "NO";
++const CARDEAIS: Cardeal[] = ["N", "NE", "L", "SE", "S", "SO", "O", "NO"];
++
++/**
++ * Rumo em cardeal. `null` quando não é confiável.
++ *
++ * Parado, o heading do GPS gira sozinho — apontar "N, L, S, O" com a moto
++ * imóvel é ruído apresentado como informação. Por isso exige movimento.
++ */
++export function rumoCardeal(
++  headingGraus: number | null | undefined,
++  velocidadeKmhAtual: number | null,
++): Cardeal | null {
++  if (headingGraus == null || !Number.isFinite(headingGraus)) return null;
++  if (velocidadeKmhAtual == null || velocidadeKmhAtual < ZONA_MORTA_KMH * 2) return null;
++  const normalizado = ((headingGraus % 360) + 360) % 360;
++  const indice = Math.round(normalizado / 45) % 8;
++  return CARDEAIS[indice];
++}
++
++/* ================================================================== *
++ * Inclinação
++ * ================================================================== */
++
++export type ConfiancaInclinacao = "indisponivel" | "baixa" | "boa";
++
++export interface Inclinacao {
++  /** Graus. Negativo à esquerda, positivo à direita. `null` sem sensor. */
++  graus: number | null;
++  confianca: ConfiancaInclinacao;
++  /** Texto honesto para a interface quando não há dado. */
++  aviso: string | null;
++}
++
++export const INCLINACAO_MAXIMA = 45;
++
++/**
++ * Inclinação a partir do sensor de orientação.
++ *
++ * ATENÇÃO AO QUE ISTO É: o sensor mede a orientação DO TELEFONE, não da
++ * motocicleta. Celular no bolso, no suporte torto ou na mochila dá números
++ * que não têm relação com o ângulo real da moto. Por isso o valor sempre vem
++ * acompanhado de confiança, e a interface precisa mostrar isso — chamar de
++ * "inclinação da moto" seria mentira.
++ *
++ * Só é considerado confiável com o veículo em movimento: parado, girar o
++ * celular na mão produziria leitura sem sentido.
++ */
++export function calcularInclinacao(
++  gammaGraus: number | null | undefined,
++  velocidadeKmhAtual: number | null,
++): Inclinacao {
++  if (gammaGraus == null || !Number.isFinite(gammaGraus)) {
++    return { graus: null, confianca: "indisponivel", aviso: "sem sensor de orientação" };
++  }
++  const limitado = Math.max(-INCLINACAO_MAXIMA, Math.min(INCLINACAO_MAXIMA, Math.round(gammaGraus)));
++  if (velocidadeKmhAtual == null || velocidadeKmhAtual < ZONA_MORTA_KMH) {
++    return { graus: limitado, confianca: "baixa", aviso: "parado: leitura do aparelho" };
++  }
++  return { graus: limitado, confianca: "boa", aviso: null };
++}
++
++/**
++ * Inclinação NUNCA decide queda.
++ *
++ * Existe porque é a confusão mais provável de alguém cometer ao ver o
++ * indicador na tela: "inclinou 40°, caiu". Motociclista inclina em toda
++ * curva. Queda é decidida pelo CrashDetectionEngine, que exige sequência de
++ * sinais. Esta função é a barreira explícita, e tem teste.
++ */
++export function inclinacaoIndicaQueda(): false {
++  return false;
++}
++
++/* ================================================================== *
++ * Modo: parado × pilotando
++ * ================================================================== */
++
++export type ModoPilotagem = "parado" | "pilotando";
++
++/** Sobe para pilotando acima disto. */
++export const LIMIAR_ENTRAR_KMH = 12;
++/** Só volta para parado abaixo disto. A distância entre os dois é a histerese. */
++export const LIMIAR_SAIR_KMH = 5;
++/** E ainda precisa ficar abaixo por este tempo. */
++export const TEMPO_PARA_PARAR_MS = 8000;
++
++export interface EstadoModo {
++  modo: ModoPilotagem;
++  /** Desde quando está devagar. `null` se não está. */
++  desdeMs: number | null;
++}
++
++export const MODO_INICIAL: EstadoModo = { modo: "parado", desdeMs: null };
++
++/**
++ * Transição com histerese e tempo.
++ *
++ * Sem isso, o painel entra e sai do modo pilotagem a cada oscilação do GPS —
++ * e um layout que troca sozinho na frente de quem está dirigindo é pior que
++ * um layout errado.
++ */
++export function proximoModo(
++  estado: EstadoModo,
++  velocidade: number | null,
++  agoraMs: number,
++): EstadoModo {
++  const v = velocidade ?? 0;
++
++  if (estado.modo === "parado") {
++    return v >= LIMIAR_ENTRAR_KMH ? { modo: "pilotando", desdeMs: null } : estado;
++  }
++
++  if (v >= LIMIAR_SAIR_KMH) return { modo: "pilotando", desdeMs: null };
++
++  const desde = estado.desdeMs ?? agoraMs;
++  if (agoraMs - desde >= TEMPO_PARA_PARAR_MS) return { modo: "parado", desdeMs: null };
++  return { modo: "pilotando", desdeMs: desde };
++}
+diff --git a/src/lib/safety-copilot.ts b/src/lib/safety-copilot.ts
+new file mode 100644
+index 0000000..a7dcc30
+--- /dev/null
++++ b/src/lib/safety-copilot.ts
+@@ -0,0 +1,143 @@
++import {
++  APARENCIA,
++  distanciaCurta,
++  eventoParaCartao,
++  type EventoNoMapa,
++} from "./map-events.ts";
++
++/**
++ * Safety Copilot — o que avisar, quando avisar, e quando calar a boca.
++ *
++ * A parte difícil não é achar o evento mais próximo: é não virar ruído. Um
++ * app que fala a cada 10 segundos é desligado no primeiro dia, e aí não avisa
++ * nem quando importa. Por isso três regras, todas testáveis:
++ *
++ *   1. UM aviso por vez. Nunca uma pilha.
++ *   2. Cooldown: o mesmo evento não repete antes do intervalo.
++ *   3. Deduplicação: o mesmo id não é anunciado duas vezes, a não ser que
++ *      tenha subido de prioridade ou chegado muito mais perto.
++ *
++ * Puro de propósito: nenhuma dependência de voz, de React ou de plataforma.
++ */
++
++export interface AvisoCopiloto {
++  id: string;
++  categoria: EventoNoMapa["categoria"];
++  /** Texto curto para a tela. */
++  texto: string;
++  /** Frase para a voz. Sem abreviação, porque será lida em voz alta. */
++  fala: string;
++  prioridade: number;
++  distanciaKm: number;
++}
++
++export interface MemoriaCopiloto {
++  /** id do evento -> quando foi anunciado (ms) e a que distância. */
++  anunciados: Record<string, { emMs: number; distanciaKm: number }>;
++  /** O aviso que está na tela agora. */
++  atual: AvisoCopiloto | null;
++}
++
++export const MEMORIA_INICIAL: MemoriaCopiloto = { anunciados: {}, atual: null };
++
++/** Intervalo mínimo antes de repetir o MESMO evento. */
++export const COOLDOWN_MS = 90_000;
++/** Só repete antes do cooldown se tiver chegado bem mais perto que isso. */
++export const REAPROXIMACAO_KM = 0.5;
++
++export function textoDoAviso(e: EventoNoMapa): string {
++  return `${APARENCIA[e.categoria].rotulo} · ${distanciaCurta(e.distanciaKm)}`;
++}
++
++/**
++ * Frase falada. Escrita para ser ouvida com capacete e vento, então: curta,
++ * sem sigla, sem número quebrado.
++ */
++export function falaDoAviso(e: EventoNoMapa): string {
++  const distancia =
++    e.distanciaKm < 1
++      ? `a ${Math.round(e.distanciaKm * 1000 / 50) * 50} metros`
++      : `a ${e.distanciaKm.toFixed(1).replace(".", ",")} quilômetros`;
++  switch (e.categoria) {
++    case "sos":
++      return `Motociclista pedindo ajuda ${distancia}.`;
++    case "acidente":
++      return `Acidente ${distancia}.`;
++    case "roubo":
++      return `Ocorrência de segurança ${distancia}.`;
++    case "perigo":
++      return `Atenção, perigo ${distancia}.`;
++    case "buraco":
++      return `Buraco ${distancia}.`;
++    case "bloqueio":
++      return `Via bloqueada ${distancia}.`;
++    case "blitz":
++      return `Fiscalização ${distancia}.`;
++    default:
++      return `${APARENCIA[e.categoria].rotulo} ${distancia}.`;
++  }
++}
++
++export interface ResultadoCopiloto {
++  memoria: MemoriaCopiloto;
++  /** Aviso a mostrar. `null` quando não há nada que valha a tela. */
++  aviso: AvisoCopiloto | null;
++  /** Só verdadeiro na primeira vez — é o gatilho da voz. */
++  falarAgora: boolean;
++}
++
++/**
++ * Decide o que o copiloto mostra e se deve falar.
++ *
++ * `modo` importa: parado, o alcance é maior porque dá para decidir a rota;
++ * pilotando, só o que é problema de agora.
++ */
++export function avaliarCopiloto(
++  memoria: MemoriaCopiloto,
++  eventos: EventoNoMapa[],
++  agoraMs: number,
++  modo: "parado" | "pilotando" = "pilotando",
++): ResultadoCopiloto {
++  const escolhido = eventoParaCartao(eventos, modo);
++
++  if (!escolhido) {
++    return { memoria: { ...memoria, atual: null }, aviso: null, falarAgora: false };
++  }
++
++  const aviso: AvisoCopiloto = {
++    id: escolhido.id,
++    categoria: escolhido.categoria,
++    texto: textoDoAviso(escolhido),
++    fala: falaDoAviso(escolhido),
++    prioridade: APARENCIA[escolhido.categoria].prioridade,
++    distanciaKm: escolhido.distanciaKm,
++  };
++
++  const jaAnunciado = memoria.anunciados[escolhido.id];
++  let falarAgora = false;
++
++  if (!jaAnunciado) {
++    falarAgora = true;
++  } else {
++    const passou = agoraMs - jaAnunciado.emMs >= COOLDOWN_MS;
++    const chegouMuitoMaisPerto =
++      jaAnunciado.distanciaKm - escolhido.distanciaKm >= REAPROXIMACAO_KM;
++    falarAgora = passou || chegouMuitoMaisPerto;
++  }
++
++  const anunciados = falarAgora
++    ? { ...memoria.anunciados, [escolhido.id]: { emMs: agoraMs, distanciaKm: escolhido.distanciaKm } }
++    : memoria.anunciados;
++
++  return { memoria: { anunciados, atual: aviso }, aviso, falarAgora };
++}
++
++/** Limpa registros velhos: a memória não pode crescer para sempre. */
++export function limparMemoria(memoria: MemoriaCopiloto, agoraMs: number): MemoriaCopiloto {
++  const limite = COOLDOWN_MS * 4;
++  const anunciados: MemoriaCopiloto["anunciados"] = {};
++  for (const [id, reg] of Object.entries(memoria.anunciados)) {
++    if (agoraMs - reg.emMs < limite) anunciados[id] = reg;
++  }
++  return { ...memoria, anunciados };
++}
+diff --git a/src/lib/trip-service.ts b/src/lib/trip-service.ts
+new file mode 100644
+index 0000000..e7c8991
+--- /dev/null
++++ b/src/lib/trip-service.ts
+@@ -0,0 +1,122 @@
++import { isNativeApp } from "./native.ts";
++
++/**
++ * Ponte para o serviço nativo da Viagem Segura.
++ *
++ * O serviço mantém o processo vivo enquanto a viagem está ativa e mostra a
++ * notificação persistente — que é o que aparece na tela de bloqueio pelo
++ * caminho oficial do Android. Fora do aparelho (navegador), tudo aqui é
++ * silenciosamente inerte: a viagem continua funcionando, só sem o serviço.
++ *
++ * Sem estado próprio de propósito. A verdade sobre a viagem mora em
++ * `src/lib/trip.ts`; aqui só refletimos.
++ */
++
++/** Posição vinda do serviço nativo. */
++export interface PosicaoNativa {
++  lat: number;
++  lng: number;
++  /** Metros. -1 quando o provedor não informou. */
++  precisaoM: number;
++  /** m/s. -1 quando o provedor não informou. */
++  velocidadeMs: number;
++  quandoMs: number;
++}
++
++type PluginViagem = {
++  iniciar: (o: { destino?: string }) => Promise<{ ativo: boolean }>;
++  atualizar: (o: { destino?: string; alerta?: string; distancia?: string }) => Promise<{ ativo: boolean }>;
++  parar: () => Promise<{ ativo: boolean }>;
++  addListener: (
++    evento: string,
++    cb: (p: PosicaoNativa) => void,
++  ) => Promise<{ remove: () => Promise<void> }>;
++};
++
++function plugin(): PluginViagem | null {
++  if (!isNativeApp() || typeof window === "undefined") return null;
++  const cap = (window as unknown as { Capacitor?: { Plugins?: Record<string, PluginViagem> } })
++    .Capacitor;
++  return cap?.Plugins?.ViagemSegura ?? null;
++}
++
++/** O serviço existe neste aparelho? A interface usa para não prometer nada. */
++export function servicoDisponivel(): boolean {
++  return plugin() !== null;
++}
++
++export async function iniciarServicoDeViagem(destino?: string): Promise<boolean> {
++  const p = plugin();
++  if (!p) return false;
++  try {
++    await p.iniciar({ destino: destino ?? "" });
++    return true;
++  } catch {
++    // Falhar aqui não pode derrubar a viagem: ela continua em primeiro plano.
++    return false;
++  }
++}
++
++export async function atualizarServicoDeViagem(dados: {
++  destino?: string;
++  alerta?: string;
++  distancia?: string;
++}): Promise<void> {
++  const p = plugin();
++  if (!p) return;
++  try {
++    await p.atualizar(dados);
++  } catch {
++    /* a notificação continua com o texto anterior */
++  }
++}
++
++export async function pararServicoDeViagem(): Promise<void> {
++  const p = plugin();
++  if (!p) return;
++  try {
++    await p.parar();
++  } catch {
++    /* nada a fazer: o serviço também morre com stopWithTask */
++  }
++}
++
++/**
++ * Escuta as posições do serviço nativo.
++ *
++ * Existe porque manter o processo vivo NÃO garante que `navigator.geolocation`
++ * continue entregando posição com a tela apagada — o Android pode suspender a
++ * WebView mesmo com o processo de pé. Fora do aparelho devolve um cancelador
++ * vazio e a camada web segue como está.
++ *
++ * Não guarda estado: só entrega o que chegou a quem chamou.
++ */
++export function ouvirPosicaoNativa(cb: (p: PosicaoNativa) => void): () => void {
++  const p = plugin();
++  if (!p?.addListener) return () => {};
++  let remover: (() => Promise<void>) | null = null;
++  let cancelado = false;
++  void p
++    .addListener("posicao", (pos) => {
++      if (!cancelado) cb(pos);
++    })
++    .then((h) => {
++      if (cancelado) void h.remove();
++      else remover = h.remove;
++    })
++    .catch(() => {});
++  return () => {
++    cancelado = true;
++    if (remover) void remover();
++  };
++}
++
++/**
++ * Quando o serviço deve estar de pé.
++ *
++ * Puro, para o teste provar a regra sem Android: **só com viagem ativa**.
++ * Nunca no boot, nunca ao abrir o mapa, nunca durante a preparação.
++ */
++export function servicoDeveEstarAtivo(estadoDaViagem: string): boolean {
++  return estadoDaViagem === "ativa";
++}
+diff --git a/src/lib/trip.ts b/src/lib/trip.ts
+new file mode 100644
+index 0000000..da4e18d
+--- /dev/null
++++ b/src/lib/trip.ts
+@@ -0,0 +1,171 @@
++import { normalizarDestino, type Destination } from "./external-navigation.ts";
++
++/**
++ * Viagem Segura — fonte única de verdade.
++ *
++ * A Home passa a ser o lugar da viagem, e por isso o estado não pode viver
++ * dentro de um componente: trocar de aba desmonta a Home, e a viagem não pode
++ * morrer com isso. O estado mora no módulo, com espelho no armazenamento
++ * local para sobreviver a um remount completo.
++ *
++ * A rota /trip continua existindo por compatibilidade, mas lê e escreve
++ * daqui. Duas implementações da mesma viagem seria a receita para elas
++ * divergirem — foi o que já aconteceu com a camada de riders.
++ */
++
++export type EstadoViagem =
++  /** A — parado, sem viagem */
++  | "ocioso"
++  /** B — destino recebido, aguardando confirmação da pessoa */
++  | "preparando"
++  /** C — viagem segura em curso */
++  | "ativa";
++
++export interface Viagem {
++  estado: EstadoViagem;
++  destino: Destination | null;
++  /** Quando a viagem começou. `null` fora do estado ativo. */
++  iniciadaEm: number | null;
++  /** De onde veio o destino: digitado, colado, ou recebido de outro app. */
++  origemDoDestino: "manual" | "externo" | null;
++}
++
++export const VIAGEM_INICIAL: Viagem = {
++  estado: "ocioso",
++  destino: null,
++  iniciadaEm: null,
++  origemDoDestino: null,
++};
++
++export const CHAVE_VIAGEM = "moto-anjo:viagem";
++
++/* ================================================================== *
++ * Transições — puras
++ * ================================================================== */
++
++/**
++ * Um destino chegou. NUNCA inicia a viagem sozinho.
++ *
++ * Isto é regra de segurança, não de interface: um destino pode chegar de um
++ * aplicativo externo por Intent, e começar a proteger alguém sem que a pessoa
++ * tenha pedido significa ligar rastreamento e sensores sem consentimento. O
++ * destino chega, aparece na tela, e espera confirmação.
++ */
++export function receberDestino(
++  viagem: Viagem,
++  entrada: unknown,
++  origem: "manual" | "externo",
++): Viagem {
++  const destino = normalizarDestino(entrada);
++  if (!destino) return viagem;
++
++  // Com viagem em curso, um destino novo não sequestra a viagem atual.
++  if (viagem.estado === "ativa") return viagem;
++
++  return { estado: "preparando", destino, iniciadaEm: null, origemDoDestino: origem };
++}
++
++export function iniciarViagem(viagem: Viagem, agoraMs: number): Viagem {
++  if (viagem.estado !== "preparando" || !viagem.destino) return viagem;
++  return { ...viagem, estado: "ativa", iniciadaEm: agoraMs };
++}
++
++export function cancelarPreparacao(viagem: Viagem): Viagem {
++  return viagem.estado === "preparando" ? { ...VIAGEM_INICIAL } : viagem;
++}
++
++/**
++ * Finaliza a viagem.
++ *
++ * `sosAtivo` entra aqui de propósito: encerrar a viagem NÃO pode encerrar um
++ * SOS em andamento. São coisas separadas, e a emergência ganha. Com SOS
++ * ativo, a viagem sai do ar mas o SOS segue de pé — quem encerra emergência é
++ * `sos_cancel`/`sos_resolve`, nunca um botão de "finalizar viagem".
++ */
++export function finalizarViagem(viagem: Viagem, sosAtivo: boolean): Viagem {
++  if (viagem.estado !== "ativa") return viagem;
++  void sosAtivo; // registrado por clareza: não altera o resultado da viagem
++  return { ...VIAGEM_INICIAL };
++}
++
++/** O que a interface precisa mostrar em cada estado. */
++export function rotuloDaAcao(viagem: Viagem): string {
++  switch (viagem.estado) {
++    case "ocioso":
++      return "Iniciar viagem segura";
++    case "preparando":
++      return "Iniciar viagem segura";
++    case "ativa":
++      return "Finalizar viagem";
++  }
++}
++
++/** Listeners exclusivos da viagem só rodam com ela ativa. */
++export function deveRastrear(viagem: Viagem): boolean {
++  return viagem.estado === "ativa";
++}
++
++/* ================================================================== *
++ * Persistência
++ * ================================================================== */
++
++export interface ArmazenamentoSimples {
++  getItem: (chave: string) => string | null;
++  setItem: (chave: string, valor: string) => void;
++  removeItem: (chave: string) => void;
++}
++
++function armazenamentoDoNavegador(): ArmazenamentoSimples | null {
++  try {
++    if (typeof window === "undefined" || !window.localStorage) return null;
++    return window.localStorage;
++  } catch {
++    return null;
++  }
++}
++
++/** Viagem parada há mais de 12 h é resquício, não viagem. */
++export const VALIDADE_MS = 12 * 60 * 60 * 1000;
++
++export function carregarViagem(
++  agoraMs: number = Date.now(),
++  store: ArmazenamentoSimples | null = armazenamentoDoNavegador(),
++): Viagem {
++  if (!store) return { ...VIAGEM_INICIAL };
++  try {
++    const cru = store.getItem(CHAVE_VIAGEM);
++    if (!cru) return { ...VIAGEM_INICIAL };
++    const lido = JSON.parse(cru) as Viagem;
++    if (!["ocioso", "preparando", "ativa"].includes(lido.estado)) return { ...VIAGEM_INICIAL };
++
++    // Um destino que voltou do armazenamento é entrada não confiável como
++    // qualquer outra: passa pelo mesmo normalizador.
++    const destino = lido.destino ? normalizarDestino(lido.destino) : null;
++    if (lido.estado !== "ocioso" && !destino) return { ...VIAGEM_INICIAL };
++
++    if (lido.estado === "ativa" && lido.iniciadaEm != null) {
++      if (agoraMs - lido.iniciadaEm > VALIDADE_MS) return { ...VIAGEM_INICIAL };
++    }
++    return {
++      estado: lido.estado,
++      destino,
++      iniciadaEm: typeof lido.iniciadaEm === "number" ? lido.iniciadaEm : null,
++      origemDoDestino: lido.origemDoDestino === "externo" ? "externo" : "manual",
++    };
++  } catch {
++    return { ...VIAGEM_INICIAL };
++  }
++}
++
++export function salvarViagem(
++  viagem: Viagem,
++  store: ArmazenamentoSimples | null = armazenamentoDoNavegador(),
++): void {
++  if (!store) return;
++  try {
++    if (viagem.estado === "ocioso") store.removeItem(CHAVE_VIAGEM);
++    else store.setItem(CHAVE_VIAGEM, JSON.stringify(viagem));
++  } catch {
++    /* sem persistência: a viagem vale para esta sessão */
++  }
++}
+diff --git a/src/lib/voice.ts b/src/lib/voice.ts
+new file mode 100644
+index 0000000..1725d2a
+--- /dev/null
++++ b/src/lib/voice.ts
+@@ -0,0 +1,89 @@
++/**
++ * Voz do copiloto.
++ *
++ * Usa a Web Speech API (`speechSynthesis`), que existe na WebView do Android
++ * quando o aparelho tem motor de TTS instalado — o que é comum, mas **não é
++ * garantido**. Por isso o suporte é detectado em execução, e a interface
++ * mostra o estado real: se não houver voz, o aviso continua visual e o botão
++ * de voz não aparece prometendo algo que não vai acontecer.
++ *
++ * Não há plugin nativo de TTS no projeto. Adicionar um seria dependência nova
++ * num checkpoint que já está grande; a interface abaixo é o ponto de troca
++ * quando isso for feito.
++ */
++
++export interface AdaptadorDeVoz {
++  disponivel: () => boolean;
++  falar: (texto: string) => void;
++  calar: () => void;
++}
++
++type SinteseGlobal = {
++  speechSynthesis?: {
++    speak: (u: unknown) => void;
++    cancel: () => void;
++    speaking?: boolean;
++  };
++  SpeechSynthesisUtterance?: new (t: string) => {
++    lang: string;
++    rate: number;
++    volume: number;
++  };
++};
++
++function janela(): SinteseGlobal | null {
++  return typeof window === "undefined" ? null : (window as unknown as SinteseGlobal);
++}
++
++export const vozDoNavegador: AdaptadorDeVoz = {
++  disponivel: () => {
++    const w = janela();
++    return Boolean(w?.speechSynthesis && w?.SpeechSynthesisUtterance);
++  },
++  falar: (texto) => {
++    const w = janela();
++    if (!w?.speechSynthesis || !w.SpeechSynthesisUtterance) return;
++    try {
++      // Um aviso novo cancela o anterior: melhor ouvir o mais urgente do que
++      // esperar a fila de um aviso que já passou.
++      w.speechSynthesis.cancel();
++      const fala = new w.SpeechSynthesisUtterance(texto);
++      fala.lang = "pt-BR";
++      fala.rate = 1.05;
++      fala.volume = 1;
++      w.speechSynthesis.speak(fala);
++    } catch {
++      /* sem voz: o aviso visual continua valendo */
++    }
++  },
++  calar: () => {
++    try {
++      janela()?.speechSynthesis?.cancel();
++    } catch {
++      /* nada a fazer */
++    }
++  },
++};
++
++/**
++ * Deve falar agora?
++ *
++ * Puro, para o teste não depender de aparelho. A voz só entra com a viagem
++ * ativa e em movimento: parado, a pessoa está olhando a tela, e um app que
++ * fala sozinho no bolso assusta mais do que ajuda.
++ */
++export function devefalar(ctx: {
++  vozLigada: boolean;
++  suportada: boolean;
++  viagemAtiva: boolean;
++  modo: "parado" | "pilotando";
++  falarAgora: boolean;
++}): boolean {
++  return (
++    ctx.vozLigada &&
++    ctx.suportada &&
++    ctx.viagemAtiva &&
++    ctx.modo === "pilotando" &&
++    ctx.falarAgora
++  );
++}
+diff --git a/src/routes/_authenticated/dashboard.tsx b/src/routes/_authenticated/dashboard.tsx
+index 6e2fb2d..0aac9c0 100644
+--- a/src/routes/_authenticated/dashboard.tsx
++++ b/src/routes/_authenticated/dashboard.tsx
+@@ -11,6 +11,19 @@ import { useGeolocation } from "@/hooks/useGeolocation";
+ import { useAlerts } from "@/hooks/useAlerts";
+ import { useNearbyRiders } from "@/hooks/useNearbyRiders";
+ import { useMapLayers } from "@/hooks/useMapLayers";
++import { useTrip } from "@/hooks/useTrip";
++import { useCockpitTelemetry } from "@/hooks/useCockpitTelemetry";
++import { useSafetyCopilot } from "@/hooks/useSafetyCopilot";
++import { useSosController } from "@/hooks/useSosController";
++import {
++  ChamadaViagemSegura,
++  CockpitDeViagem,
++  PreparacaoDeViagem,
++} from "@/components/RideCockpit";
++import { DestinoDialog } from "@/components/DestinoDialog";
++import { camada } from "@/lib/layers";
++import { atualizarServicoDeViagem } from "@/lib/trip-service";
++import { APARENCIA, distanciaCurta } from "@/lib/map-events";
+ import { useRiskZones } from "@/hooks/useRiskZones";
+ import { usePartners } from "@/hooks/usePartners";
+ import { useServerFn } from "@tanstack/react-start";
+@@ -54,8 +67,41 @@ function Dashboard() {
+   const { camadas, alternar } = useMapLayers();
+   const { todos: riders, contatos, comunidade } = useNearbyRiders(position, 50, camadas);
+   const { risks } = useRiskZones(position);
++
++  // Viagem Segura: fonte única, no módulo. Trocar de aba não mata a viagem
++  // (RC3 seções 8 e 39).
++  const { viagem, definirDestino, iniciar, cancelar, finalizar } = useTrip();
++  const viagemAtiva = viagem.estado === "ativa";
++  const { velocidade, rumo, inclinacao, modo } = useCockpitTelemetry(viagemAtiva);
++  const [buscandoDestino, setBuscandoDestino] = useState(false);
++  // O SOS ativo é lido do controlador que já existe, pela fase — não invento
++  // API nova nele (RC3: não reimplementar SOS).
++  const sos = useSosController();
++  // Um SOS existe no servidor a partir do registro: são as fases em que já
++  // há sos_event_id. É isso que "finalizar viagem" não pode destruir.
++  const sosAtivo =
++    sos.phase === "aguardando_envio" ||
++    sos.phase === "sem_contatos" ||
++    sos.sosEventId != null;
++  const { aviso, vozLigada, vozSuportada, alternarVoz } = useSafetyCopilot({
++    alerts,
++    pois,
++    riders,
++    viagemAtiva,
++    modo,
++  });
+   const { located: locatedPartners } = usePartners();
+ 
++  // A notificação da viagem mostra o próximo alerta — é o que aparece na tela
++  // de bloqueio. Só atualiza durante a viagem, e só quando o aviso muda.
++  useEffect(() => {
++    if (!viagemAtiva) return;
++    void atualizarServicoDeViagem({
++      alerta: aviso ? APARENCIA[aviso.categoria].rotulo : "",
++      distancia: aviso ? distanciaCurta(aviso.distanciaKm) : "",
++    });
++  }, [viagemAtiva, aviso?.id, aviso?.categoria, aviso?.distanciaKm]);
++
+   useEffect(() => {
+     if (!granted) return;
+     void capture();
+@@ -189,8 +235,53 @@ function Dashboard() {
+           />
+         </div>
+ 
+-        {/* Live summary */}
+-        <div className="absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+96px)] z-30 flex justify-between gap-2 text-[10px] font-semibold uppercase tracking-widest">
++        {/* ---- Viagem Segura na Home (RC3) ---- */}
++        {viagem.estado === "ocioso" && (
++          <ChamadaViagemSegura onAbrir={() => setBuscandoDestino(true)} />
++        )}
++
++        {viagem.estado === "preparando" && (
++          <PreparacaoDeViagem
++            viagem={viagem}
++            gpsOk={!!position}
++            contato={null}
++            onIniciar={iniciar}
++            onCancelar={cancelar}
++          />
++        )}
++
++        {viagemAtiva && (
++          <CockpitDeViagem
++            viagem={viagem}
++            velocidade={velocidade}
++            rumo={rumo}
++            inclinacao={inclinacao}
++            modo={modo}
++            proximoEvento={aviso}
++            vozLigada={vozLigada}
++            vozSuportada={vozSuportada}
++            onAlternarVoz={alternarVoz}
++            onFinalizar={() => finalizar(sosAtivo)}
++          />
++        )}
++
++        {buscandoDestino && (
++          <DestinoDialog
++            onEscolher={(entrada) => {
++              definirDestino(entrada, "manual");
++              setBuscandoDestino(false);
++            }}
++            onFechar={() => setBuscandoDestino(false)}
++          />
++        )}
++
++        {/* Resumo: escondido durante a viagem, para não competir com o painel */}
++        <div
++          className={`absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+96px)] ${camada(
++            "cartoesDoMapa",
++          )} flex justify-between gap-2 text-[10px] font-semibold uppercase tracking-widest ${
++            viagem.estado === "ocioso" ? "" : "hidden"
++          }`}>
+           <span className="rounded-full border border-gold/30 bg-black/75 px-3 py-1.5 text-gold">
+             {camadas.comunidade
+               ? `${contatos.length + comunidade.length} online`
+diff --git a/src/styles.css b/src/styles.css
+index bc9606f..71027a1 100644
+--- a/src/styles.css
++++ b/src/styles.css
+@@ -227,6 +227,19 @@
+   }
+ }
+ 
++/*
++ * Contexto de empilhamento do mapa (RC3 bug #2).
++ *
++ * `isolation: isolate` faz esta superfície virar um contexto próprio: o
++ * z-index: 100000 do marcador passa a valer SÓ aqui dentro, em vez de
++ * escapar e disputar com o painel do SOS. Sem isto, qualquer overlay novo
++ * volta a atravessar modal — foi o que aconteceu.
++ */
++.moto-map-surface {
++  isolation: isolate;
++  position: relative;
++}
++
+ .moto-user-location-marker {
+   position: absolute;
+   z-index: 100000;
+
+--- COMMITS RC3: e0784a8 + 5e03d29 + 10866fbdd98446f949f1b6e712d2dc3f2339d8c2 ---
