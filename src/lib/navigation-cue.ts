@@ -1,4 +1,22 @@
 /**
+ * Quantos passos da rota entram no enquadramento inicial.
+ *
+ * Enquadrar a rota inteira joga o zoom para longe e some com as ruas — inútil
+ * para quem vai virar na próxima esquina. Enquadrar só o usuário esconde para
+ * onde ele vai. O meio-termo é: usuário + o trecho seguinte até ~1,5 km.
+ *
+ * Sempre devolve pelo menos 1 quando existe algum passo.
+ */
+export function passosDoEnquadramento(distanciasM: number[], limiteM = 1500): number {
+  if (distanciasM.length === 0) return 0;
+  let acumulado = 0;
+  for (let i = 0; i < distanciasM.length; i++) {
+    acumulado += Math.max(0, distanciasM[i] ?? 0);
+    if (acumulado >= limiteM) return i + 1;
+  }
+  return distanciasM.length;
+}
+/**
  * Pista de navegação — próxima manobra em forma legível de relance.
  *
  * Puro de propósito: recebe o que o Google devolveu no passo da rota e

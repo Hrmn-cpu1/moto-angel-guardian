@@ -29,3 +29,20 @@ export function isAccurateEnoughForEmergency(accuracy?: number | null): boolean 
 export function googleMapsUrl(c: Coordinate): string {
   return `https://maps.google.com/?q=${c.lat},${c.lng}`;
 }
+
+/**
+ * Célula de ~1 km da grade geográfica, como texto estável.
+ *
+ * Serve para chavear buscas que cobrem um raio grande (pontos de apoio, 3 km):
+ * enquanto o motociclista fica na mesma célula, a chave não muda e a busca não
+ * se repete. Sem isso, um efeito que depende da posição do GPS dispara uma
+ * chamada de servidor por segundo em movimento.
+ *
+ * `PASSO_DA_GRADE` = 0,01° ≈ 1,1 km na latitude.
+ */
+export const PASSO_DA_GRADE = 0.01;
+
+export function celulaDeBusca(lat: number, lng: number, passo = PASSO_DA_GRADE): string {
+  const arredondar = (v: number) => (Math.round(v / passo) * passo).toFixed(4);
+  return `${arredondar(lat)},${arredondar(lng)}`;
+}

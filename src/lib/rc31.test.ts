@@ -91,7 +91,11 @@ test("anjos só aparecem com a camada de comunidade ligada", () => {
 
 test("SOS continua na Home, acima da navegação e com safe-area", () => {
   const home = ler("routes/_authenticated/dashboard.tsx");
-  assert.match(home, /<SosFab \/>/);
+  // RC3.2: a Home passou a usar `SosFabControlado`, porque ela já tem o
+  // controlador de SOS e instanciar um segundo abria dois canais de tempo
+  // real para o mesmo evento. O que continua obrigatório é o acionador estar
+  // na Home, com safe-area e acima da navegação.
+  assert.match(home, /<SosFabControlado\b/);
   const fab = ler("components/SosFab.tsx");
   assert.match(fab, /env\(safe-area-inset-bottom\)/);
   assert.match(fab, /z-50/);

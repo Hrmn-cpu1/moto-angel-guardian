@@ -178,6 +178,22 @@ export function assinarPermissao(fn: (l: LeituraPermissao) => void): () => void 
 
 export const LIMITE_DE_CONSULTA_MS = 2500;
 
+/**
+ * Tempo máximo do PEDIDO de permissão pelo caminho web.
+ *
+ * BUG REAL (RC3.2 #2): o botão ficava preso em "Solicitando..." para sempre.
+ * A causa não era permissão: era `navigator.geolocation.getCurrentPosition`
+ * que, dentro de um WebView/iframe com a geolocalização bloqueada por
+ * Permissions-Policy, NÃO chama nem o sucesso nem o erro. O `timeout` das
+ * opções só vale depois que o pedido começa; se ele nem começa, nenhum dos
+ * dois callbacks roda e a promessa fica pendurada — e com ela o estado
+ * "solicitando" da tela.
+ *
+ * Este limite é a rede de segurança: acima do `timeout` de 10 s das opções,
+ * para não competir com ele, e finito.
+ */
+export const LIMITE_DE_PEDIDO_MS = 12000;
+
 /** Resolve com `valorPadrao` se a promessa não responder a tempo. */
 export function comTempoLimite<T>(
   promessa: Promise<T>,
@@ -344,7 +360,7 @@ export async function pedirPermissao(): Promise<LeituraPermissao> {
     }
   }
 
-  return new Promise((resolve) => {
+  const pedidoWeb = new Promise<LeituraPermissao>((resolve) => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       const leitura: LeituraPermissao = { status: "indisponivel", origem: "nenhuma" };
       definirLeitura(leitura);
@@ -370,6 +386,14 @@ export async function pedirPermissao(): Promise<LeituraPermissao> {
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
     );
   });
+
+  // Se a plataforma não responder, saímos do "solicitando" com um estado que
+  // tem botão funcional. Nunca ficamos presos.
+  const resultado = await comTempoLimite(pedidoWeb, LIMITE_DE_PEDIDO_MS, null);
+  if (resultado) return resultado;
+  const desistencia = estadoQuandoNaoSabemos(atual);
+  definirLeituraDireta(desistencia);
+  return desistencia;
 }
 
 /**

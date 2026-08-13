@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { abrirNavegacaoExterna } from "@/lib/external-navigation";
+import { passosDoEnquadramento } from "@/lib/navigation-cue";
 import type { POI } from "@/lib/pois.functions";
 
 // Premium dark style with gold accents
@@ -56,9 +57,13 @@ type LoaderState = "idle" | "loading" | "ready" | "error";
  * same visual language (gold -> red glow) with plain overlays.
  */
 export const RISK_BANDS = [
-  { scale: 1.0, color: "#D92323", opacity: 0.1 },
-  { scale: 0.62, color: "#F3D675", opacity: 0.14 },
-  { scale: 0.32, color: "#D92323", opacity: 0.28 },
+  // RC3.2: opacidades reduzidas ~40%. A camada é REAL (vem de `risk_zones`),
+  // então continua no mapa — mas ela informa, não decora: com os valores
+  // antigos as manchas competiam com o traçado da rota e com as ruas, que é
+  // o que a pessoa precisa enxergar pilotando.
+  { scale: 1.0, color: "#D92323", opacity: 0.06 },
+  { scale: 0.62, color: "#F3D675", opacity: 0.09 },
+  { scale: 0.32, color: "#D92323", opacity: 0.16 },
 ] as const;
 
 let loaderPromise: Promise<typeof google> | null = null;
@@ -277,6 +282,8 @@ export default function RealMap({
   const heatCirclesRef = useRef<google.maps.Circle[]>([]);
   const trafficRef = useRef<google.maps.TrafficLayer | null>(null);
   const routeRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
+  /** Destino já enquadrado — impede a câmera de brigar com o modo "seguir". */
+  const enquadradoParaRef = useRef<string | null>(null);
   const onRouteRef = useRef(onRoute);
   onRouteRef.current = onRoute;
   const [state, setState] = useState<LoaderState>("idle");
@@ -471,6 +478,26 @@ export default function RealMap({
           onRouteRef.current?.(null);
           return;
         }
+
+        /* Enquadramento (RC3.2 #10).
+         *
+         * Uma única vez por destino: mostrar o usuário e o trecho seguinte da
+         * rota. Não é feito a cada recálculo, senão a câmera brigaria com o
+         * modo "seguir" a cada quarteirão. */
+        if (enquadradoParaRef.current !== destKey) {
+          enquadradoParaRef.current = destKey;
+          const passos = perna.steps ?? [];
+          const quantos = passosDoEnquadramento(passos.map((s) => s.distance?.value ?? 0));
+          if (quantos > 0) {
+            const limites = new g.maps.LatLngBounds();
+            limites.extend({ lat: center.lat, lng: center.lng });
+            passos.slice(0, quantos).forEach((s) => {
+              if (s.end_location) limites.extend(s.end_location);
+            });
+            map.fitBounds(limites, { top: 150, right: 60, bottom: 240, left: 60 });
+          }
+        }
+
         const passo = perna.steps?.[0];
         onRouteRef.current?.({
           distanciaKm: (perna.distance?.value ?? 0) / 1000,

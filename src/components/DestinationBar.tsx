@@ -1,4 +1,4 @@
-import { ChevronRight, MapPin, ShieldCheck } from "lucide-react";
+import { ChevronRight, MapPin } from "lucide-react";
 import { camada } from "@/lib/layers";
 import type { RouteInfo } from "@/components/RealMap";
 import type { Viagem } from "@/lib/trip";
@@ -15,12 +15,10 @@ export function DestinationBar({
   viagem,
   rota,
   onAbrirDestino,
-  onIniciar,
 }: {
   viagem: Viagem;
   rota: RouteInfo | null;
   onAbrirDestino: () => void;
-  onIniciar: () => void;
 }) {
   const destino = viagem.destino;
   const rotulo =
@@ -72,17 +70,11 @@ export function DestinationBar({
         )}
       </button>
 
-      {/* A próxima manobra vive em <NextManeuver/>, logo abaixo desta faixa:
-          duplicar a instrução aqui só roubava altura do mapa. */}
-      {viagem.estado === "preparando" && (
-        <button
-          type="button"
-          onClick={onIniciar}
-          className="mt-2 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl gold-gradient text-xs font-bold uppercase tracking-widest text-black"
-        >
-          <ShieldCheck size={14} /> Iniciar viagem segura
-        </button>
-      )}
+      {/* RC3.2: o "Iniciar viagem segura" morava AQUI e também no painel de
+          preparação — dois botões idênticos na mesma tela, um deles debaixo do
+          SOS flutuante. O CTA agora é único e vive no painel de preparação,
+          junto da checagem de GPS e contato que a pessoa precisa ver antes de
+          confirmar. A próxima manobra vive em <NextManeuver/>. */}
     </div>
   );
 }

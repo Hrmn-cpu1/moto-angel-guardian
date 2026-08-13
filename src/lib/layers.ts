@@ -41,9 +41,39 @@ export const CAMADAS = {
 
 export type NomeDeCamada = keyof typeof CAMADAS;
 
-/** Classe Tailwind arbitrária para a camada. Evita número solto no JSX. */
+/**
+ * BUG REAL (RC3.2 #1): a função devolvia `` `z-[${CAMADAS[nome]}]` ``. O
+ * Tailwind v4 gera utilitários varrendo o TEXTO dos arquivos — um template
+ * string montado em tempo de execução nunca aparece como `z-[40]` no código,
+ * então NENHUMA dessas classes era gerada. Resultado: toda a escala de
+ * camadas era silenciosamente inexistente e a ordem na tela passava a ser a
+ * ordem do DOM. É por isso que o SOS ficava por cima do campo de destino e do
+ * botão dos bottom sheets.
+ *
+ * A correção é escrever as classes como literais, que é o que o varredor
+ * enxerga. Os números continuam na escala acima, fonte única.
+ */
+const CLASSES: Record<NomeDeCamada, string> = {
+  mapa: "z-0",
+  cartoesDoMapa: "z-10",
+  controlesDoMapa: "z-20",
+  navegacao: "z-30",
+  painelInferior: "z-40",
+  sos: "z-50",
+  fundoModal: "z-[60]",
+  painelSos: "z-[70]",
+};
+
+/** Classe Tailwind da camada. Evita número solto no JSX. */
 export function camada(nome: NomeDeCamada): string {
-  return `z-[${CAMADAS[nome]}]`;
+  return CLASSES[nome];
+}
+
+/** Toda camada precisa de uma classe literal — senão volta o bug acima. */
+export function classesDeCamadaCompletas(): boolean {
+  return (Object.keys(CAMADAS) as NomeDeCamada[]).every(
+    (n) => typeof CLASSES[n] === "string" && CLASSES[n].length > 0,
+  );
 }
 
 /**

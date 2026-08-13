@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Gauge, Compass, MoveHorizontal, Volume2, VolumeX, Square } from "lucide-react";
 import { camada } from "@/lib/layers";
 import type { Cardeal, Inclinacao } from "@/lib/ride-telemetry";
@@ -34,12 +35,10 @@ export function TelemetryStrip({
   onFinalizar: () => void;
   className?: string;
 }) {
-  const graus = inclinacao.graus;
-
   return (
     <div
       data-testid="telemetria-compacta"
-      className={`${camada("painelInferior")} flex items-center gap-2 rounded-2xl border border-gold/25 bg-black/80 px-3 py-2 backdrop-blur-md ${className ?? ""}`}
+      className={`${camada("painelInferior")} flex h-16 items-center gap-2 rounded-2xl border border-gold/25 bg-black/80 px-3 backdrop-blur-md ${className ?? ""}`}
     >
       <Item
         icone={<Gauge size={11} />}
@@ -48,12 +47,12 @@ export function TelemetryStrip({
         rotulo="Velocidade"
         destaque
       />
-      <span className="h-8 w-px shrink-0 bg-white/10" />
+      <span className="h-7 w-px shrink-0 bg-white/10" />
       <Item icone={<Compass size={11} />} valor={rumo ?? "—"} rotulo="Direção" />
-      <span className="h-8 w-px shrink-0 bg-white/10" />
+      <span className="h-7 w-px shrink-0 bg-white/10" />
       <Item
         icone={<MoveHorizontal size={11} />}
-        valor={graus == null ? "—" : `${graus}°`}
+        valor={inclinacao.graus == null ? "—" : `${inclinacao.graus}°`}
         rotulo={inclinacao.confianca === "baixa" ? "Inclin. (aparelho)" : "Inclinação"}
       />
 
@@ -93,7 +92,7 @@ function Item({
   rotulo,
   destaque,
 }: {
-  icone: React.ReactNode;
+  icone: ReactNode;
   valor: string;
   unidade?: string;
   rotulo: string;
@@ -103,17 +102,17 @@ function Item({
     <div className="min-w-0 flex-1">
       <p
         className={`flex items-baseline gap-1 leading-none tabular-nums ${
-          destaque ? "text-2xl font-bold text-foreground" : "text-lg font-bold text-foreground"
+          destaque ? "text-[22px] font-bold text-foreground" : "text-base font-bold text-foreground"
         }`}
       >
         <span className="truncate">{valor}</span>
         {unidade && (
-          <span className="text-[10px] font-semibold uppercase text-muted-foreground">
+          <span className="text-[9px] font-semibold uppercase text-muted-foreground">
             {unidade}
           </span>
         )}
       </p>
-      <p className="mt-0.5 flex items-center gap-1 text-[9px] uppercase tracking-widest text-muted-foreground">
+      <p className="mt-0.5 flex items-center gap-1 text-[8px] uppercase tracking-widest text-muted-foreground">
         <span className="shrink-0 text-gold">{icone}</span>
         <span className="truncate">{rotulo}</span>
       </p>

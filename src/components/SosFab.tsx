@@ -6,6 +6,13 @@ import { cn } from "@/lib/utils";
 
 interface Props {
   className?: string;
+  /**
+   * Esconde o acionador flutuante. Usado quando uma folha inferior ou o
+   * teclado ocupam a mesma região: o SOS não pode interceptar o toque
+   * destinado ao campo de destino ou ao CTA do painel. O painel de SOS ativo
+   * continua renderizado — emergência em curso nunca é escondida.
+   */
+  oculto?: boolean;
 }
 
 /**
@@ -18,22 +25,35 @@ interface Props {
  * Também não publica nada na comunidade. A localização de quem acionou um SOS
  * vai para os contatos de emergência escolhidos pela pessoa, e só.
  */
-export function SosFab({ className }: Props) {
-  const sos = useSosController();
+/**
+ * Versão que RECEBE o controlador.
+ *
+ * BUG REAL (RC3.2): a Home já chamava `useSosController()` para saber se
+ * existe SOS aberto, e o `SosFab` chamava de novo. Dois controladores = dois
+ * canais de tempo real com o mesmo nome e duas recuperações concorrentes do
+ * mesmo evento. Quem tem o estado passa o estado.
+ */
+export function SosFabControlado({
+  sos,
+  className,
+  oculto = false,
+}: Props & { sos: ReturnType<typeof useSosController> }) {
   const navigate = useNavigate();
 
   return (
     <>
-      <SosHoldButton
-        variant="fab"
-        // Bloqueado enquanto o app ainda não sabe se já existe um SOS aberto.
-        disabled={sos.busy || sos.recovering}
-        onHoldComplete={(heldMs) => sos.trigger(heldMs)}
-        className={cn(
-          "fixed bottom-[calc(env(safe-area-inset-bottom)+66px)] left-1/2 z-50 -translate-x-1/2",
-          className,
-        )}
-      />
+      {!oculto && (
+        <SosHoldButton
+          variant="fab"
+          // Bloqueado enquanto o app ainda não sabe se já existe um SOS aberto.
+          disabled={sos.busy || sos.recovering}
+          onHoldComplete={(heldMs) => sos.trigger(heldMs)}
+          className={cn(
+            "fixed bottom-[calc(env(safe-area-inset-bottom)+66px)] left-1/2 z-50 -translate-x-1/2",
+            className,
+          )}
+        />
+      )}
       <SosPanel
         sos={sos}
         layout="overlay"
@@ -41,4 +61,10 @@ export function SosFab({ className }: Props) {
       />
     </>
   );
+}
+
+/** Versão autônoma, para telas que não precisam do estado do SOS. */
+export function SosFab(props: Props) {
+  const sos = useSosController();
+  return <SosFabControlado sos={sos} {...props} />;
 }
