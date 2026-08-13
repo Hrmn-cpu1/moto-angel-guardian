@@ -96,8 +96,22 @@ jobs:
             || { echo "nomes fora de ordem"; exit 1; }
 
       # ---- Android ----
+      # Declara, no log e no artefato, EXATAMENTE qual frontend este APK vai
+      # carregar. Sem isto, um APK verde pode estar abrindo uma publicação
+      # antiga — e ninguém saberia olhando só o build.
+      - name: Declarar o frontend que o APK vai carregar
+        run: |
+          set -e
+          URL="${MOTOANJO_WEB_URL:-https://moto-angel-guardian.lovable.app}"
+          echo "APK_WEB_URL=$URL" >> $GITHUB_ENV
+          echo "::notice title=Frontend do APK::Este APK carrega $URL (server.url). Ele NAO embute o frontend deste commit; a tela so mostra este codigo depois que essa URL for publicada."
+        env:
+          MOTOANJO_WEB_URL: ${{ vars.MOTOANJO_WEB_URL }}
+
       - name: Sincronizar Capacitor
         run: npx cap sync android
+        env:
+          MOTOANJO_WEB_URL: ${{ vars.MOTOANJO_WEB_URL }}
 
       - name: Manifest merge e checks do Gradle
         working-directory: android
@@ -113,16 +127,22 @@ jobs:
         id: meta
         run: |
           set -e
-          APK=android/app/build/outputs/apk/debug/app-debug.apk
-          test -f "$APK" || { echo "APK não foi gerado"; exit 1; }
+          ORIGEM=android/app/build/outputs/apk/debug/app-debug.apk
+          test -f "$ORIGEM" || { echo "APK não foi gerado"; exit 1; }
+          APK=moto-anjo-RC3-hotfix.apk
+          cp "$ORIGEM" "$APK"
           echo "sha256: $(sha256sum $APK | cut -d' ' -f1)"
           echo "tamanho: $(du -h $APK | cut -f1)"
           {
+            echo "arquivo: $APK"
             echo "commit: ${{ github.sha }}"
             echo "sha256: $(sha256sum $APK | cut -d' ' -f1)"
+            echo "frontend carregado (server.url): $APK_WEB_URL"
+            echo "frontend embutido no APK: NAO — ver capacitor.config.ts"
             grep -E "versionCode|versionName" android/app/build.gradle
             grep -E "minSdkVersion|targetSdkVersion" android/variables.gradle
           } > android-build-metadata.txt
+          cat android-build-metadata.txt
 
       # `if: success()` explícito: sem isso um passo anterior vermelho ainda
       # deixaria um APK para baixar, e alguém instalaria achando que passou.
@@ -130,9 +150,9 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: moto-anjo-debug-apk
+          name: moto-anjo-RC3-hotfix
           path: |
-            android/app/build/outputs/apk/debug/app-debug.apk
+            moto-anjo-RC3-hotfix.apk
             android-build-metadata.txt
           retention-days: 14
 

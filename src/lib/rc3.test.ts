@@ -6,6 +6,8 @@ import {
   definirLeitura,
   definirLeituraDireta,
   leituraAtual,
+  comTempoLimite,
+  estadoQuandoNaoSabemos,
   precisaMostrarGate,
   reconciliarLeitura,
 } from "./location-permission.ts";
@@ -765,4 +767,136 @@ test("NATIVO: permissões de FGS location completas para API 34-36", () => {
   assert.ok(!/ACCESS_BACKGROUND_LOCATION/.test(manifest), "o FGS location cobre o caso");
   assert.ok(!/SYSTEM_ALERT_WINDOW/.test(manifest));
   assert.ok(!/RECEIVE_BOOT_COMPLETED/.test(manifest), "não há nada para subir no boot");
+});
+
+/* ================================================================== *
+ * HOTFIX — "Verificando permissões..." para sempre
+ *
+ * A causa não era lógica de permissão: era ausência de tempo limite.
+ * `permissions.query` pode nunca resolver dentro de um iframe com
+ * Permissions-Policy bloqueando geolocalização — e try/catch não cobre
+ * promessa pendurada.
+ * ================================================================== */
+
+test("LOOP.1: promessa pendurada não trava a tela", async () => {
+  const nuncaResolve = new Promise<string>(() => {});
+  const r = await comTempoLimite(nuncaResolve, 30, "fallback");
+  assert.equal(r, "fallback", "sem tempo limite a Home fica no spinner para sempre");
+});
+
+test("LOOP.2: promessa que responde a tempo continua valendo", async () => {
+  assert.equal(await comTempoLimite(Promise.resolve("real"), 500, "fallback"), "real");
+});
+
+test("LOOP.3: promessa rejeitada cai no padrão, sem estourar", async () => {
+  assert.equal(await comTempoLimite(Promise.reject(new Error("x")), 500, "fallback"), "fallback");
+});
+
+test("LOOP.4: quando não dá para saber, vira botão — nunca 'desconhecido'", () => {
+  const semNada = estadoQuandoNaoSabemos({ status: "desconhecido", origem: "nenhuma" });
+  assert.equal(semNada.status, "perguntar", "spinner eterno é pior que botão errado");
+  assert.equal(precisaMostrarGate(semNada.status), true, "e o gate precisa oferecer ação");
+});
+
+test("LOOP.5: quem já concedeu não volta para o onboarding no fallback", () => {
+  const jaTinha = estadoQuandoNaoSabemos({ status: "concedida", origem: "nativo" });
+  assert.equal(jaTinha.status, "concedida");
+  assert.equal(precisaMostrarGate(jaTinha.status), false);
+});
+
+test("LOOP.6: 'desconhecido' é o único estado que mostra spinner — e ele agora expira", () => {
+  // Este é o par que causava o bug: desconhecido => verificando => spinner.
+  assert.equal(precisaMostrarGate("desconhecido"), true);
+  const lib = ler("src/lib/location-permission.ts");
+  assert.ok(/LIMITE_DE_CONSULTA_MS/.test(lib), "falta o tempo limite");
+  assert.ok(
+    /comTempoLimite\([\s\S]{0,400}?perms\.query/.test(lib),
+    "a consulta do navegador precisa ter tempo limite",
+  );
+  const hook = ler("src/hooks/useLocationPermission.ts");
+  assert.ok(/setTimeout\(/.test(hook), "falta a trava de segurança no hook");
+  assert.ok(/estadoQuandoNaoSabemos/.test(hook));
+});
+
+test("LOOP.7: web e Android são caminhos separados", () => {
+  const lib = lerSemComentarios("src/lib/location-permission.ts");
+  assert.ok(/if \(isNativeApp\(\)\) \{/.test(lib), "o caminho nativo precisa ser explícito");
+  assert.ok(
+    /perms\?\.query/.test(lib),
+    "e o navegador não pode depender do plugin do Capacitor",
+  );
+  // Sem Permissions API o fluxo continua: cai no estado determinístico.
+  assert.ok(/estadoQuandoNaoSabemos\(anterior\)/.test(lib));
+});
+
+test("LOOP.8: trocar de aba com permissão concedida continua sem onboarding", () => {
+  _resetarPermissao();
+  definirLeituraDireta({ status: "concedida", origem: "nativo" });
+  // Volta do segundo plano e a consulta não responde: o fallback preserva.
+  definirLeitura(estadoQuandoNaoSabemos(leituraAtual()));
+  assert.equal(leituraAtual().status, "concedida");
+  assert.equal(precisaMostrarGate(leituraAtual().status), false);
+  _resetarPermissao();
+});
+
+/* ================================================================== *
+ * Como o frontend chega ao APK
+ * ================================================================== */
+
+test("APK: a URL do WebView é configurável em tempo de build", () => {
+  const config = ler("capacitor.config.ts");
+  assert.ok(/process\.env\.MOTOANJO_WEB_URL/.test(config), "URL fixa no código impede o CI de apontar para o commit certo");
+  assert.ok(/url: urlDoApp/.test(config));
+  assert.ok(/URL_PADRAO = "https:\/\//.test(config), "precisa de padrão para não quebrar quem não define a variável");
+});
+
+test("APK: o host configurado entra na navegação permitida", () => {
+  const config = ler("capacitor.config.ts");
+  assert.ok(/hostDe\(urlDoApp\)/.test(config), "domínio próprio seria bloqueado pelo próprio WebView");
+});
+
+test("APK: o motivo de não embutir o frontend está escrito, não subentendido", () => {
+  const config = ler("capacitor.config.ts");
+  assert.ok(/createServerFn|server function/i.test(config));
+  assert.ok(/triggerSos/.test(config), "quem tentar remover server.url precisa saber que o SOS depende disso");
+});
+
+test("APK: o CI declara qual frontend o APK carrega e nomeia o artefato", () => {
+  const wf = ler(".github/workflows/android.yml");
+  assert.ok(/moto-anjo-RC3-hotfix\.apk/.test(wf), "artefato precisa de nome claro");
+  assert.ok(/APK_WEB_URL/.test(wf), "o log precisa dizer qual URL o APK abre");
+  assert.ok(/frontend embutido no APK: NAO/.test(wf), "o metadado precisa ser honesto");
+  assert.ok(/MOTOANJO_WEB_URL/.test(wf));
+  // O artefato continua saindo só depois de tudo verde.
+  assert.ok(/if: success\(\)/.test(wf));
+});
+
+/* ================================================================== *
+ * A Home renderiza o RC3 de verdade — caminho, não só import
+ * ================================================================== */
+
+test("HOME: o caminho de render chega ao cockpit", () => {
+  const home = ler("src/routes/_authenticated/dashboard.tsx");
+  // Sem permissão: gate. Com permissão: mapa + estados da viagem.
+  const semPermissao = /if \(!granted\) \{([\s\S]*?)\n  \}/.exec(home)?.[1] ?? "";
+  assert.ok(/LocationPermissionGate/.test(semPermissao), "sem permissão precisa mostrar o gate");
+
+  const posGate = home.slice(home.indexOf("if (!granted)"));
+  for (const peca of [
+    "<RealMap",
+    "<ChamadaViagemSegura",
+    "<PreparacaoDeViagem",
+    "<CockpitDeViagem",
+    "<DestinoDialog",
+    "<SosFab",
+  ]) {
+    assert.ok(posGate.includes(peca), `${peca} não é alcançado no render da Home`);
+  }
+});
+
+test("HOME: os três estados da viagem são mutuamente exclusivos e completos", () => {
+  const home = ler("src/routes/_authenticated/dashboard.tsx");
+  assert.ok(/viagem\.estado === "ocioso" &&[\s\S]{0,80}ChamadaViagemSegura/.test(home));
+  assert.ok(/viagem\.estado === "preparando" &&[\s\S]{0,80}PreparacaoDeViagem/.test(home));
+  assert.ok(/\{viagemAtiva &&[\s\S]{0,80}CockpitDeViagem/.test(home));
 });

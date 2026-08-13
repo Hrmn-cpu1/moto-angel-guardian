@@ -161,6 +161,64 @@ export function assinarPermissao(fn: (l: LeituraPermissao) => void): () => void 
   };
 }
 
+/* ================================================================== *
+ * Tempo limite
+ *
+ * BUG REAL (hotfix RC3): a Home ficava presa para sempre em "Verificando
+ * permissões...". A causa não era lógica de permissão — era ausência de
+ * tempo limite. `navigator.permissions.query({name:"geolocation"})` pode
+ * NUNCA resolver: dentro de um iframe com Permissions-Policy bloqueando
+ * geolocalização (é o caso do preview do Lovable), a promessa fica pendurada
+ * em vez de rejeitar. Como o estado só saía de "desconhecido" quando o
+ * `await` retornava, ele nunca saía — e "desconhecido" é justamente o que a
+ * tela mostra como "verificando".
+ *
+ * `try/catch` não cobre promessa pendurada. Só tempo limite cobre.
+ * ================================================================== */
+
+export const LIMITE_DE_CONSULTA_MS = 2500;
+
+/** Resolve com `valorPadrao` se a promessa não responder a tempo. */
+export function comTempoLimite<T>(
+  promessa: Promise<T>,
+  ms: number,
+  valorPadrao: T,
+): Promise<T> {
+  return new Promise<T>((resolve) => {
+    let respondido = false;
+    const cronometro = setTimeout(() => {
+      if (respondido) return;
+      respondido = true;
+      resolve(valorPadrao);
+    }, ms);
+    void promessa
+      .then((v) => {
+        if (respondido) return;
+        respondido = true;
+        clearTimeout(cronometro);
+        resolve(v);
+      })
+      .catch(() => {
+        if (respondido) return;
+        respondido = true;
+        clearTimeout(cronometro);
+        resolve(valorPadrao);
+      });
+  });
+}
+
+/**
+ * Para onde ir quando a plataforma não respondeu.
+ *
+ * Nunca "desconhecido": esse estado trava a tela. Se já sabíamos que estava
+ * concedida, mantemos — a mesma regra de não rebaixar por ambiguidade. Caso
+ * contrário, "perguntar", que mostra um botão funcional em vez de um spinner.
+ */
+export function estadoQuandoNaoSabemos(anterior: LeituraPermissao): LeituraPermissao {
+  if (anterior.status === "concedida") return { status: "concedida", origem: "cache" };
+  return { status: "perguntar", origem: "nenhuma" };
+}
+
 /** Só para os testes: zera o estado compartilhado. */
 export function _resetarPermissao(): void {
   atual = { status: "desconhecido", origem: "nenhuma" };
@@ -194,6 +252,18 @@ async function pluginGeolocation(): Promise<{
   }
 }
 
+/**
+ * Estado real da permissão.
+ *
+ * GARANTIA DESTA FUNÇÃO: sempre resolve, e nunca com "desconhecido". Uma tela
+ * que espera para sempre é pior que uma tela com o botão errado — o motoboy
+ * pelo menos consegue tocar no botão.
+ *
+ * Os dois ambientes são tratados separadamente de propósito:
+ *   ANDROID (Capacitor) → plugin nativo, que fala do sistema;
+ *   NAVEGADOR           → Permissions API, que fala da origem web.
+ * Nenhum dos dois é obrigatório: faltando os dois, caímos em "perguntar".
+ */
 export async function consultarPermissao(): Promise<LeituraPermissao> {
   if (typeof navigator === "undefined" || !navigator.geolocation) {
     const leitura: LeituraPermissao = { status: "indisponivel", origem: "nenhuma" };
@@ -201,60 +271,76 @@ export async function consultarPermissao(): Promise<LeituraPermissao> {
     return leitura;
   }
 
-  const nativo = await pluginGeolocation();
-  if (nativo) {
-    try {
-      const r = await nativo.checkPermissions();
-      const status = traduzirEstadoNativo(r.location ?? r.coarseLocation);
-      if (status !== "desconhecido") {
-        const leitura: LeituraPermissao = { status, origem: "nativo" };
-        definirLeitura(leitura);
-        return leitura;
-      }
-    } catch {
-      // cai para a Permissions API
+  const anterior = atual;
+
+  // ---- Android nativo ----
+  if (isNativeApp()) {
+    const status = await comTempoLimite(
+      (async (): Promise<StatusPermissao> => {
+        const nativo = await pluginGeolocation();
+        if (!nativo) return "desconhecido";
+        const r = await nativo.checkPermissions();
+        return traduzirEstadoNativo(r.location ?? r.coarseLocation);
+      })(),
+      LIMITE_DE_CONSULTA_MS,
+      "desconhecido",
+    );
+    if (status !== "desconhecido") {
+      const leitura: LeituraPermissao = { status, origem: "nativo" };
+      definirLeitura(leitura);
+      return leitura;
     }
+    // Plugin ausente ou sem resposta: continua para o caminho web abaixo, que
+    // no WebView também funciona.
   }
 
+  // ---- Navegador ----
   const perms = (navigator as Navigator & { permissions?: Permissions }).permissions;
   if (perms?.query) {
-    try {
-      const status = await perms.query({ name: "geolocation" as PermissionName });
-      const traduzido = traduzirEstadoWeb(status.state);
-      const leitura: LeituraPermissao = { status: traduzido, origem: "web" };
-      definirLeitura(leitura);
-      status.onchange = () => {
-        definirLeitura({ status: traduzirEstadoWeb(status.state), origem: "web" });
-      };
-      return leitura;
-    } catch {
-      // navegador sem suporte a consultar geolocation
+    const resultado = await comTempoLimite(
+      perms.query({ name: "geolocation" as PermissionName }).then(
+        (s) => s as PermissionStatus | null,
+      ),
+      LIMITE_DE_CONSULTA_MS,
+      null,
+    );
+    if (resultado) {
+      const traduzido = traduzirEstadoWeb(resultado.state);
+      if (traduzido !== "desconhecido") {
+        const leitura: LeituraPermissao = { status: traduzido, origem: "web" };
+        definirLeitura(leitura);
+        resultado.onchange = () => {
+          definirLeitura({ status: traduzirEstadoWeb(resultado.state), origem: "web" });
+        };
+        return leitura;
+      }
     }
   }
 
-  // Sem como consultar: se já sabíamos que estava concedida, mantemos —
-  // caso contrário perguntamos.
-  const leitura: LeituraPermissao =
-    atual.status === "concedida"
-      ? { status: "concedida", origem: "cache" }
-      : { status: "perguntar", origem: "nenhuma" };
+  // ---- Não deu para determinar ----
+  const leitura = estadoQuandoNaoSabemos(anterior);
   definirLeitura(leitura);
   return leitura;
 }
 
 export async function pedirPermissao(): Promise<LeituraPermissao> {
-  const nativo = await pluginGeolocation();
-  if (nativo) {
-    try {
-      const r = await nativo.requestPermissions({ permissions: ["location", "coarseLocation"] });
-      const status = traduzirEstadoNativo(r.location ?? r.coarseLocation);
-      if (status !== "desconhecido") {
-        const leitura: LeituraPermissao = { status, origem: "nativo" };
-        definirLeitura(leitura);
-        return leitura;
-      }
-    } catch {
-      // cai para o pedido do navegador
+  if (isNativeApp()) {
+    const status = await comTempoLimite(
+      (async (): Promise<StatusPermissao> => {
+        const nativo = await pluginGeolocation();
+        if (!nativo) return "desconhecido";
+        const r = await nativo.requestPermissions({ permissions: ["location", "coarseLocation"] });
+        return traduzirEstadoNativo(r.location ?? r.coarseLocation);
+      })(),
+      // O diálogo do sistema espera a pessoa responder: aqui o limite é
+      // generoso, e serve só para o caso de o plugin não existir.
+      15000,
+      "desconhecido",
+    );
+    if (status !== "desconhecido") {
+      const leitura: LeituraPermissao = { status, origem: "nativo" };
+      definirLeituraDireta(leitura);
+      return leitura;
     }
   }
 

@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  LIMITE_DE_CONSULTA_MS,
   assinarPermissao,
   consultarPermissao,
+  definirLeitura,
+  estadoQuandoNaoSabemos,
   leituraAtual,
   pedirPermissao,
   precisaMostrarGate,
@@ -33,7 +36,19 @@ export function useLocationPermission(): {
   useEffect(() => {
     // Só consulta quando ainda não sabemos. Se já está concedida, a tela
     // aparece na hora, sem piscar o onboarding.
-    if (leituraAtual().status === "desconhecido") void consultarPermissao();
+    if (leituraAtual().status !== "desconhecido") return;
+    void consultarPermissao();
+
+    // Segunda trava. `consultarPermissao` já garante que sempre resolve, mas
+    // a tela presa em "verificando" foi um bug real e caro: se por qualquer
+    // motivo o estado continuar "desconhecido", saímos para um botão
+    // funcional em vez de deixar a pessoa olhando um spinner.
+    const destravar = setTimeout(() => {
+      if (leituraAtual().status === "desconhecido") {
+        definirLeitura(estadoQuandoNaoSabemos(leituraAtual()));
+      }
+    }, LIMITE_DE_CONSULTA_MS * 2);
+    return () => clearTimeout(destravar);
   }, []);
 
   useEffect(() => {
