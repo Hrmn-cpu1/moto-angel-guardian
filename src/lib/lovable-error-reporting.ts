@@ -23,17 +23,21 @@ declare global {
   }
 }
 
-export function reportLovableError(error: unknown, context: Record<string, unknown> = {}) {
+export function reportLovableError(
+  error: unknown,
+  context: Record<string, unknown> = {},
+  mechanism: LovableErrorOptions["mechanism"] = "react_error_boundary",
+) {
   if (typeof window === "undefined") return;
   window.__lovableEvents?.captureException?.(
     error,
     {
-      source: "react_error_boundary",
+      source: mechanism,
       route: window.location.pathname,
       ...context,
     },
     {
-      mechanism: "react_error_boundary",
+      mechanism,
       handled: false,
       severity: "error",
     },
@@ -54,4 +58,28 @@ export function reportLovableError(error: unknown, context: Record<string, unkno
     stack: error instanceof Error ? error.stack : undefined,
     filename: window.location.pathname,
   });
+}
+
+let globalReportingInstalled = false;
+
+/** Captura falhas assíncronas que não chegam a um error boundary do React. */
+export function installGlobalErrorReporting(): () => void {
+  if (typeof window === "undefined" || globalReportingInstalled) return () => {};
+  globalReportingInstalled = true;
+
+  const onError = (event: ErrorEvent) => {
+    reportLovableError(event.error ?? new Error(event.message), { boundary: "window.onerror" }, "onerror");
+  };
+  const onRejection = (event: PromiseRejectionEvent) => {
+    const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
+    reportLovableError(error, { boundary: "window.unhandledrejection" }, "unhandledrejection");
+  };
+
+  window.addEventListener("error", onError);
+  window.addEventListener("unhandledrejection", onRejection);
+  return () => {
+    window.removeEventListener("error", onError);
+    window.removeEventListener("unhandledrejection", onRejection);
+    globalReportingInstalled = false;
+  };
 }

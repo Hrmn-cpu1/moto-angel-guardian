@@ -10,9 +10,10 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
+import { installGlobalErrorReporting, reportLovableError } from "../lib/lovable-error-reporting";
 import { bootstrapNative } from "../lib/native";
 import { Toaster } from "../components/ui/sonner";
+import { Button } from "../components/ui/button";
 
 function NotFoundComponent() {
   return (
@@ -36,9 +37,9 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error }: { error: Error; reset: () => void }) {
   console.error(error);
-  const router = useRouter();
+  useRouter();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
@@ -53,15 +54,9 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
           Something went wrong on our end. You can try refreshing or head back home.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button
-            onClick={() => {
-              router.invalidate();
-              reset();
-            }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
+          <Button type="button" onClick={() => window.location.reload()}>
             Try again
-          </button>
+          </Button>
           <a
             href="/"
             className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
@@ -135,6 +130,7 @@ function RootComponent() {
   // Dentro do APK: pede o GPS e fecha a splash nativa. No navegador é no-op.
   useEffect(() => {
     bootstrapNative();
+    return installGlobalErrorReporting();
   }, []);
 
   return (

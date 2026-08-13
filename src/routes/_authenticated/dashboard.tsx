@@ -34,6 +34,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { searchPOIs, type POI } from "@/lib/pois.functions";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import type { RouteInfo } from "@/components/RealMap";
+import { MapErrorBoundary } from "@/components/MapErrorBoundary";
 
 const RealMap = lazy(() => import("@/components/RealMap"));
 
@@ -238,31 +239,33 @@ function Dashboard() {
             </div>
           }
         >
-          <Suspense
-            fallback={
-              <div className="absolute inset-0 flex items-center justify-center text-xs uppercase tracking-widest text-gold">
-                Carregando mapa...
-              </div>
-            }
-          >
-            <RealMap
-              center={centro}
-              accuracy={position?.accuracy ?? null}
-              follow={follow}
-              zoom={16}
-              rounded={false}
-              showTraffic={showTraffic}
-              showHeatmap={showHeat}
-              riskPoints={risks}
-              pois={poisNoMapa}
-              destination={destinoNoMapa}
-              onRoute={aoCalcularRota}
-              alerts={alertasNoMapa}
-              riders={ridersNoMapa}
-              partners={parceirosNoMapa}
-              className="absolute inset-0"
-            />
-          </Suspense>
+          <MapErrorBoundary>
+            <Suspense
+              fallback={
+                <div className="absolute inset-0 flex items-center justify-center text-xs uppercase tracking-widest text-gold">
+                  Carregando mapa...
+                </div>
+              }
+            >
+              <RealMap
+                center={centro}
+                accuracy={position?.accuracy ?? null}
+                follow={follow}
+                zoom={16}
+                rounded={false}
+                showTraffic={showTraffic}
+                showHeatmap={showHeat}
+                riskPoints={risks}
+                pois={poisNoMapa}
+                destination={destinoNoMapa}
+                onRoute={aoCalcularRota}
+                alerts={alertasNoMapa}
+                riders={ridersNoMapa}
+                partners={parceirosNoMapa}
+                className="absolute inset-0"
+              />
+            </Suspense>
+          </MapErrorBoundary>
         </ClientOnly>
 
         {position && follow && (
