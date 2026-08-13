@@ -6,6 +6,10 @@ import { useAuth } from "@/hooks/useAuth";
 interface Props {
   gpsOnline: boolean;
   sharing?: boolean;
+  /** Copiloto avaliando eventos reais neste momento. */
+  copilotOnline?: boolean;
+  /** Viagem Segura em curso. */
+  tripActive?: boolean;
 }
 
 type BatteryLike = {
@@ -15,7 +19,12 @@ type BatteryLike = {
 };
 
 /** Slim translucent status strip floating over the full-screen home map. */
-export function HomeTopBar({ gpsOnline, sharing = false }: Props) {
+export function HomeTopBar({
+  gpsOnline,
+  sharing = false,
+  copilotOnline = false,
+  tripActive = false,
+}: Props) {
   const { user } = useAuth();
   const [battery, setBattery] = useState<number | null>(null);
   const [conn, setConn] = useState<string | null>(null);
@@ -55,19 +64,25 @@ export function HomeTopBar({ gpsOnline, sharing = false }: Props) {
 
   const initial = (user?.name ?? "M").slice(0, 1).toUpperCase();
 
+  const indicadores: Array<[string, boolean]> = [
+    ["GPS", gpsOnline],
+    ["COPILOT", copilotOnline],
+    ["VIAGEM", tripActive],
+  ];
+
   return (
-    <div className="pointer-events-auto absolute inset-x-3 top-3 z-30 flex items-center gap-2.5 rounded-full border border-gold/25 bg-black/70 px-3 py-2 backdrop-blur-md">
+    <div className="pointer-events-auto absolute inset-x-3 top-2 z-30 flex items-center gap-2.5 rounded-full border border-gold/25 bg-black/70 px-3 py-1.5 backdrop-blur-md">
       <Link to="/profile" aria-label="Abrir perfil" className="shrink-0">
         {user?.avatar ? (
           <img
             src={user.avatar}
             alt={user.name}
-            width={32}
-            height={32}
-            className="h-8 w-8 rounded-full border border-gold/40 object-cover"
+            width={28}
+            height={28}
+            className="h-7 w-7 rounded-full border border-gold/40 object-cover"
           />
         ) : (
-          <span className="flex h-8 w-8 items-center justify-center rounded-full gold-gradient text-xs font-black text-black">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full gold-gradient text-xs font-black text-black">
             {initial}
           </span>
         )}
@@ -77,33 +92,26 @@ export function HomeTopBar({ gpsOnline, sharing = false }: Props) {
         <p className="truncate text-xs font-bold text-foreground">
           {user?.name?.split(" ")[0] ?? "Motociclista"}
         </p>
-        <p className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-widest text-gold">
-          <span
-            className={`h-1.5 w-1.5 rounded-full ${gpsOnline ? "bg-gold" : "bg-muted-foreground"}`}
-          />
-          {sharing ? "Compartilhando" : gpsOnline ? "Protegido" : "Sem GPS"}
-        </p>
+        <div className="flex items-center gap-2 text-[8px] font-semibold uppercase tracking-widest">
+          {indicadores.map(([rotulo, ativo]) => (
+            <span
+              key={rotulo}
+              className={`flex items-center gap-1 ${ativo ? "text-gold" : "text-muted-foreground"}`}
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${ativo ? "bg-gold" : "bg-muted-foreground/60"}`}
+              />
+              {rotulo}
+            </span>
+          ))}
+        </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2 text-[9px] font-semibold text-muted-foreground">
-        <span
-          className={`flex items-center gap-0.5 ${gpsOnline ? "text-gold" : ""}`}
-          title="GPS"
-          aria-label={gpsOnline ? "GPS ativo" : "GPS inativo"}
-        >
-          <Satellite size={12} />
-        </span>
-        <span className="flex items-center gap-0.5" aria-label="Conexão">
-          {online ? <Signal size={12} /> : <SignalZero size={12} className="text-emergency" />}
-          {conn && <span>{conn}</span>}
-        </span>
-        {battery != null && (
-          <span className="flex items-center gap-0.5" aria-label="Bateria">
-            <Battery size={12} />
-            {battery}%
-          </span>
-        )}
-      </div>
+      {/* Relógio, sinal e bateria já existem na barra do Android: aqui fica
+          apenas o que o sistema não mostra — o estado da proteção. */}
+      <span className="shrink-0 text-[9px] font-bold uppercase tracking-widest text-gold">
+        {sharing ? "Compartilhando" : gpsOnline ? "Protegido" : "Sem GPS"}
+      </span>
 
       <Link
         to="/notifications"
