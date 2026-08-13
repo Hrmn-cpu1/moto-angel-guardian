@@ -1,4 +1,4 @@
-import { recordTripDiagnostic } from "./trip-diagnostics";
+import { installTripConsoleDiagnostics, recordTripDiagnostic } from "./trip-diagnostics";
 
 type LovableErrorOptions = {
   mechanism?: "manual" | "onerror" | "unhandledrejection" | "react_error_boundary";
@@ -68,6 +68,7 @@ let globalReportingInstalled = false;
 export function installGlobalErrorReporting(): () => void {
   if (typeof window === "undefined" || globalReportingInstalled) return () => {};
   globalReportingInstalled = true;
+  const removeConsoleDiagnostics = installTripConsoleDiagnostics();
 
   const onError = (event: ErrorEvent) => {
     const diagnostic = recordTripDiagnostic(
@@ -95,6 +96,7 @@ export function installGlobalErrorReporting(): () => void {
   return () => {
     window.removeEventListener("error", onError);
     window.removeEventListener("unhandledrejection", onRejection);
+    removeConsoleDiagnostics();
     globalReportingInstalled = false;
   };
 }
