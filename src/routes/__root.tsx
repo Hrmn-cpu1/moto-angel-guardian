@@ -38,6 +38,16 @@ function NotFoundComponent() {
 
 function ErrorComponent({ error }: { error: Error; reset: () => void }) {
   console.error(error);
+  console.warn(
+    "MA-TRIP-001",
+    JSON.stringify({
+      name: error?.name ?? "Error",
+      message: error?.message ?? String(error),
+      stack: error?.stack?.split("\n").slice(0, 8).join("\n"),
+      pathname: typeof window === "undefined" ? "ssr" : window.location.pathname,
+      timestamp: new Date().toISOString(),
+    }),
+  );
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
