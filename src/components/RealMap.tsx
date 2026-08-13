@@ -218,11 +218,26 @@ interface Props {
   riskPoints?: { lat: number; lng: number; weight: number }[];
   showTraffic?: boolean;
   showHeatmap?: boolean;
+  /**
+   * Destino da Viagem Segura. Aceita coordenada ou endereço — é o que o
+   * normalizador de destino já produz. Sem destino, nenhuma rota é traçada.
+   */
+  destination?: { lat?: number; lng?: number; address?: string } | null;
+  /** Resultado real do Google. `null` quando não há rota calculável. */
+  onRoute?: (rota: RouteInfo | null) => void;
   zoom?: number;
   /** Rounded corners (off for the full-screen home map). */
   rounded?: boolean;
   interactive?: boolean;
   className?: string;
+}
+
+export interface RouteInfo {
+  distanciaKm: number;
+  duracaoMin: number;
+  /** Próxima instrução em texto simples, sem HTML. */
+  proximaInstrucao: string | null;
+  destinoTexto: string | null;
 }
 
 export default function RealMap({
@@ -240,6 +255,8 @@ export default function RealMap({
   riskPoints = [],
   showTraffic = false,
   showHeatmap = false,
+  destination = null,
+  onRoute,
   zoom = 15,
   rounded = true,
   interactive = true,
@@ -255,6 +272,9 @@ export default function RealMap({
   const partnerOverlaysRef = useRef<Map<string, PartnerOverlay>>(new Map());
   const heatCirclesRef = useRef<google.maps.Circle[]>([]);
   const trafficRef = useRef<google.maps.TrafficLayer | null>(null);
+  const routeRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
+  const onRouteRef = useRef(onRoute);
+  onRouteRef.current = onRoute;
   const [state, setState] = useState<LoaderState>("idle");
   // null = ainda não medido; false = medido e sem área; true = pronto.
   // O mapa só é construído quando isto vira true. Ver o efeito de medição.
@@ -370,6 +390,103 @@ export default function RealMap({
       trafficRef.current?.setMap(null);
     }
   }, [showTraffic, state]);
+
+  /**
+   * Rota da Viagem Segura.
+   *
+   * O traçado vem do Google, não de uma linha reta inventada: distância e
+   * tempo aparecem na Home e precisam corresponder ao caminho real. A rota é
+   * recalculada quando o destino muda ou quando a origem se desloca o
+   * suficiente (chave arredondada), nunca a cada ponto do GPS.
+   */
+  const destKey = destination
+    ? `${destination.lat ?? ""},${destination.lng ?? ""},${destination.address ?? ""}`
+    : "";
+  const originKey = center ? `${center.lat.toFixed(2)},${center.lng.toFixed(2)}` : "";
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (state !== "ready" || !map) return;
+    const g = (window as unknown as { google: typeof google }).google;
+
+    const limpar = () => {
+      routeRendererRef.current?.setMap(null);
+      routeRendererRef.current = null;
+    };
+
+    if (!destKey || !center) {
+      limpar();
+      onRouteRef.current?.(null);
+      return;
+    }
+
+    const destinoGoogle: google.maps.Place | google.maps.LatLngLiteral | string =
+      destination?.lat != null && destination?.lng != null
+        ? { lat: destination.lat, lng: destination.lng }
+        : (destination?.address ?? "");
+    if (!destinoGoogle) {
+      limpar();
+      onRouteRef.current?.(null);
+      return;
+    }
+
+    let cancelled = false;
+    const service = new g.maps.DirectionsService();
+    service
+      .route({
+        origin: { lat: center.lat, lng: center.lng },
+        destination: destinoGoogle as google.maps.LatLngLiteral,
+        travelMode: g.maps.TravelMode.DRIVING,
+      })
+      .then((res) => {
+        if (cancelled) return;
+        if (!routeRendererRef.current) {
+          routeRendererRef.current = new g.maps.DirectionsRenderer({
+            suppressMarkers: true,
+            preserveViewport: true,
+            polylineOptions: {
+              strokeColor: "#F3D675",
+              strokeOpacity: 0.95,
+              strokeWeight: 6,
+              zIndex: 5,
+            },
+          });
+        }
+        routeRendererRef.current.setMap(map);
+        routeRendererRef.current.setDirections(res);
+        const perna = res.routes[0]?.legs[0];
+        if (!perna) {
+          onRouteRef.current?.(null);
+          return;
+        }
+        const passo = perna.steps?.[0];
+        onRouteRef.current?.({
+          distanciaKm: (perna.distance?.value ?? 0) / 1000,
+          duracaoMin: Math.round((perna.duration?.value ?? 0) / 60),
+          proximaInstrucao: passo?.instructions
+            ? passo.instructions.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
+            : null,
+          destinoTexto: perna.end_address ?? null,
+        });
+      })
+      .catch(() => {
+        // Sem rota calculável não se inventa distância: a Home mostra só o
+        // destino escolhido.
+        if (!cancelled) onRouteRef.current?.(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [destKey, originKey, state]);
+
+  useEffect(
+    () => () => {
+      routeRendererRef.current?.setMap(null);
+      routeRendererRef.current = null;
+    },
+    [],
+  );
 
   // Risk areas — layered translucent circles (HeatmapLayer was removed by Google)
   useEffect(() => {
