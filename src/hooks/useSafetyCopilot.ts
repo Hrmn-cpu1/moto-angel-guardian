@@ -61,11 +61,14 @@ export function useSafetyCopilot({ alerts, pois, riders, viagemAtiva, modo }: En
     const agora = Date.now();
     const r = avaliarCopiloto(limparMemoria(memoria.current, agora), eventos, agora, modo);
     memoria.current = r.memoria;
-    setAviso(
-      r.aviso
-        ? { id: r.aviso.id, categoria: r.aviso.categoria, distanciaKm: r.aviso.distanciaKm }
-        : null,
-    );
+    // RC3.2: nunca publicar um objeto novo com o MESMO conteúdo. `aviso` é
+    // dependência de efeitos na Home (inclusive o que fala com o serviço
+    // nativo); um objeto novo a cada leitura de GPS transformava o copiloto
+    // numa fonte de re-render em cascata.
+    const proximo = r.aviso
+      ? { id: r.aviso.id, categoria: r.aviso.categoria, distanciaKm: r.aviso.distanciaKm }
+      : null;
+    setAviso((atual) => (mesmoAviso(atual, proximo) ? atual : proximo));
 
     if (
       devefalar({
@@ -90,4 +93,15 @@ export function useSafetyCopilot({ alerts, pois, riders, viagemAtiva, modo }: En
   const alternarVoz = useCallback(() => setVozLigada((v) => !v), []);
 
   return { aviso, vozLigada, vozSuportada: vozSuportada.current, alternarVoz };
+}
+
+/** Igualdade por conteúdo: id, categoria e distância arredondada a 50 m. */
+export function mesmoAviso(a: EventoNoMapa | null, b: EventoNoMapa | null): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return (
+    a.id === b.id &&
+    a.categoria === b.categoria &&
+    Math.round(a.distanciaKm * 20) === Math.round(b.distanciaKm * 20)
+  );
 }
