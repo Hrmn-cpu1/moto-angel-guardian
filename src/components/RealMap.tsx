@@ -237,6 +237,10 @@ export interface RouteInfo {
   duracaoMin: number;
   /** Próxima instrução em texto simples, sem HTML. */
   proximaInstrucao: string | null;
+  /** Distância real até a próxima manobra, em metros. `null` sem passo. */
+  proximaDistanciaM: number | null;
+  /** Código de manobra do Google (`turn-left`, `roundabout-right`...). */
+  proximaManobra: string | null;
   destinoTexto: string | null;
 }
 
@@ -474,6 +478,9 @@ export default function RealMap({
           proximaInstrucao: passo?.instructions
             ? passo.instructions.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
             : null,
+          proximaDistanciaM: passo?.distance?.value ?? null,
+          proximaManobra:
+            (passo as unknown as { maneuver?: string } | undefined)?.maneuver ?? null,
           destinoTexto: perna.end_address ?? null,
         });
       })
