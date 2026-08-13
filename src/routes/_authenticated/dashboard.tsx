@@ -18,11 +18,7 @@ import { useTrip } from "@/hooks/useTrip";
 import { useCockpitTelemetry } from "@/hooks/useCockpitTelemetry";
 import { useSafetyCopilot } from "@/hooks/useSafetyCopilot";
 import { useSosController } from "@/hooks/useSosController";
-import {
-  ChamadaViagemSegura,
-  CockpitDeViagem,
-  PreparacaoDeViagem,
-} from "@/components/RideCockpit";
+import { ChamadaViagemSegura, CockpitDeViagem, PreparacaoDeViagem } from "@/components/RideCockpit";
 import { DestinoDialog } from "@/components/DestinoDialog";
 import { NextManeuver } from "@/components/NextManeuver";
 import { camada } from "@/lib/layers";
@@ -88,9 +84,7 @@ function Dashboard() {
   // Um SOS existe no servidor a partir do registro: são as fases em que já
   // há sos_event_id. É isso que "finalizar viagem" não pode destruir.
   const sosAtivo =
-    sos.phase === "aguardando_envio" ||
-    sos.phase === "sem_contatos" ||
-    sos.sosEventId != null;
+    sos.phase === "aguardando_envio" || sos.phase === "sem_contatos" || sos.sosEventId != null;
   const { aviso, vozLigada, vozSuportada, alternarVoz } = useSafetyCopilot({
     alerts,
     pois,
@@ -386,7 +380,8 @@ function Dashboard() {
             "cartoesDoMapa",
           )} flex justify-between gap-2 text-[10px] font-semibold uppercase tracking-widest ${
             viagem.estado === "ocioso" ? "" : "hidden"
-          }`}>
+          }`}
+        >
           <span className="rounded-full border border-gold/30 bg-black/75 px-3 py-1.5 text-gold">
             {camadas.comunidade
               ? `${contatos.length + comunidade.length} online`
