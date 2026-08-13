@@ -475,6 +475,26 @@ export default function RealMap({
           onRouteRef.current?.(null);
           return;
         }
+
+        /* Enquadramento (RC3.2 #10).
+         *
+         * Uma única vez por destino: mostrar o usuário e o trecho seguinte da
+         * rota. Não é feito a cada recálculo, senão a câmera brigaria com o
+         * modo "seguir" a cada quarteirão. */
+        if (enquadradoParaRef.current !== destKey) {
+          enquadradoParaRef.current = destKey;
+          const passos = perna.steps ?? [];
+          const quantos = passosDoEnquadramento(passos.map((s) => s.distance?.value ?? 0));
+          if (quantos > 0) {
+            const limites = new g.maps.LatLngBounds();
+            limites.extend({ lat: center.lat, lng: center.lng });
+            passos.slice(0, quantos).forEach((s) => {
+              if (s.end_location) limites.extend(s.end_location);
+            });
+            map.fitBounds(limites, { top: 150, right: 60, bottom: 240, left: 60 });
+          }
+        }
+
         const passo = perna.steps?.[0];
         onRouteRef.current?.({
           distanciaKm: (perna.distance?.value ?? 0) / 1000,
