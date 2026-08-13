@@ -218,11 +218,26 @@ interface Props {
   riskPoints?: { lat: number; lng: number; weight: number }[];
   showTraffic?: boolean;
   showHeatmap?: boolean;
+  /**
+   * Destino da Viagem Segura. Aceita coordenada ou endereço — é o que o
+   * normalizador de destino já produz. Sem destino, nenhuma rota é traçada.
+   */
+  destination?: { lat?: number; lng?: number; address?: string } | null;
+  /** Resultado real do Google. `null` quando não há rota calculável. */
+  onRoute?: (rota: RouteInfo | null) => void;
   zoom?: number;
   /** Rounded corners (off for the full-screen home map). */
   rounded?: boolean;
   interactive?: boolean;
   className?: string;
+}
+
+export interface RouteInfo {
+  distanciaKm: number;
+  duracaoMin: number;
+  /** Próxima instrução em texto simples, sem HTML. */
+  proximaInstrucao: string | null;
+  destinoTexto: string | null;
 }
 
 export default function RealMap({
@@ -240,6 +255,8 @@ export default function RealMap({
   riskPoints = [],
   showTraffic = false,
   showHeatmap = false,
+  destination = null,
+  onRoute,
   zoom = 15,
   rounded = true,
   interactive = true,
@@ -255,6 +272,9 @@ export default function RealMap({
   const partnerOverlaysRef = useRef<Map<string, PartnerOverlay>>(new Map());
   const heatCirclesRef = useRef<google.maps.Circle[]>([]);
   const trafficRef = useRef<google.maps.TrafficLayer | null>(null);
+  const routeRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
+  const onRouteRef = useRef(onRoute);
+  onRouteRef.current = onRoute;
   const [state, setState] = useState<LoaderState>("idle");
   // null = ainda não medido; false = medido e sem área; true = pronto.
   // O mapa só é construído quando isto vira true. Ver o efeito de medição.
