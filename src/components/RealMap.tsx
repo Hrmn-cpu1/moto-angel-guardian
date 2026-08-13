@@ -842,6 +842,19 @@ export default function RealMap({
               ? "Mapa visual indisponível — a chave do Google Maps ainda não foi configurada. Seu GPS continua ativo em tempo real."
               : "Mapa visual indisponível neste endereço: a chave do Google Maps não autoriza este domínio/app. Seu GPS continua ativo em tempo real."}
           </p>
+          {apiKey && (
+            <button
+              type="button"
+              onClick={() => {
+                mapRef.current = null;
+                setState("loading");
+                setTentativa((t) => t + 1);
+              }}
+              className="rounded-full border border-gold/40 px-4 py-2 text-[11px] font-semibold text-gold"
+            >
+              Tentar novamente
+            </button>
+          )}
           <button
             type="button"
             onClick={() =>
