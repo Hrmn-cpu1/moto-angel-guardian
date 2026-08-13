@@ -455,10 +455,10 @@ export default function RealMap({
     try {
       const service = new g.maps.DirectionsService();
       request = service.route({
-          origin: { lat: center.lat, lng: center.lng },
-          destination: destinoGoogle as google.maps.LatLngLiteral,
-          travelMode: g.maps.TravelMode.DRIVING,
-        });
+        origin: { lat: center.lat, lng: center.lng },
+        destination: destinoGoogle,
+        travelMode: g.maps.TravelMode.DRIVING,
+      });
     } catch (error) {
       console.error(error);
       limpar();
