@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Battery, Bell, Satellite, Signal, SignalZero } from "lucide-react";
+import { Bell, WifiOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 interface Props {
@@ -12,12 +12,6 @@ interface Props {
   tripActive?: boolean;
 }
 
-type BatteryLike = {
-  level: number;
-  charging: boolean;
-  addEventListener?: (t: string, l: () => void) => void;
-};
-
 /** Slim translucent status strip floating over the full-screen home map. */
 export function HomeTopBar({
   gpsOnline,
@@ -26,37 +20,14 @@ export function HomeTopBar({
   tripActive = false,
 }: Props) {
   const { user } = useAuth();
-  const [battery, setBattery] = useState<number | null>(null);
-  const [conn, setConn] = useState<string | null>(null);
   const [online, setOnline] = useState(true);
 
   useEffect(() => {
-    const nav = navigator as Navigator & {
-      getBattery?: () => Promise<BatteryLike>;
-      connection?: {
-        effectiveType?: string;
-        addEventListener?: (t: string, l: () => void) => void;
-      };
-    };
-    let cancelled = false;
-    void nav.getBattery?.().then((b) => {
-      if (cancelled) return;
-      const read = () => setBattery(Math.round(b.level * 100));
-      read();
-      b.addEventListener?.("levelchange", read);
-    });
-    const c = nav.connection;
-    if (c) {
-      const read = () => setConn(c.effectiveType?.toUpperCase() ?? null);
-      read();
-      c.addEventListener?.("change", read);
-    }
     const sync = () => setOnline(navigator.onLine);
     sync();
     window.addEventListener("online", sync);
     window.addEventListener("offline", sync);
     return () => {
-      cancelled = true;
       window.removeEventListener("online", sync);
       window.removeEventListener("offline", sync);
     };
