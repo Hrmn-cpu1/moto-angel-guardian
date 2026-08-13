@@ -3,7 +3,6 @@ import {
   Outlet,
   Link,
   createRootRouteWithContext,
-  useRouter,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -39,7 +38,6 @@ function NotFoundComponent() {
 
 function ErrorComponent({ error }: { error: Error; reset: () => void }) {
   console.error(error);
-  useRouter();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);

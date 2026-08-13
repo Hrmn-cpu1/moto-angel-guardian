@@ -281,6 +281,7 @@ export default function RealMap({
   const heatCirclesRef = useRef<google.maps.Circle[]>([]);
   const trafficRef = useRef<google.maps.TrafficLayer | null>(null);
   const routeRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
+  const routeRequestRef = useRef(0);
   /** Destino já enquadrado — impede a câmera de brigar com o modo "seguir". */
   const enquadradoParaRef = useRef<string | null>(null);
   const onRouteRef = useRef(onRoute);
@@ -449,15 +450,25 @@ export default function RealMap({
     }
 
     let cancelled = false;
-    const service = new g.maps.DirectionsService();
-    service
-      .route({
-        origin: { lat: center.lat, lng: center.lng },
-        destination: destinoGoogle as google.maps.LatLngLiteral,
-        travelMode: g.maps.TravelMode.DRIVING,
-      })
+    const requestId = ++routeRequestRef.current;
+    let request: Promise<google.maps.DirectionsResult>;
+    try {
+      const service = new g.maps.DirectionsService();
+      request = service.route({
+          origin: { lat: center.lat, lng: center.lng },
+          destination: destinoGoogle as google.maps.LatLngLiteral,
+          travelMode: g.maps.TravelMode.DRIVING,
+        });
+    } catch (error) {
+      console.error(error);
+      limpar();
+      onRouteRef.current?.(null);
+      return;
+    }
+
+    request
       .then((res) => {
-        if (cancelled) return;
+        if (cancelled || requestId !== routeRequestRef.current) return;
         if (!routeRendererRef.current) {
           routeRendererRef.current = new g.maps.DirectionsRenderer({
             suppressMarkers: true,
@@ -512,10 +523,15 @@ export default function RealMap({
           destinoTexto: perna.end_address ?? null,
         });
       })
-      .catch(() => {
+      .catch((error) => {
         // Sem rota calculável não se inventa distância: a Home mostra só o
-        // destino escolhido.
-        if (!cancelled) onRouteRef.current?.(null);
+        // destino escolhido. A falha do serviço externo fica isolada no mapa:
+        // nunca deve subir até o boundary raiz e derrubar cockpit/SOS.
+        console.error("Falha ao calcular rota do Google Maps", error);
+        if (!cancelled && requestId === routeRequestRef.current) {
+          limpar();
+          onRouteRef.current?.(null);
+        }
       });
 
     return () => {
