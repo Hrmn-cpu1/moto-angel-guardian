@@ -24,6 +24,7 @@ import {
   PreparacaoDeViagem,
 } from "@/components/RideCockpit";
 import { DestinoDialog } from "@/components/DestinoDialog";
+import { NextManeuver } from "@/components/NextManeuver";
 import { camada } from "@/lib/layers";
 import { atualizarServicoDeViagem } from "@/lib/trip-service";
 import { APARENCIA, distanciaCurta } from "@/lib/map-events";
@@ -234,8 +235,15 @@ function Dashboard() {
           onIniciar={iniciar}
         />
 
+        {/* Próxima manobra: prioridade máxima durante a viagem. */}
+        {viagemAtiva && <NextManeuver rota={rota} className="absolute inset-x-3 top-[124px]" />}
+
         {/* Controles do mapa: anjos, camadas, combustível e centralizar. */}
-        <div className="absolute right-3 top-[140px] z-30 flex flex-col gap-2">
+        <div
+          className={`absolute right-3 ${
+            viagemAtiva ? "top-[196px]" : "top-[148px]"
+          } z-30 flex flex-col gap-2`}
+        >
           <LayerToggle
             active={camadas.comunidade}
             onClick={() => alternar("comunidade")}
@@ -265,19 +273,23 @@ function Dashboard() {
           />
         </div>
 
-        {/* Estado da camada de anjos: sem inventar ninguém no mapa. */}
-        <div
-          className={`absolute right-3 top-[104px] ${camada(
-            "cartoesDoMapa",
-          )} rounded-full border border-gold/25 bg-black/75 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-widest text-gold`}
-        >
-          Anjos perto de mim ·{" "}
-          {camadas.comunidade
-            ? riders.length > 0
-              ? `${riders.length}`
-              : "ninguém agora"
-            : "desativado"}
-        </div>
+        {/* Estado da camada de anjos: sem inventar ninguém no mapa.
+            Durante a viagem some — quem pilota não precisa desse rótulo. */}
+        {!viagemAtiva && (
+          <div
+            data-testid="estado-anjos"
+            className={`absolute right-3 top-[112px] ${camada(
+              "cartoesDoMapa",
+            )} rounded-full border border-gold/25 bg-black/75 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-widest text-gold`}
+          >
+            Anjos ·{" "}
+            {camadas.comunidade
+              ? riders.length > 0
+                ? `${riders.length}`
+                : "ninguém agora"
+              : "desativado"}
+          </div>
+        )}
 
         {layersOpen && (
           <MapLayersSheet
@@ -328,8 +340,8 @@ function Dashboard() {
           viagemAtiva={viagemAtiva}
           className={`absolute inset-x-3 ${
             viagemAtiva
-              ? "bottom-[calc(env(safe-area-inset-bottom)+430px)]"
-              : "bottom-[calc(env(safe-area-inset-bottom)+256px)]"
+              ? "bottom-[calc(env(safe-area-inset-bottom)+224px)]"
+              : "bottom-[calc(env(safe-area-inset-bottom)+220px)]"
           }`}
         />
 
