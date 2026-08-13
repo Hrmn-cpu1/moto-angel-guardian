@@ -5,6 +5,7 @@ import { abrirFolha, algumaFolhaAberta, fecharFolha, sosFlutuanteVisivel } from 
 import { celulaDeBusca } from "./coords.ts";
 import { passosDoEnquadramento } from "./navigation-cue.ts";
 import { LIMITE_DE_PEDIDO_MS } from "./location-permission.ts";
+import { readFileSync } from "node:fs";
 
 /* ============================================================ *
  * #1 — camadas: as classes precisam EXISTIR no CSS gerado
@@ -115,4 +116,23 @@ test("distâncias zeradas não quebram o enquadramento", () => {
 test("pedido de permissão tem limite finito acima do timeout do GPS", () => {
   assert.equal(Number.isFinite(LIMITE_DE_PEDIDO_MS), true);
   assert.ok(LIMITE_DE_PEDIDO_MS > 10000);
+});
+
+/* ============================================================ *
+ * P0 — falhas do provedor do mapa não derrubam o cockpit
+ * ============================================================ */
+
+test("Home isola o mapa em um boundary próprio", () => {
+  const dashboard = readFileSync(
+    new URL("../routes/_authenticated/dashboard.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(dashboard, /<MapErrorBoundary>/);
+  assert.match(dashboard, /<RealMap/);
+});
+
+test("recuperação do boundary raiz faz reload real", () => {
+  const root = readFileSync(new URL("../routes/__root.tsx", import.meta.url), "utf8");
+  assert.match(root, /window\.location\.reload\(\)/);
+  assert.match(root, /installGlobalErrorReporting/);
 });
