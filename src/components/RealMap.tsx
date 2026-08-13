@@ -336,6 +336,11 @@ export default function RealMap({
     }
     setState((s) => (s === "error" ? s : "loading"));
     let cancelled = false;
+    // Timeout de segurança: sem isto, uma falha silenciosa do loader (rede
+    // bloqueada, script preso) deixa a Home em "carregando" para sempre.
+    const timeout = setTimeout(() => {
+      if (!cancelled && !mapRef.current) setState("error");
+    }, 20000);
     loadGoogleMaps(apiKey, channel)
       .then((g) => {
         if (cancelled || !containerRef.current) return;
@@ -359,6 +364,7 @@ export default function RealMap({
       });
     return () => {
       cancelled = true;
+      clearTimeout(timeout);
       heatCirclesRef.current.forEach((c) => c.setMap(null));
       heatCirclesRef.current = [];
       trafficRef.current?.setMap(null);
