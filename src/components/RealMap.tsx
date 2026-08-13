@@ -56,9 +56,13 @@ type LoaderState = "idle" | "loading" | "ready" | "error";
  * same visual language (gold -> red glow) with plain overlays.
  */
 export const RISK_BANDS = [
-  { scale: 1.0, color: "#D92323", opacity: 0.1 },
-  { scale: 0.62, color: "#F3D675", opacity: 0.14 },
-  { scale: 0.32, color: "#D92323", opacity: 0.28 },
+  // RC3.2: opacidades reduzidas ~40%. A camada é REAL (vem de `risk_zones`),
+  // então continua no mapa — mas ela informa, não decora: com os valores
+  // antigos as manchas competiam com o traçado da rota e com as ruas, que é
+  // o que a pessoa precisa enxergar pilotando.
+  { scale: 1.0, color: "#D92323", opacity: 0.06 },
+  { scale: 0.62, color: "#F3D675", opacity: 0.09 },
+  { scale: 0.32, color: "#D92323", opacity: 0.16 },
 ] as const;
 
 let loaderPromise: Promise<typeof google> | null = null;
