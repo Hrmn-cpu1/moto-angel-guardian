@@ -1,3 +1,5 @@
+import { recordTripDiagnostic } from "./trip-diagnostics";
+
 type LovableErrorOptions = {
   mechanism?: "manual" | "onerror" | "unhandledrejection" | "react_error_boundary";
   handled?: boolean;
@@ -68,15 +70,24 @@ export function installGlobalErrorReporting(): () => void {
   globalReportingInstalled = true;
 
   const onError = (event: ErrorEvent) => {
+    const diagnostic = recordTripDiagnostic(
+      "window.onerror",
+      event.error ?? new Error(event.message),
+    );
     reportLovableError(
       event.error ?? new Error(event.message),
-      { boundary: "window.onerror" },
+      { boundary: "window.onerror", tripDiagnostic: diagnostic },
       "onerror",
     );
   };
   const onRejection = (event: PromiseRejectionEvent) => {
     const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
-    reportLovableError(error, { boundary: "window.unhandledrejection" }, "unhandledrejection");
+    const diagnostic = recordTripDiagnostic("window.unhandledrejection", error);
+    reportLovableError(
+      error,
+      { boundary: "window.unhandledrejection", tripDiagnostic: diagnostic },
+      "unhandledrejection",
+    );
   };
 
   window.addEventListener("error", onError);

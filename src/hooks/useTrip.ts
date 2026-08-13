@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { iniciarServicoDeViagem, pararServicoDeViagem } from "@/lib/trip-service";
+import { setTripDiagnosticState } from "@/lib/trip-diagnostics";
 import {
   VIAGEM_INICIAL,
   cancelarPreparacao,
@@ -41,6 +42,16 @@ function rotuloDoDestino(v: Viagem): string {
 function publicar(v: Viagem) {
   const anterior = viagemAtual;
   viagemAtual = v;
+  setTripDiagnosticState({
+    action:
+      anterior.estado !== "ativa" && v.estado === "ativa"
+        ? "trip_start"
+        : anterior.estado === "ativa" && v.estado !== "ativa"
+          ? "trip_stop"
+          : "trip_state_change",
+    tripActive: v.estado === "ativa",
+    destinationExists: v.destino != null,
+  });
   salvarViagem(v);
 
   // O serviço nativo acompanha o estado, não o contrário. Idempotente: só age
@@ -76,12 +87,16 @@ export function useTrip() {
 
   const definirDestino = useCallback(
     (entrada: unknown, origem: "manual" | "externo" = "manual") => {
+      setTripDiagnosticState({ action: "destination_parse" });
       publicar(receberDestino(viagemAtual, entrada, origem));
     },
     [],
   );
 
-  const iniciar = useCallback(() => publicar(iniciarViagem(viagemAtual, Date.now())), []);
+  const iniciar = useCallback(() => {
+    setTripDiagnosticState({ action: "trip_start_requested" });
+    publicar(iniciarViagem(viagemAtual, Date.now()));
+  }, []);
   const cancelar = useCallback(() => publicar(cancelarPreparacao(viagemAtual)), []);
   const finalizar = useCallback(
     (sosAtivo: boolean) => publicar(finalizarViagem(viagemAtual, sosAtivo)),

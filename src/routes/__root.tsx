@@ -13,6 +13,7 @@ import { installGlobalErrorReporting, reportLovableError } from "../lib/lovable-
 import { bootstrapNative } from "../lib/native";
 import { Toaster } from "../components/ui/sonner";
 import { Button } from "../components/ui/button";
+import { recordTripDiagnostic, TRIP_CRASH_CODE } from "../lib/trip-diagnostics";
 
 function NotFoundComponent() {
   return (
@@ -38,18 +39,13 @@ function NotFoundComponent() {
 
 function ErrorComponent({ error }: { error: Error; reset: () => void }) {
   console.error(error);
-  console.warn(
-    "MA-TRIP-001",
-    JSON.stringify({
-      name: error?.name ?? "Error",
-      message: error?.message ?? String(error),
-      stack: error?.stack?.split("\n").slice(0, 8).join("\n"),
-      pathname: typeof window === "undefined" ? "ssr" : window.location.pathname,
-      timestamp: new Date().toISOString(),
-    }),
-  );
+  const diagnostic = recordTripDiagnostic("tanstack.root_boundary", error);
+  console.warn(TRIP_CRASH_CODE, JSON.stringify(diagnostic));
   useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    reportLovableError(error, {
+      boundary: "tanstack_root_error_component",
+      tripDiagnostic: diagnostic,
+    });
   }, [error]);
 
   return (
@@ -61,6 +57,7 @@ function ErrorComponent({ error }: { error: Error; reset: () => void }) {
         <p className="mt-2 text-sm text-muted-foreground">
           Something went wrong on our end. You can try refreshing or head back home.
         </p>
+        <p className="mt-2 text-xs text-muted-foreground">Código: {TRIP_CRASH_CODE}</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <Button type="button" onClick={() => window.location.reload()}>
             Try again
