@@ -9,6 +9,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { camada } from "@/lib/layers";
 import { allowsManualSend, claimsDelivery, sosDeliveryLabel } from "@/lib/sos-client";
 import type { SosController } from "@/hooks/useSosController";
 
@@ -249,8 +250,11 @@ export function SosPanel({ sos, layout = "overlay", onAddContacts, className }: 
   return (
     <div
       className={cn(
-        "z-[60] flex items-end bg-black/80 p-3 animate-fade-up",
-        layout === "overlay" ? "fixed inset-0" : "absolute inset-0 z-30",
+        // Camada do topo, da escala única. O mapa está isolado, então nada
+        // de dentro dele alcança este painel (RC3 bug #2).
+        camada("painelSos"),
+        "flex items-end bg-black/80 p-3 animate-fade-up",
+        layout === "overlay" ? "fixed inset-0" : "absolute inset-0",
         className,
       )}
     >

@@ -227,6 +227,19 @@
   }
 }
 
+/*
+ * Contexto de empilhamento do mapa (RC3 bug #2).
+ *
+ * `isolation: isolate` faz esta superfície virar um contexto próprio: o
+ * z-index: 100000 do marcador passa a valer SÓ aqui dentro, em vez de
+ * escapar e disputar com o painel do SOS. Sem isto, qualquer overlay novo
+ * volta a atravessar modal — foi o que aconteceu.
+ */
+.moto-map-surface {
+  isolation: isolate;
+  position: relative;
+}
+
 .moto-user-location-marker {
   position: absolute;
   z-index: 100000;

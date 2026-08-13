@@ -687,7 +687,7 @@ export default function RealMap({
   // que vai para o google.maps.Map não pode depender de ordem de classe
   // utilitária nem de porcentagem.
   return (
-    <div className={cn("relative h-full w-full", className)}>
+    <div className={cn("moto-map-surface relative h-full w-full", className)}>
       <div
         ref={containerRef}
         style={{ position: "absolute", inset: 0 }}

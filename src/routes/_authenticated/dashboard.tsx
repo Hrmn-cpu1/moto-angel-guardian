@@ -11,6 +11,19 @@ import { useGeolocation } from "@/hooks/useGeolocation";
 import { useAlerts } from "@/hooks/useAlerts";
 import { useNearbyRiders } from "@/hooks/useNearbyRiders";
 import { useMapLayers } from "@/hooks/useMapLayers";
+import { useTrip } from "@/hooks/useTrip";
+import { useCockpitTelemetry } from "@/hooks/useCockpitTelemetry";
+import { useSafetyCopilot } from "@/hooks/useSafetyCopilot";
+import { useSosController } from "@/hooks/useSosController";
+import {
+  ChamadaViagemSegura,
+  CockpitDeViagem,
+  PreparacaoDeViagem,
+} from "@/components/RideCockpit";
+import { DestinoDialog } from "@/components/DestinoDialog";
+import { camada } from "@/lib/layers";
+import { atualizarServicoDeViagem } from "@/lib/trip-service";
+import { APARENCIA, distanciaCurta } from "@/lib/map-events";
 import { useRiskZones } from "@/hooks/useRiskZones";
 import { usePartners } from "@/hooks/usePartners";
 import { useServerFn } from "@tanstack/react-start";
@@ -54,7 +67,40 @@ function Dashboard() {
   const { camadas, alternar } = useMapLayers();
   const { todos: riders, contatos, comunidade } = useNearbyRiders(position, 50, camadas);
   const { risks } = useRiskZones(position);
+
+  // Viagem Segura: fonte única, no módulo. Trocar de aba não mata a viagem
+  // (RC3 seções 8 e 39).
+  const { viagem, definirDestino, iniciar, cancelar, finalizar } = useTrip();
+  const viagemAtiva = viagem.estado === "ativa";
+  const { velocidade, rumo, inclinacao, modo } = useCockpitTelemetry(viagemAtiva);
+  const [buscandoDestino, setBuscandoDestino] = useState(false);
+  // O SOS ativo é lido do controlador que já existe, pela fase — não invento
+  // API nova nele (RC3: não reimplementar SOS).
+  const sos = useSosController();
+  // Um SOS existe no servidor a partir do registro: são as fases em que já
+  // há sos_event_id. É isso que "finalizar viagem" não pode destruir.
+  const sosAtivo =
+    sos.phase === "aguardando_envio" ||
+    sos.phase === "sem_contatos" ||
+    sos.sosEventId != null;
+  const { aviso, vozLigada, vozSuportada, alternarVoz } = useSafetyCopilot({
+    alerts,
+    pois,
+    riders,
+    viagemAtiva,
+    modo,
+  });
   const { located: locatedPartners } = usePartners();
+
+  // A notificação da viagem mostra o próximo alerta — é o que aparece na tela
+  // de bloqueio. Só atualiza durante a viagem, e só quando o aviso muda.
+  useEffect(() => {
+    if (!viagemAtiva) return;
+    void atualizarServicoDeViagem({
+      alerta: aviso ? APARENCIA[aviso.categoria].rotulo : "",
+      distancia: aviso ? distanciaCurta(aviso.distanciaKm) : "",
+    });
+  }, [viagemAtiva, aviso?.id, aviso?.categoria, aviso?.distanciaKm]);
 
   useEffect(() => {
     if (!granted) return;
@@ -189,8 +235,53 @@ function Dashboard() {
           />
         </div>
 
-        {/* Live summary */}
-        <div className="absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+96px)] z-30 flex justify-between gap-2 text-[10px] font-semibold uppercase tracking-widest">
+        {/* ---- Viagem Segura na Home (RC3) ---- */}
+        {viagem.estado === "ocioso" && (
+          <ChamadaViagemSegura onAbrir={() => setBuscandoDestino(true)} />
+        )}
+
+        {viagem.estado === "preparando" && (
+          <PreparacaoDeViagem
+            viagem={viagem}
+            gpsOk={!!position}
+            contato={null}
+            onIniciar={iniciar}
+            onCancelar={cancelar}
+          />
+        )}
+
+        {viagemAtiva && (
+          <CockpitDeViagem
+            viagem={viagem}
+            velocidade={velocidade}
+            rumo={rumo}
+            inclinacao={inclinacao}
+            modo={modo}
+            proximoEvento={aviso}
+            vozLigada={vozLigada}
+            vozSuportada={vozSuportada}
+            onAlternarVoz={alternarVoz}
+            onFinalizar={() => finalizar(sosAtivo)}
+          />
+        )}
+
+        {buscandoDestino && (
+          <DestinoDialog
+            onEscolher={(entrada) => {
+              definirDestino(entrada, "manual");
+              setBuscandoDestino(false);
+            }}
+            onFechar={() => setBuscandoDestino(false)}
+          />
+        )}
+
+        {/* Resumo: escondido durante a viagem, para não competir com o painel */}
+        <div
+          className={`absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+96px)] ${camada(
+            "cartoesDoMapa",
+          )} flex justify-between gap-2 text-[10px] font-semibold uppercase tracking-widest ${
+            viagem.estado === "ocioso" ? "" : "hidden"
+          }`}>
           <span className="rounded-full border border-gold/30 bg-black/75 px-3 py-1.5 text-gold">
             {camadas.comunidade
               ? `${contatos.length + comunidade.length} online`

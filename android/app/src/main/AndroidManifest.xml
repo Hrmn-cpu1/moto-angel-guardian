@@ -33,7 +33,60 @@
                 <data android:scheme="com.motoanjo.app" android:host="auth" />
             </intent-filter>
 
+            <!--
+              Receber destino de outro aplicativo (RC3).
+
+              O filtro do OAuth acima usa host="auth" e continua sendo o único
+              que casa com com.motoanjo.app://auth/callback. Os filtros abaixo
+              usam host="destino" ou esquema geo:, então NÃO capturam o
+              callback do login — é por isso que host é obrigatório aqui.
+
+              Nada disso permite "interceptar o clique dentro do iFood": o app
+              de origem é quem decide oferecer compartilhar/abrir. O que
+              fazemos é estar disponível na lista quando ele oferecer.
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.motoanjo.app" android:host="destino" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="geo" />
+            </intent-filter>
+
+            <!-- Compartilhar endereço em texto. Entrada não confiável: passa
+                 pelo mesmo normalizador de destino, que recusa javascript:,
+                 data:, file:, intent: e coordenada inválida. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+
         </activity>
+
+        <!--
+          Serviço de primeiro plano da Viagem Segura.
+
+          foregroundServiceType="location" é obrigatório a partir da API 34 e
+          é o que permite continuar rastreando com a tela apagada, sem pedir
+          ACCESS_BACKGROUND_LOCATION.
+
+          exported="false": ninguém de fora inicia este serviço. Só o app.
+          stopWithTask="true": se o usuário remover o app dos recentes, o
+          serviço morre junto — nada de notificação órfã dizendo "protegido"
+          quando não há viagem nenhuma.
+        -->
+        <service
+            android:name=".ViagemSeguraService"
+            android:exported="false"
+            android:stopWithTask="true"
+            android:foregroundServiceType="location" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
