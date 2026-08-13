@@ -175,8 +175,7 @@ export class CrashDetectionEngine {
 
     // Fix ruim não decide nada. Melhor ficar cego um instante do que acionar
     // socorro por causa de GPS pulando entre prédios.
-    const fixConfiavel =
-      a.accuracyM == null || a.accuracyM <= this.lim.precisaoMaxima;
+    const fixConfiavel = a.accuracyM == null || a.accuracyM <= this.lim.precisaoMaxima;
     const anterior = this.anterior;
     this.anterior = a;
 
@@ -269,12 +268,20 @@ export class CrashDetectionEngine {
 export const COUNTDOWN_PADRAO_S = 15;
 
 /** Quanto falta, em segundos. Pura, para a UI e o teste concordarem. */
-export function segundosRestantes(inicioMs: number, agoraMs: number, totalS = COUNTDOWN_PADRAO_S): number {
+export function segundosRestantes(
+  inicioMs: number,
+  agoraMs: number,
+  totalS = COUNTDOWN_PADRAO_S,
+): number {
   const passados = Math.floor((agoraMs - inicioMs) / 1000);
   return Math.max(0, totalS - passados);
 }
 
-export function countdownTerminou(inicioMs: number, agoraMs: number, totalS = COUNTDOWN_PADRAO_S): boolean {
+export function countdownTerminou(
+  inicioMs: number,
+  agoraMs: number,
+  totalS = COUNTDOWN_PADRAO_S,
+): boolean {
   return segundosRestantes(inicioMs, agoraMs, totalS) === 0;
 }
 
@@ -319,5 +326,9 @@ export function decidirAcionamento(ctx: ContextoAcionamento): DecisaoAcionamento
   if (ctx.sosAtivo) {
     return { acionar: false, motivo: "ja existe um SOS ativo", origem: null };
   }
-  return { acionar: true, motivo: "queda confirmada sem resposta", origem: "automatic_crash_detection" };
+  return {
+    acionar: true,
+    motivo: "queda confirmada sem resposta",
+    origem: "automatic_crash_detection",
+  };
 }

@@ -23,7 +23,11 @@ function storageFalso(inicial: Record<string, string> = {}) {
 }
 
 test("o padrão de fábrica não liga a camada comunitária sozinho", () => {
-  assert.equal(CAMADAS_PADRAO.comunidade, false, "ver desconhecidos precisa ser escolha do usuário");
+  assert.equal(
+    CAMADAS_PADRAO.comunidade,
+    false,
+    "ver desconhecidos precisa ser escolha do usuário",
+  );
   assert.equal(CAMADAS_PADRAO.contatos, true, "contatos já foram autorizados um a um");
 });
 
@@ -67,13 +71,24 @@ test("valor corrompido no storage não derruba o mapa nem liga a comunidade", ()
   assert.deepEqual(carregarCamadas(store), CAMADAS_PADRAO);
 
   const parcial = storageFalso({ [CHAVE_CAMADAS]: '{"comunidade":"talvez"}' });
-  assert.equal(carregarCamadas(parcial.store).comunidade, false, "valor inválido cai no lado seguro");
+  assert.equal(
+    carregarCamadas(parcial.store).comunidade,
+    false,
+    "valor inválido cai no lado seguro",
+  );
 });
 
 test("o rótulo do mapa separa contato de comunidade e some quando vazio", () => {
-  assert.equal(rotuloDeRiders({ comunidade: true, contatos: true }, 2, 3), "2 contatos · 3 na comunidade");
+  assert.equal(
+    rotuloDeRiders({ comunidade: true, contatos: true }, 2, 3),
+    "2 contatos · 3 na comunidade",
+  );
   assert.equal(rotuloDeRiders({ comunidade: true, contatos: true }, 1, 0), "1 contato");
   assert.equal(rotuloDeRiders({ comunidade: true, contatos: true }, 0, 4), "4 na comunidade");
-  assert.equal(rotuloDeRiders({ comunidade: false, contatos: true }, 0, 9), null, "camada OFF não conta");
+  assert.equal(
+    rotuloDeRiders({ comunidade: false, contatos: true }, 0, 9),
+    null,
+    "camada OFF não conta",
+  );
   assert.equal(rotuloDeRiders({ comunidade: true, contatos: true }, 0, 0), null);
 });

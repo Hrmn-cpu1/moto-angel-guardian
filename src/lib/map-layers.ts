@@ -46,14 +46,17 @@ function armazenamentoDoNavegador(): ArmazenamentoSimples | null {
   }
 }
 
-export function carregarCamadas(store: ArmazenamentoSimples | null = armazenamentoDoNavegador()): CamadasDoMapa {
+export function carregarCamadas(
+  store: ArmazenamentoSimples | null = armazenamentoDoNavegador(),
+): CamadasDoMapa {
   if (!store) return { ...CAMADAS_PADRAO };
   try {
     const cru = store.getItem(CHAVE_CAMADAS);
     if (!cru) return { ...CAMADAS_PADRAO };
     const lido = JSON.parse(cru) as Partial<CamadasDoMapa>;
     return {
-      comunidade: typeof lido.comunidade === "boolean" ? lido.comunidade : CAMADAS_PADRAO.comunidade,
+      comunidade:
+        typeof lido.comunidade === "boolean" ? lido.comunidade : CAMADAS_PADRAO.comunidade,
       contatos: typeof lido.contatos === "boolean" ? lido.contatos : CAMADAS_PADRAO.contatos,
     };
   } catch {

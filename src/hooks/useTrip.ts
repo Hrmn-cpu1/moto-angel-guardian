@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  iniciarServicoDeViagem,
-  pararServicoDeViagem,
-} from "@/lib/trip-service";
+import { iniciarServicoDeViagem, pararServicoDeViagem } from "@/lib/trip-service";
 import {
   VIAGEM_INICIAL,
   cancelarPreparacao,

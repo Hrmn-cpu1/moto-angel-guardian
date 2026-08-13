@@ -74,14 +74,12 @@ function colunasDeRetorno(retorno: string): string[] {
 
 /** Remove o que não é referência de coluna, para não gerar alarme falso. */
 function apenasReferenciasDeColuna(corpo: string): string {
-  return (
-    corpo
-      .replace(/--[^\n]*/g, " ") // comentários
-      .replace(/'(?:[^']|'')*'/g, "''") // literais de texto
-      .replace(/INSERT\s+INTO\s+[\w.]+\s*(?:AS\s+\w+\s*)?\([^)]*\)/gi, "INSERT") // lista de destino
-      .replace(/\bSET\b[\s\S]*?(?=\bWHERE\b|\bRETURNING\b|;)/gi, " ") // alvos de atribuição
-      .replace(/\bAS\s+\w+/gi, " ") // apelidos declarados
-  );
+  return corpo
+    .replace(/--[^\n]*/g, " ") // comentários
+    .replace(/'(?:[^']|'')*'/g, "''") // literais de texto
+    .replace(/INSERT\s+INTO\s+[\w.]+\s*(?:AS\s+\w+\s*)?\([^)]*\)/gi, "INSERT") // lista de destino
+    .replace(/\bSET\b[\s\S]*?(?=\bWHERE\b|\bRETURNING\b|;)/gi, " ") // alvos de atribuição
+    .replace(/\bAS\s+\w+/gi, " "); // apelidos declarados
 }
 
 function ocorrenciasNuas(corpo: string, nome: string): string[] {
@@ -106,7 +104,11 @@ test("nenhuma função plpgsql referencia coluna homônima da própria RETURNS T
       }
     }
   }
-  assert.deepEqual(problemas, [], `referência ambígua entre coluna e variável:\n${problemas.join("\n")}`);
+  assert.deepEqual(
+    problemas,
+    [],
+    `referência ambígua entre coluna e variável:\n${problemas.join("\n")}`,
+  );
 });
 
 test("a linha exata que derrubou o SOS no Samsung está qualificada", () => {

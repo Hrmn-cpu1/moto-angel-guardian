@@ -107,7 +107,10 @@ export function calcularInclinacao(
   if (gammaGraus == null || !Number.isFinite(gammaGraus)) {
     return { graus: null, confianca: "indisponivel", aviso: "sem sensor de orientação" };
   }
-  const limitado = Math.max(-INCLINACAO_MAXIMA, Math.min(INCLINACAO_MAXIMA, Math.round(gammaGraus)));
+  const limitado = Math.max(
+    -INCLINACAO_MAXIMA,
+    Math.min(INCLINACAO_MAXIMA, Math.round(gammaGraus)),
+  );
   if (velocidadeKmhAtual == null || velocidadeKmhAtual < ZONA_MORTA_KMH) {
     return { graus: limitado, confianca: "baixa", aviso: "parado: leitura do aparelho" };
   }

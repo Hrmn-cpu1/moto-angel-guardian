@@ -191,8 +191,7 @@ function pinSvg(color: string, glyphColor: string, glyph: string): string {
       '"/>',
     bloqueio: '<path d="M8 10h8v4H8z" fill="' + glyphColor + '"/>',
     // RC2 checkpoint B: alerta de SOS da comunidade.
-    sos:
-      '<path d="M11 7h2v6h-2zM11 15h2v2h-2z" fill="' + glyphColor + '"/>',
+    sos: '<path d="M11 7h2v6h-2zM11 15h2v2h-2z" fill="' + glyphColor + '"/>',
     roubo:
       '<path d="M12 7c2 0 3.5 1.5 3.5 3.5S14 14 12 14s-3.5-1.5-3.5-3.5S10 7 12 7z" fill="none" stroke="' +
       glyphColor +
@@ -503,11 +502,13 @@ export default function RealMap({
           distanciaKm: (perna.distance?.value ?? 0) / 1000,
           duracaoMin: Math.round((perna.duration?.value ?? 0) / 60),
           proximaInstrucao: passo?.instructions
-            ? passo.instructions.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
+            ? passo.instructions
+                .replace(/<[^>]*>/g, " ")
+                .replace(/\s+/g, " ")
+                .trim()
             : null,
           proximaDistanciaM: passo?.distance?.value ?? null,
-          proximaManobra:
-            (passo as unknown as { maneuver?: string } | undefined)?.maneuver ?? null,
+          proximaManobra: (passo as unknown as { maneuver?: string } | undefined)?.maneuver ?? null,
           destinoTexto: perna.end_address ?? null,
         });
       })

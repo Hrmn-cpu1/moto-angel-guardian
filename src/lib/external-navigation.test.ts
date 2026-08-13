@@ -69,9 +69,7 @@ test("par de coordenadas puro", () => {
 });
 
 test("URL do Google Maps com destination", () => {
-  const d = normalizarDestino(
-    "https://www.google.com/maps/dir/?api=1&destination=-23.55,-46.63",
-  );
+  const d = normalizarDestino("https://www.google.com/maps/dir/?api=1&destination=-23.55,-46.63");
   assert.deepEqual([d?.latitude, d?.longitude], [-23.55, -46.63]);
 });
 
@@ -133,10 +131,7 @@ test("destinoUtilizavel exige coordenada ou endereço de verdade", () => {
  * ================================================================== */
 
 test("nenhuma URL gerada usa esquema proprietário", () => {
-  const destinos = [
-    { latitude: -23.5, longitude: -46.6 },
-    { address: "Avenida Paulista 1000" },
-  ];
+  const destinos = [{ latitude: -23.5, longitude: -46.6 }, { address: "Avenida Paulista 1000" }];
   for (const destino of destinos) {
     for (const provider of ["google", "waze"] as const) {
       const url = urlDeNavegacao(provider, destino);
@@ -170,7 +165,6 @@ test("endereço com acento e espaço é escapado", () => {
   assert.ok(url.includes("Consola%C3%A7%C3%A3o"));
 });
 
-
 /* ================================================================== *
  * Contrato de abertura — a WebView nunca navega no lugar
  * ================================================================== */
@@ -189,7 +183,10 @@ test("no aparelho, se a janela não abrir, cai para o navegador nativo", async (
   const r = await abrirNavegacaoExterna("waze", { latitude: -23.5, longitude: -46.6 }, ponte);
   assert.equal(r.ok, true);
   assert.equal(r.via, "navegador-nativo");
-  assert.deepEqual(chamadas.map((c) => c.split(":")[0]), ["janela", "browser"]);
+  assert.deepEqual(
+    chamadas.map((c) => c.split(":")[0]),
+    ["janela", "browser"],
+  );
 });
 
 test("se os dois caminhos falharem, devolve erro em vez de fingir sucesso", async () => {
