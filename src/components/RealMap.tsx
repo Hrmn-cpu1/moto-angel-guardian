@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { abrirNavegacaoExterna } from "@/lib/external-navigation";
+import { passosDoEnquadramento } from "@/lib/navigation-cue";
 import type { POI } from "@/lib/pois.functions";
 
 // Premium dark style with gold accents
@@ -281,6 +282,8 @@ export default function RealMap({
   const heatCirclesRef = useRef<google.maps.Circle[]>([]);
   const trafficRef = useRef<google.maps.TrafficLayer | null>(null);
   const routeRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
+  /** Destino já enquadrado — impede a câmera de brigar com o modo "seguir". */
+  const enquadradoParaRef = useRef<string | null>(null);
   const onRouteRef = useRef(onRoute);
   onRouteRef.current = onRoute;
   const [state, setState] = useState<LoaderState>("idle");
