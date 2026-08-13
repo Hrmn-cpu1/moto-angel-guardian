@@ -84,6 +84,44 @@ export function precisaMostrarGate(status: StatusPermissao): boolean {
   return status !== "concedida" && status !== "verificando";
 }
 
+/**
+ * Reconcilia a leitura nova com a que já tínhamos.
+ *
+ * BUG REAL (RC3 #1): o gate voltava a aparecer depois de trocar de aba, mesmo
+ * com a permissão concedida. A causa não era o estado local — isso já tinha
+ * sido corrigido. Era a fonte: dentro de um WebView, a Permissions API
+ * responde pela permissão da ORIGEM WEB, que é uma coisa diferente da
+ * permissão do sistema Android. Depois de o usuário conceder no diálogo do
+ * Android, `navigator.permissions.query({name:"geolocation"})` ainda pode
+ * responder `prompt`. Ao voltar para o app, o `visibilitychange` reconsultava,
+ * recebia `prompt`, e o onboarding reaparecia por cima de uma permissão que
+ * já existia.
+ *
+ * A regra que corrige isso de forma estrutural:
+ *
+ *   uma concessão confirmada só é revogada por evidência EXPLÍCITA de recusa.
+ *
+ * Ambiguidade (`perguntar`, `desconhecido`) nunca rebaixa. Recusa explícita
+ * (`negada`, `negada_permanente`) sempre rebaixa — porque a pessoa pode ter
+ * revogado nas Configurações, e esconder isso seria pior.
+ *
+ * A leitura nativa tem prioridade sobre a web: ela fala do sistema, que é o
+ * que de fato manda no GPS.
+ */
+export function reconciliarLeitura(
+  anterior: LeituraPermissao,
+  nova: LeituraPermissao,
+): LeituraPermissao {
+  if (anterior.status !== "concedida") return nova;
+
+  // Já estava concedida: só uma recusa explícita derruba.
+  if (nova.status === "negada" || nova.status === "negada_permanente") return nova;
+  if (nova.status === "indisponivel" && nova.origem === "nativo") return nova;
+
+  // Qualquer outra coisa é ambiguidade — mantemos o que sabíamos.
+  return anterior;
+}
+
 /** Só faz sentido oferecer "Abrir configurações" quando o pedido não volta mais. */
 export function ofereceConfiguracoes(status: StatusPermissao): boolean {
   return status === "negada_permanente";
@@ -101,6 +139,17 @@ export function leituraAtual(): LeituraPermissao {
 }
 
 export function definirLeitura(leitura: LeituraPermissao): void {
+  const proxima = reconciliarLeitura(atual, leitura);
+  if (proxima.status === atual.status && proxima.origem === atual.origem) return;
+  atual = proxima;
+  for (const assinante of assinantes) assinante(proxima);
+}
+
+/**
+ * Escreve sem reconciliar. Usado só quando a evidência é de primeira mão —
+ * um fix de GPS que voltou, ou o resultado do diálogo do sistema.
+ */
+export function definirLeituraDireta(leitura: LeituraPermissao): void {
   atual = leitura;
   for (const assinante of assinantes) assinante(leitura);
 }
@@ -218,8 +267,10 @@ export async function pedirPermissao(): Promise<LeituraPermissao> {
     }
     navigator.geolocation.getCurrentPosition(
       () => {
+        // Uma posição voltou: é a prova mais forte que existe de que a
+        // permissão está de pé. Entra sem reconciliação.
         const leitura: LeituraPermissao = { status: "concedida", origem: "web" };
-        definirLeitura(leitura);
+        definirLeituraDireta(leitura);
         resolve(leitura);
       },
       (err) => {
@@ -227,7 +278,7 @@ export async function pedirPermissao(): Promise<LeituraPermissao> {
           status: traduzirErroDeGps(err.code, err.PERMISSION_DENIED),
           origem: "web",
         };
-        definirLeitura(leitura);
+        definirLeituraDireta(leitura);
         resolve(leitura);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
