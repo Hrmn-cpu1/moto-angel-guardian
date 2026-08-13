@@ -1,4 +1,5 @@
 import { isNativeApp } from "./native.ts";
+import { recordTripDiagnostic, setTripDiagnosticState } from "./trip-diagnostics.ts";
 
 /**
  * Ponte para o serviço nativo da Viagem Segura.
@@ -53,13 +54,17 @@ export async function iniciarServicoDeViagem(destino?: string): Promise<boolean>
   const p = plugin();
   if (!p) return false;
   try {
+    setTripDiagnosticState({ action: "native_trip_service_start" });
     await p.iniciar({ destino: destino ?? "" });
     return true;
-  } catch {
+  } catch (error) {
+    console.error(TRIP_NATIVE_ERROR, recordTripDiagnostic("native.trip.start", error));
     // Falhar aqui não pode derrubar a viagem: ela continua em primeiro plano.
     return false;
   }
 }
+
+const TRIP_NATIVE_ERROR = "Moto Anjo native trip service error";
 
 export async function atualizarServicoDeViagem(dados: {
   destino?: string;
@@ -102,13 +107,33 @@ export function ouvirPosicaoNativa(cb: (p: PosicaoNativa) => void): () => void {
   let cancelado = false;
   void p
     .addListener("posicao", (pos) => {
-      if (!cancelado) cb(pos);
+      if (cancelado) return;
+      if (
+        !pos ||
+        typeof pos.lat !== "number" ||
+        typeof pos.lng !== "number" ||
+        typeof pos.precisaoM !== "number" ||
+        typeof pos.velocidadeMs !== "number"
+      ) {
+        console.error(
+          TRIP_NATIVE_ERROR,
+          recordTripDiagnostic("native.trip.position_payload", new Error("Invalid native payload")),
+        );
+        return;
+      }
+      try {
+        cb(pos);
+      } catch (error) {
+        console.error(TRIP_NATIVE_ERROR, recordTripDiagnostic("native.trip.position_callback", error));
+      }
     })
     .then((h) => {
       if (cancelado) void h.remove();
       else remover = h.remove;
     })
-    .catch(() => {});
+    .catch((error) => {
+      console.error(TRIP_NATIVE_ERROR, recordTripDiagnostic("native.trip.listener", error));
+    });
   return () => {
     cancelado = true;
     if (remover) void remover();

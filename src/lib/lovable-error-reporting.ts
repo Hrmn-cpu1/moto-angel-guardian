@@ -1,3 +1,5 @@
+import { installTripConsoleDiagnostics, recordTripDiagnostic } from "./trip-diagnostics";
+
 type LovableErrorOptions = {
   mechanism?: "manual" | "onerror" | "unhandledrejection" | "react_error_boundary";
   handled?: boolean;
@@ -66,17 +68,27 @@ let globalReportingInstalled = false;
 export function installGlobalErrorReporting(): () => void {
   if (typeof window === "undefined" || globalReportingInstalled) return () => {};
   globalReportingInstalled = true;
+  const removeConsoleDiagnostics = installTripConsoleDiagnostics();
 
   const onError = (event: ErrorEvent) => {
+    const diagnostic = recordTripDiagnostic(
+      "window.onerror",
+      event.error ?? new Error(event.message),
+    );
     reportLovableError(
       event.error ?? new Error(event.message),
-      { boundary: "window.onerror" },
+      { boundary: "window.onerror", tripDiagnostic: diagnostic },
       "onerror",
     );
   };
   const onRejection = (event: PromiseRejectionEvent) => {
     const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
-    reportLovableError(error, { boundary: "window.unhandledrejection" }, "unhandledrejection");
+    const diagnostic = recordTripDiagnostic("window.unhandledrejection", error);
+    reportLovableError(
+      error,
+      { boundary: "window.unhandledrejection", tripDiagnostic: diagnostic },
+      "unhandledrejection",
+    );
   };
 
   window.addEventListener("error", onError);
@@ -84,6 +96,7 @@ export function installGlobalErrorReporting(): () => void {
   return () => {
     window.removeEventListener("error", onError);
     window.removeEventListener("unhandledrejection", onRejection);
+    removeConsoleDiagnostics();
     globalReportingInstalled = false;
   };
 }
