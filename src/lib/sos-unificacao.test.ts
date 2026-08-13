@@ -73,7 +73,16 @@ test("nenhum acionador recebe posição pronta por prop", () => {
 test("os pontos de uso não passam mais a posição antiga", () => {
   const dashboard = ler("src/routes/_authenticated/dashboard.tsx");
   const mapa = ler("src/routes/_authenticated/map.tsx");
-  assert.ok(dashboard.includes("<SosFab />"), "dashboard ainda passa prop para o SosFab");
+  // A garantia é sobre LOCALIZAÇÃO: o acionador captura o GPS na hora do
+  // acionamento e nunca recebe uma posição pronta de fora, que poderia estar
+  // velha. Props de apresentação (esconder atrás de um modal) e o
+  // controlador compartilhado não violam isso.
+  const usoDoFab = dashboard.match(/<SosFab[A-Za-z]*[^>]*\/>/)?.[0] ?? "";
+  assert.ok(usoDoFab.length > 0, "dashboard não renderiza o acionador de SOS");
+  assert.ok(
+    !/\b(position|lat|lng|coords|localizacao)\b/.test(usoDoFab),
+    "dashboard ainda passa uma posição pronta para o SosFab",
+  );
   assert.ok(mapa.includes("<MapSosButton />"), "mapa ainda passa prop para o MapSosButton");
 });
 
