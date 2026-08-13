@@ -834,7 +834,7 @@ test("LOOP.6: 'desconhecido' é o único estado que mostra spinner — e ele ago
   const lib = ler("src/lib/location-permission.ts");
   assert.ok(/LIMITE_DE_CONSULTA_MS/.test(lib), "falta o tempo limite");
   assert.ok(
-    /comTempoLimite\([\s\S]{0,400}?perms\.query/.test(lib),
+    /comTempoLimite\([\s\S]{0,400}?perms[\s\S]{0,20}?\.query/.test(lib),
     "a consulta do navegador precisa ter tempo limite",
   );
   const hook = ler("src/hooks/useLocationPermission.ts");
