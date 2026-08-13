@@ -1,0 +1,519 @@
+diff --git a/.github/workflows/android.yml b/.github/workflows/android.yml
+index 6c6ae71..c935257 100644
+--- a/.github/workflows/android.yml
++++ b/.github/workflows/android.yml
+@@ -94,8 +94,22 @@ jobs:
+             || { echo "nomes fora de ordem"; exit 1; }
+ 
+       # ---- Android ----
++      # Declara, no log e no artefato, EXATAMENTE qual frontend este APK vai
++      # carregar. Sem isto, um APK verde pode estar abrindo uma publicação
++      # antiga — e ninguém saberia olhando só o build.
++      - name: Declarar o frontend que o APK vai carregar
++        run: |
++          set -e
++          URL="${MOTOANJO_WEB_URL:-https://moto-angel-guardian.lovable.app}"
++          echo "APK_WEB_URL=$URL" >> $GITHUB_ENV
++          echo "::notice title=Frontend do APK::Este APK carrega $URL (server.url). Ele NAO embute o frontend deste commit; a tela so mostra este codigo depois que essa URL for publicada."
++        env:
++          MOTOANJO_WEB_URL: ${{ vars.MOTOANJO_WEB_URL }}
++
+       - name: Sincronizar Capacitor
+         run: npx cap sync android
++        env:
++          MOTOANJO_WEB_URL: ${{ vars.MOTOANJO_WEB_URL }}
+ 
+       - name: Manifest merge e checks do Gradle
+         working-directory: android
+@@ -111,16 +125,22 @@ jobs:
+         id: meta
+         run: |
+           set -e
+-          APK=android/app/build/outputs/apk/debug/app-debug.apk
+-          test -f "$APK" || { echo "APK não foi gerado"; exit 1; }
++          ORIGEM=android/app/build/outputs/apk/debug/app-debug.apk
++          test -f "$ORIGEM" || { echo "APK não foi gerado"; exit 1; }
++          APK=moto-anjo-RC3-hotfix.apk
++          cp "$ORIGEM" "$APK"
+           echo "sha256: $(sha256sum $APK | cut -d' ' -f1)"
+           echo "tamanho: $(du -h $APK | cut -f1)"
+           {
++            echo "arquivo: $APK"
+             echo "commit: ${{ github.sha }}"
+             echo "sha256: $(sha256sum $APK | cut -d' ' -f1)"
++            echo "frontend carregado (server.url): $APK_WEB_URL"
++            echo "frontend embutido no APK: NAO — ver capacitor.config.ts"
+             grep -E "versionCode|versionName" android/app/build.gradle
+             grep -E "minSdkVersion|targetSdkVersion" android/variables.gradle
+           } > android-build-metadata.txt
++          cat android-build-metadata.txt
+ 
+       # `if: success()` explícito: sem isso um passo anterior vermelho ainda
+       # deixaria um APK para baixar, e alguém instalaria achando que passou.
+@@ -128,8 +148,8 @@ jobs:
+         if: success()
+         uses: actions/upload-artifact@v4
+         with:
+-          name: moto-anjo-debug-apk
++          name: moto-anjo-RC3-hotfix
+           path: |
+-            android/app/build/outputs/apk/debug/app-debug.apk
++            moto-anjo-RC3-hotfix.apk
+             android-build-metadata.txt
+           retention-days: 14
+diff --git a/capacitor.config.ts b/capacitor.config.ts
+index 226d2e5..61eb74b 100644
+--- a/capacitor.config.ts
++++ b/capacitor.config.ts
+@@ -9,19 +9,55 @@ import type { CapacitorConfig } from "@capacitor/cli";
+  * notificações continuam usando exatamente o backend do Checkpoint 1B.
+  *
+  * Efeito colateral desejado: a origem do WebView é o próprio domínio
+- * lovable.app, então `window.location.origin` (OAuth do Google) e a chave
+- * do Google Maps restrita por referrer funcionam sem gambiarra.
++ * publicado, então `window.location.origin` (OAuth do Google) e a chave do
++ * Google Maps restrita por referrer funcionam sem gambiarra.
++ *
++ * POR QUE O APK NÃO EMBUTE O FRONTEND (leia antes de tentar mudar)
++ * ---------------------------------------------------------------
++ * Existem 8 `createServerFn` em uso, entre elas `triggerSos` — o caminho que
++ * registra o SOS no servidor. Elas são servidas pelo host do TanStack Start.
++ * Se o WebView passasse a carregar arquivos locais, a origem viraria
++ * `https://localhost` e as chamadas para `/_serverFn/...` não achariam
++ * ninguém: **o SOS pararia de registrar**. O login Google também quebraria,
++ * porque o broker OAuth usa `${origin}/~oauth/initiate`.
++ *
++ * Ou seja: hoje NÃO dá para tornar o APK autocontido "com segurança". Para
++ * isso, as server functions precisam virar Edge Functions do Supabase (ou
++ * serviço próprio) primeiro — está descrito em HOSTING-DECOUPLING-PLAN.md,
++ * etapa 3.
++ *
++ * O QUE DÁ PARA FAZER AGORA, E ESTÁ FEITO AQUI
++ * -------------------------------------------
++ * A URL deixou de ser fixa no código. `MOTOANJO_WEB_URL` define para onde o
++ * APK aponta em tempo de build, então o CI pode gerar um APK que carrega a
++ * implantação correspondente ao commit que ele acabou de validar — em vez de
++ * uma publicação antiga. Sem a variável, cai no padrão de hoje.
+  */
++
++/** Para onde o WebView aponta. Trocável em tempo de build pelo CI. */
++const URL_PADRAO = "https://moto-angel-guardian.lovable.app";
++const urlDoApp = (process.env.MOTOANJO_WEB_URL ?? URL_PADRAO).trim() || URL_PADRAO;
++
++function hostDe(u: string): string {
++  try {
++    return new URL(u).host;
++  } catch {
++    return "";
++  }
++}
+ const config: CapacitorConfig = {
+   appId: "com.motoanjo.app",
+   appName: "Moto Anjo",
+   // Exigido pelo CLI mesmo usando server.url; é o output real do build web.
+   webDir: "dist/client",
+   server: {
+-    url: "https://moto-angel-guardian.lovable.app",
++    url: urlDoApp,
+     cleartext: false,
+     androidScheme: "https",
+     allowNavigation: [
++      // O host configurado entra primeiro: sem ele, um domínio próprio seria
++      // bloqueado pela própria navegação do WebView.
++      ...(hostDe(urlDoApp) ? [hostDe(urlDoApp)] : []),
+       "moto-angel-guardian.lovable.app",
+       "*.lovable.app",
+       "oauth.lovable.app",
+diff --git a/src/hooks/useLocationPermission.ts b/src/hooks/useLocationPermission.ts
+index 2dc2107..85666c2 100644
+--- a/src/hooks/useLocationPermission.ts
++++ b/src/hooks/useLocationPermission.ts
+@@ -1,7 +1,10 @@
+ import { useCallback, useEffect, useState } from "react";
+ import {
++  LIMITE_DE_CONSULTA_MS,
+   assinarPermissao,
+   consultarPermissao,
++  definirLeitura,
++  estadoQuandoNaoSabemos,
+   leituraAtual,
+   pedirPermissao,
+   precisaMostrarGate,
+@@ -33,7 +36,19 @@ export function useLocationPermission(): {
+   useEffect(() => {
+     // Só consulta quando ainda não sabemos. Se já está concedida, a tela
+     // aparece na hora, sem piscar o onboarding.
+-    if (leituraAtual().status === "desconhecido") void consultarPermissao();
++    if (leituraAtual().status !== "desconhecido") return;
++    void consultarPermissao();
++
++    // Segunda trava. `consultarPermissao` já garante que sempre resolve, mas
++    // a tela presa em "verificando" foi um bug real e caro: se por qualquer
++    // motivo o estado continuar "desconhecido", saímos para um botão
++    // funcional em vez de deixar a pessoa olhando um spinner.
++    const destravar = setTimeout(() => {
++      if (leituraAtual().status === "desconhecido") {
++        definirLeitura(estadoQuandoNaoSabemos(leituraAtual()));
++      }
++    }, LIMITE_DE_CONSULTA_MS * 2);
++    return () => clearTimeout(destravar);
+   }, []);
+ 
+   useEffect(() => {
+diff --git a/src/lib/location-permission.ts b/src/lib/location-permission.ts
+index 152e5ac..31dbfe0 100644
+--- a/src/lib/location-permission.ts
++++ b/src/lib/location-permission.ts
+@@ -161,6 +161,64 @@ export function assinarPermissao(fn: (l: LeituraPermissao) => void): () => void
+   };
+ }
+ 
++/* ================================================================== *
++ * Tempo limite
++ *
++ * BUG REAL (hotfix RC3): a Home ficava presa para sempre em "Verificando
++ * permissões...". A causa não era lógica de permissão — era ausência de
++ * tempo limite. `navigator.permissions.query({name:"geolocation"})` pode
++ * NUNCA resolver: dentro de um iframe com Permissions-Policy bloqueando
++ * geolocalização (é o caso do preview do Lovable), a promessa fica pendurada
++ * em vez de rejeitar. Como o estado só saía de "desconhecido" quando o
++ * `await` retornava, ele nunca saía — e "desconhecido" é justamente o que a
++ * tela mostra como "verificando".
++ *
++ * `try/catch` não cobre promessa pendurada. Só tempo limite cobre.
++ * ================================================================== */
++
++export const LIMITE_DE_CONSULTA_MS = 2500;
++
++/** Resolve com `valorPadrao` se a promessa não responder a tempo. */
++export function comTempoLimite<T>(
++  promessa: Promise<T>,
++  ms: number,
++  valorPadrao: T,
++): Promise<T> {
++  return new Promise<T>((resolve) => {
++    let respondido = false;
++    const cronometro = setTimeout(() => {
++      if (respondido) return;
++      respondido = true;
++      resolve(valorPadrao);
++    }, ms);
++    void promessa
++      .then((v) => {
++        if (respondido) return;
++        respondido = true;
++        clearTimeout(cronometro);
++        resolve(v);
++      })
++      .catch(() => {
++        if (respondido) return;
++        respondido = true;
++        clearTimeout(cronometro);
++        resolve(valorPadrao);
++      });
++  });
++}
++
++/**
++ * Para onde ir quando a plataforma não respondeu.
++ *
++ * Nunca "desconhecido": esse estado trava a tela. Se já sabíamos que estava
++ * concedida, mantemos — a mesma regra de não rebaixar por ambiguidade. Caso
++ * contrário, "perguntar", que mostra um botão funcional em vez de um spinner.
++ */
++export function estadoQuandoNaoSabemos(anterior: LeituraPermissao): LeituraPermissao {
++  if (anterior.status === "concedida") return { status: "concedida", origem: "cache" };
++  return { status: "perguntar", origem: "nenhuma" };
++}
++
+ /** Só para os testes: zera o estado compartilhado. */
+ export function _resetarPermissao(): void {
+   atual = { status: "desconhecido", origem: "nenhuma" };
+@@ -194,6 +252,18 @@ async function pluginGeolocation(): Promise<{
+   }
+ }
+ 
++/**
++ * Estado real da permissão.
++ *
++ * GARANTIA DESTA FUNÇÃO: sempre resolve, e nunca com "desconhecido". Uma tela
++ * que espera para sempre é pior que uma tela com o botão errado — o motoboy
++ * pelo menos consegue tocar no botão.
++ *
++ * Os dois ambientes são tratados separadamente de propósito:
++ *   ANDROID (Capacitor) → plugin nativo, que fala do sistema;
++ *   NAVEGADOR           → Permissions API, que fala da origem web.
++ * Nenhum dos dois é obrigatório: faltando os dois, caímos em "perguntar".
++ */
+ export async function consultarPermissao(): Promise<LeituraPermissao> {
+   if (typeof navigator === "undefined" || !navigator.geolocation) {
+     const leitura: LeituraPermissao = { status: "indisponivel", origem: "nenhuma" };
+@@ -201,60 +271,76 @@ export async function consultarPermissao(): Promise<LeituraPermissao> {
+     return leitura;
+   }
+ 
+-  const nativo = await pluginGeolocation();
+-  if (nativo) {
+-    try {
+-      const r = await nativo.checkPermissions();
+-      const status = traduzirEstadoNativo(r.location ?? r.coarseLocation);
+-      if (status !== "desconhecido") {
+-        const leitura: LeituraPermissao = { status, origem: "nativo" };
+-        definirLeitura(leitura);
+-        return leitura;
+-      }
+-    } catch {
+-      // cai para a Permissions API
++  const anterior = atual;
++
++  // ---- Android nativo ----
++  if (isNativeApp()) {
++    const status = await comTempoLimite(
++      (async (): Promise<StatusPermissao> => {
++        const nativo = await pluginGeolocation();
++        if (!nativo) return "desconhecido";
++        const r = await nativo.checkPermissions();
++        return traduzirEstadoNativo(r.location ?? r.coarseLocation);
++      })(),
++      LIMITE_DE_CONSULTA_MS,
++      "desconhecido",
++    );
++    if (status !== "desconhecido") {
++      const leitura: LeituraPermissao = { status, origem: "nativo" };
++      definirLeitura(leitura);
++      return leitura;
+     }
++    // Plugin ausente ou sem resposta: continua para o caminho web abaixo, que
++    // no WebView também funciona.
+   }
+ 
++  // ---- Navegador ----
+   const perms = (navigator as Navigator & { permissions?: Permissions }).permissions;
+   if (perms?.query) {
+-    try {
+-      const status = await perms.query({ name: "geolocation" as PermissionName });
+-      const traduzido = traduzirEstadoWeb(status.state);
+-      const leitura: LeituraPermissao = { status: traduzido, origem: "web" };
+-      definirLeitura(leitura);
+-      status.onchange = () => {
+-        definirLeitura({ status: traduzirEstadoWeb(status.state), origem: "web" });
+-      };
+-      return leitura;
+-    } catch {
+-      // navegador sem suporte a consultar geolocation
++    const resultado = await comTempoLimite(
++      perms.query({ name: "geolocation" as PermissionName }).then(
++        (s) => s as PermissionStatus | null,
++      ),
++      LIMITE_DE_CONSULTA_MS,
++      null,
++    );
++    if (resultado) {
++      const traduzido = traduzirEstadoWeb(resultado.state);
++      if (traduzido !== "desconhecido") {
++        const leitura: LeituraPermissao = { status: traduzido, origem: "web" };
++        definirLeitura(leitura);
++        resultado.onchange = () => {
++          definirLeitura({ status: traduzirEstadoWeb(resultado.state), origem: "web" });
++        };
++        return leitura;
++      }
+     }
+   }
+ 
+-  // Sem como consultar: se já sabíamos que estava concedida, mantemos —
+-  // caso contrário perguntamos.
+-  const leitura: LeituraPermissao =
+-    atual.status === "concedida"
+-      ? { status: "concedida", origem: "cache" }
+-      : { status: "perguntar", origem: "nenhuma" };
++  // ---- Não deu para determinar ----
++  const leitura = estadoQuandoNaoSabemos(anterior);
+   definirLeitura(leitura);
+   return leitura;
+ }
+ 
+ export async function pedirPermissao(): Promise<LeituraPermissao> {
+-  const nativo = await pluginGeolocation();
+-  if (nativo) {
+-    try {
+-      const r = await nativo.requestPermissions({ permissions: ["location", "coarseLocation"] });
+-      const status = traduzirEstadoNativo(r.location ?? r.coarseLocation);
+-      if (status !== "desconhecido") {
+-        const leitura: LeituraPermissao = { status, origem: "nativo" };
+-        definirLeitura(leitura);
+-        return leitura;
+-      }
+-    } catch {
+-      // cai para o pedido do navegador
++  if (isNativeApp()) {
++    const status = await comTempoLimite(
++      (async (): Promise<StatusPermissao> => {
++        const nativo = await pluginGeolocation();
++        if (!nativo) return "desconhecido";
++        const r = await nativo.requestPermissions({ permissions: ["location", "coarseLocation"] });
++        return traduzirEstadoNativo(r.location ?? r.coarseLocation);
++      })(),
++      // O diálogo do sistema espera a pessoa responder: aqui o limite é
++      // generoso, e serve só para o caso de o plugin não existir.
++      15000,
++      "desconhecido",
++    );
++    if (status !== "desconhecido") {
++      const leitura: LeituraPermissao = { status, origem: "nativo" };
++      definirLeituraDireta(leitura);
++      return leitura;
+     }
+   }
+ 
+diff --git a/src/lib/rc3.test.ts b/src/lib/rc3.test.ts
+index 89090dd..10f77ba 100644
+--- a/src/lib/rc3.test.ts
++++ b/src/lib/rc3.test.ts
+@@ -6,6 +6,8 @@ import {
+   definirLeitura,
+   definirLeituraDireta,
+   leituraAtual,
++  comTempoLimite,
++  estadoQuandoNaoSabemos,
+   precisaMostrarGate,
+   reconciliarLeitura,
+ } from "./location-permission.ts";
+@@ -766,3 +768,135 @@ test("NATIVO: permissões de FGS location completas para API 34-36", () => {
+   assert.ok(!/SYSTEM_ALERT_WINDOW/.test(manifest));
+   assert.ok(!/RECEIVE_BOOT_COMPLETED/.test(manifest), "não há nada para subir no boot");
+ });
++
++/* ================================================================== *
++ * HOTFIX — "Verificando permissões..." para sempre
++ *
++ * A causa não era lógica de permissão: era ausência de tempo limite.
++ * `permissions.query` pode nunca resolver dentro de um iframe com
++ * Permissions-Policy bloqueando geolocalização — e try/catch não cobre
++ * promessa pendurada.
++ * ================================================================== */
++
++test("LOOP.1: promessa pendurada não trava a tela", async () => {
++  const nuncaResolve = new Promise<string>(() => {});
++  const r = await comTempoLimite(nuncaResolve, 30, "fallback");
++  assert.equal(r, "fallback", "sem tempo limite a Home fica no spinner para sempre");
++});
++
++test("LOOP.2: promessa que responde a tempo continua valendo", async () => {
++  assert.equal(await comTempoLimite(Promise.resolve("real"), 500, "fallback"), "real");
++});
++
++test("LOOP.3: promessa rejeitada cai no padrão, sem estourar", async () => {
++  assert.equal(await comTempoLimite(Promise.reject(new Error("x")), 500, "fallback"), "fallback");
++});
++
++test("LOOP.4: quando não dá para saber, vira botão — nunca 'desconhecido'", () => {
++  const semNada = estadoQuandoNaoSabemos({ status: "desconhecido", origem: "nenhuma" });
++  assert.equal(semNada.status, "perguntar", "spinner eterno é pior que botão errado");
++  assert.equal(precisaMostrarGate(semNada.status), true, "e o gate precisa oferecer ação");
++});
++
++test("LOOP.5: quem já concedeu não volta para o onboarding no fallback", () => {
++  const jaTinha = estadoQuandoNaoSabemos({ status: "concedida", origem: "nativo" });
++  assert.equal(jaTinha.status, "concedida");
++  assert.equal(precisaMostrarGate(jaTinha.status), false);
++});
++
++test("LOOP.6: 'desconhecido' é o único estado que mostra spinner — e ele agora expira", () => {
++  // Este é o par que causava o bug: desconhecido => verificando => spinner.
++  assert.equal(precisaMostrarGate("desconhecido"), true);
++  const lib = ler("src/lib/location-permission.ts");
++  assert.ok(/LIMITE_DE_CONSULTA_MS/.test(lib), "falta o tempo limite");
++  assert.ok(
++    /comTempoLimite\([\s\S]{0,400}?perms\.query/.test(lib),
++    "a consulta do navegador precisa ter tempo limite",
++  );
++  const hook = ler("src/hooks/useLocationPermission.ts");
++  assert.ok(/setTimeout\(/.test(hook), "falta a trava de segurança no hook");
++  assert.ok(/estadoQuandoNaoSabemos/.test(hook));
++});
++
++test("LOOP.7: web e Android são caminhos separados", () => {
++  const lib = lerSemComentarios("src/lib/location-permission.ts");
++  assert.ok(/if \(isNativeApp\(\)\) \{/.test(lib), "o caminho nativo precisa ser explícito");
++  assert.ok(
++    /perms\?\.query/.test(lib),
++    "e o navegador não pode depender do plugin do Capacitor",
++  );
++  // Sem Permissions API o fluxo continua: cai no estado determinístico.
++  assert.ok(/estadoQuandoNaoSabemos\(anterior\)/.test(lib));
++});
++
++test("LOOP.8: trocar de aba com permissão concedida continua sem onboarding", () => {
++  _resetarPermissao();
++  definirLeituraDireta({ status: "concedida", origem: "nativo" });
++  // Volta do segundo plano e a consulta não responde: o fallback preserva.
++  definirLeitura(estadoQuandoNaoSabemos(leituraAtual()));
++  assert.equal(leituraAtual().status, "concedida");
++  assert.equal(precisaMostrarGate(leituraAtual().status), false);
++  _resetarPermissao();
++});
++
++/* ================================================================== *
++ * Como o frontend chega ao APK
++ * ================================================================== */
++
++test("APK: a URL do WebView é configurável em tempo de build", () => {
++  const config = ler("capacitor.config.ts");
++  assert.ok(/process\.env\.MOTOANJO_WEB_URL/.test(config), "URL fixa no código impede o CI de apontar para o commit certo");
++  assert.ok(/url: urlDoApp/.test(config));
++  assert.ok(/URL_PADRAO = "https:\/\//.test(config), "precisa de padrão para não quebrar quem não define a variável");
++});
++
++test("APK: o host configurado entra na navegação permitida", () => {
++  const config = ler("capacitor.config.ts");
++  assert.ok(/hostDe\(urlDoApp\)/.test(config), "domínio próprio seria bloqueado pelo próprio WebView");
++});
++
++test("APK: o motivo de não embutir o frontend está escrito, não subentendido", () => {
++  const config = ler("capacitor.config.ts");
++  assert.ok(/createServerFn|server function/i.test(config));
++  assert.ok(/triggerSos/.test(config), "quem tentar remover server.url precisa saber que o SOS depende disso");
++});
++
++test("APK: o CI declara qual frontend o APK carrega e nomeia o artefato", () => {
++  const wf = ler(".github/workflows/android.yml");
++  assert.ok(/moto-anjo-RC3-hotfix\.apk/.test(wf), "artefato precisa de nome claro");
++  assert.ok(/APK_WEB_URL/.test(wf), "o log precisa dizer qual URL o APK abre");
++  assert.ok(/frontend embutido no APK: NAO/.test(wf), "o metadado precisa ser honesto");
++  assert.ok(/MOTOANJO_WEB_URL/.test(wf));
++  // O artefato continua saindo só depois de tudo verde.
++  assert.ok(/if: success\(\)/.test(wf));
++});
++
++/* ================================================================== *
++ * A Home renderiza o RC3 de verdade — caminho, não só import
++ * ================================================================== */
++
++test("HOME: o caminho de render chega ao cockpit", () => {
++  const home = ler("src/routes/_authenticated/dashboard.tsx");
++  // Sem permissão: gate. Com permissão: mapa + estados da viagem.
++  const semPermissao = /if \(!granted\) \{([\s\S]*?)\n  \}/.exec(home)?.[1] ?? "";
++  assert.ok(/LocationPermissionGate/.test(semPermissao), "sem permissão precisa mostrar o gate");
++
++  const posGate = home.slice(home.indexOf("if (!granted)"));
++  for (const peca of [
++    "<RealMap",
++    "<ChamadaViagemSegura",
++    "<PreparacaoDeViagem",
++    "<CockpitDeViagem",
++    "<DestinoDialog",
++    "<SosFab",
++  ]) {
++    assert.ok(posGate.includes(peca), `${peca} não é alcançado no render da Home`);
++  }
++});
++
++test("HOME: os três estados da viagem são mutuamente exclusivos e completos", () => {
++  const home = ler("src/routes/_authenticated/dashboard.tsx");
++  assert.ok(/viagem\.estado === "ocioso" &&[\s\S]{0,80}ChamadaViagemSegura/.test(home));
++  assert.ok(/viagem\.estado === "preparando" &&[\s\S]{0,80}PreparacaoDeViagem/.test(home));
++  assert.ok(/\{viagemAtiva &&[\s\S]{0,80}CockpitDeViagem/.test(home));
++});
+
+--- COMMIT: 877378d599db8e56e960863c75844a995cceacd3 ---
