@@ -279,6 +279,8 @@ export default function RealMap({
   // null = ainda não medido; false = medido e sem área; true = pronto.
   // O mapa só é construído quando isto vira true. Ver o efeito de medição.
   const [hasArea, setHasArea] = useState<boolean | null>(null);
+  // Incrementa a cada "Tentar novamente": reexecuta o efeito de inicialização.
+  const [tentativa, setTentativa] = useState(0);
 
   // Prefer the project's own Google Cloud key (works on custom domains and in
   // the Android/Capacitor WebView); fall back to the Lovable-managed key.
@@ -336,6 +338,11 @@ export default function RealMap({
     }
     setState((s) => (s === "error" ? s : "loading"));
     let cancelled = false;
+    // Timeout de segurança: sem isto, uma falha silenciosa do loader (rede
+    // bloqueada, script preso) deixa a Home em "carregando" para sempre.
+    const timeout = setTimeout(() => {
+      if (!cancelled && !mapRef.current) setState("error");
+    }, 20000);
     loadGoogleMaps(apiKey, channel)
       .then((g) => {
         if (cancelled || !containerRef.current) return;
@@ -359,6 +366,7 @@ export default function RealMap({
       });
     return () => {
       cancelled = true;
+      clearTimeout(timeout);
       heatCirclesRef.current.forEach((c) => c.setMap(null));
       heatCirclesRef.current = [];
       trafficRef.current?.setMap(null);
@@ -376,7 +384,7 @@ export default function RealMap({
       partnerOverlaysRef.current.forEach((o) => o.setMap(null));
       partnerOverlaysRef.current.clear();
     };
-  }, [apiKey, channel, fallbackCenter, initialZoom, interactive, hasArea]);
+  }, [apiKey, channel, fallbackCenter, initialZoom, interactive, hasArea, tentativa]);
 
   // Traffic layer (toggles without recreating the map)
   useEffect(() => {
@@ -834,6 +842,19 @@ export default function RealMap({
               ? "Mapa visual indisponível — a chave do Google Maps ainda não foi configurada. Seu GPS continua ativo em tempo real."
               : "Mapa visual indisponível neste endereço: a chave do Google Maps não autoriza este domínio/app. Seu GPS continua ativo em tempo real."}
           </p>
+          {apiKey && (
+            <button
+              type="button"
+              onClick={() => {
+                mapRef.current = null;
+                setState("loading");
+                setTentativa((t) => t + 1);
+              }}
+              className="rounded-full border border-gold/40 px-4 py-2 text-[11px] font-semibold text-gold"
+            >
+              Tentar novamente
+            </button>
+          )}
           <button
             type="button"
             onClick={() =>

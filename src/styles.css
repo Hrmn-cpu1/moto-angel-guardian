@@ -237,7 +237,6 @@
  */
 .moto-map-surface {
   isolation: isolate;
-  position: relative;
 }
 
 .moto-user-location-marker {

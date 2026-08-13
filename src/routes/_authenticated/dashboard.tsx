@@ -141,7 +141,7 @@ function Dashboard() {
 
   return (
     <AppShell fullBleed>
-      <div className="relative min-h-screen w-full overflow-hidden bg-background">
+      <div className="relative h-[100dvh] min-h-screen w-full overflow-hidden bg-background">
         <ClientOnly
           fallback={
             <div className="absolute inset-0 flex items-center justify-center text-xs uppercase tracking-widest text-gold">
