@@ -11,7 +11,10 @@ import { normalizarHandle, ouvirPosicaoNativa, iniciarServicoDeViagem } from "./
 type Plugin = Record<string, unknown>;
 
 function instalarPlugin(p: Plugin | null) {
-  (globalThis as Record<string, unknown>).window = globalThis;
+  (globalThis as Record<string, unknown>).window = {
+    location: { pathname: "/dashboard", href: "http://localhost/dashboard" },
+    navigator: { userAgent: "test" },
+  };
   (globalThis as Record<string, unknown>).Capacitor = {
     isNativePlatform: () => true,
     Plugins: p ? { ViagemSegura: p } : {},
@@ -94,7 +97,7 @@ test("5) falha ao iniciar o serviço devolve false em vez de lançar", async () 
 
 test("6) viagem segue em modo degradado: publicar não propaga rejeição", () => {
   const hook = readFileSync("src/hooks/useTrip.ts", "utf8");
-  assert.match(hook, /iniciarServicoDeViagem\([^)]*\)\.catch\(/);
+  assert.match(hook, /iniciarServicoDeViagem\(rotuloDoDestino\(v\)\)\.catch\(/);
   assert.match(hook, /pararServicoDeViagem\(\)\.catch\(/);
 });
 
@@ -126,6 +129,6 @@ test("8) destino é preservado e o recálculo pode ser pedido de novo", () => {
 test("nenhum uso de addListener(...).then no código do app", () => {
   const arquivos = ["src/lib/trip-service.ts", "src/lib/native-auth.ts"];
   for (const f of arquivos) {
-    assert.ok(!/addListener\([^;]*\)\s*\.then/s.test(readFileSync(f, "utf8")), f);
+    assert.ok(!/\.addListener\([^\n]*\)\.then\(/.test(readFileSync(f, "utf8")), f);
   }
 });

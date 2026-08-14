@@ -56,9 +56,9 @@ function publicar(v: Viagem) {
 
   // O serviço nativo acompanha o estado, não o contrário. Idempotente: só age
   // quando a viagem realmente entra ou sai do estado ativo.
+  // Modo degradado: se o serviço nativo não subir, a viagem continua — o
+  // início da viagem nunca pode derrubar a Home.
   if (anterior.estado !== "ativa" && v.estado === "ativa") {
-    // Modo degradado: se o serviço nativo não subir, a viagem continua — o
-    // início da viagem nunca pode derrubar a Home.
     void iniciarServicoDeViagem(rotuloDoDestino(v)).catch(() => undefined);
   } else if (anterior.estado === "ativa" && v.estado !== "ativa") {
     void pararServicoDeViagem().catch(() => undefined);
