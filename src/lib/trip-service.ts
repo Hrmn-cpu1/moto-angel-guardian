@@ -126,10 +126,9 @@ export async function pararServicoDeViagem(): Promise<void> {
 export function ouvirPosicaoNativa(cb: (p: PosicaoNativa) => void): () => void {
   const p = plugin();
   if (!p?.addListener) return () => {};
-  let remover: (() => Promise<void>) | null = null;
+  let handle: ListenerHandle | null = null;
   let cancelado = false;
-  void p
-    .addListener("posicao", (pos) => {
+  const aoReceber = (pos: PosicaoNativa) => {
       if (cancelado) return;
       if (
         !pos ||
@@ -149,17 +148,37 @@ export function ouvirPosicaoNativa(cb: (p: PosicaoNativa) => void): () => void {
       } catch (error) {
         console.error(TRIP_NATIVE_ERROR, recordTripDiagnostic("native.trip.position_callback", error));
       }
-    })
-    .then((h) => {
-      if (cancelado) void h.remove();
-      else remover = h.remove;
-    })
-    .catch((error) => {
+  };
+
+  // O registro é feito dentro de uma async IIFE com try/catch: `addListener`
+  // pode lançar de forma SÍNCRONA (plugin ausente/incompatível) e esse throw
+  // subiria até o boundary raiz, derrubando a Home no início da viagem.
+  void (async () => {
+    try {
+      const h = await normalizarHandle(p.addListener("posicao", aoReceber));
+      if (!h || typeof h.remove !== "function") {
+        recordTripDiagnostic("native.trip.listener", new Error("Invalid listener handle"));
+        return;
+      }
+      if (cancelado) await h.remove();
+      else handle = h;
+    } catch (error) {
       console.error(TRIP_NATIVE_ERROR, recordTripDiagnostic("native.trip.listener", error));
-    });
+    }
+  })();
+
   return () => {
     cancelado = true;
-    if (remover) void remover();
+    const h = handle;
+    handle = null;
+    if (!h) return;
+    try {
+      void Promise.resolve(h.remove()).catch((error) => {
+        recordTripDiagnostic("native.trip.listener_remove", error);
+      });
+    } catch (error) {
+      recordTripDiagnostic("native.trip.listener_remove", error);
+    }
   };
 }
 
