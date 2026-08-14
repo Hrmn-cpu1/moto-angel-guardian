@@ -74,7 +74,7 @@ function Login() {
   };
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col bg-background px-6 pt-14 pb-10">
+    <div className="mx-auto flex min-h-[100dvh] max-w-md flex-col bg-background px-4 pt-14 pb-6">
       <div className="flex flex-col items-center text-center">
         <BrandMark size={92} withWordmark />
         <p className="mt-3 text-xs text-muted-foreground">
@@ -82,7 +82,7 @@ function Login() {
         </p>
       </div>
 
-      <div className="mt-8 space-y-3 animate-fade-up">
+      <div className="mt-5 space-y-3 animate-fade-up">
         <button
           type="button"
           onClick={googleSignIn}

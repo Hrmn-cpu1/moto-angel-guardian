@@ -127,6 +127,13 @@
     border-color: var(--color-border);
   }
 
+  html,
+  body {
+    /* RC4: nenhuma tela pode gerar rolagem horizontal no WebView. */
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
@@ -138,6 +145,121 @@
       sans-serif;
     -webkit-font-smoothing: antialiased;
   }
+}
+
+/*
+ * RC4 — sistema proporcional (mobile-first).
+ *
+ * Um único lugar define densidade, alturas de controle, tipografia e as
+ * âncoras de safe-area usadas pelas camadas flutuantes do mapa. As telas
+ * passam a consumir estes tokens em vez de inventar px soltos.
+ */
+:root {
+  --ma-1: 0.25rem;
+  --ma-2: 0.5rem;
+  --ma-3: 0.75rem;
+  --ma-4: 1rem;
+  --ma-5: 1.25rem;
+  --ma-6: 1.5rem;
+  --ma-8: 2rem;
+
+  /* Alturas de controle: normal 44–48, compacto 36–42, CTA até 52. */
+  --ma-control: 2.875rem; /* 46px */
+  --ma-control-compact: 2.375rem; /* 38px */
+  --ma-control-cta: 3.125rem; /* 50px */
+
+  --ma-gutter: clamp(0.875rem, 4vw, 1.25rem);
+  --ma-card-pad: clamp(0.75rem, 3.4vw, 1rem);
+
+  /* Âncoras das camadas flutuantes da Home. */
+  --ma-top: calc(env(safe-area-inset-top) + 0.5rem);
+  --ma-nav: 3.5rem;
+  --ma-bottom: calc(env(safe-area-inset-bottom) + var(--ma-nav));
+}
+
+@utility ma-page {
+  padding-inline: var(--ma-gutter);
+  padding-top: var(--ma-4);
+  padding-bottom: var(--ma-4);
+}
+
+@utility ma-gutter-x {
+  padding-inline: var(--ma-gutter);
+}
+
+@utility ma-card-pad {
+  padding: var(--ma-card-pad);
+}
+
+@utility ma-safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+@utility ma-safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Bottom sheet: altura pelo conteúdo, teto em 85dvh, nunca 100vh. */
+@utility ma-sheet {
+  width: 100%;
+  max-height: 85dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--ma-card-pad);
+  padding-bottom: calc(var(--ma-card-pad) + env(safe-area-inset-bottom));
+}
+
+@utility ma-sheet-compact {
+  max-height: 60dvh;
+}
+
+/* Modal comum: nunca ocupa a viewport inteira por acidente. */
+@utility ma-modal {
+  width: min(100vw - 1.5rem, 26rem);
+  max-height: min(88dvh, 44rem);
+  overflow-y: auto;
+}
+
+@utility ma-control-h {
+  min-height: var(--ma-control);
+}
+
+@utility ma-control-compact-h {
+  min-height: var(--ma-control-compact);
+}
+
+@utility ma-cta-h {
+  min-height: var(--ma-control-cta);
+}
+
+@utility ma-input {
+  min-height: var(--ma-control);
+  font-size: 0.875rem;
+}
+
+@utility ma-title {
+  font-size: clamp(1.25rem, 5.2vw, 1.5rem);
+  line-height: 1.15;
+}
+
+@utility ma-hero {
+  font-size: clamp(1.5rem, 6.6vw, 1.75rem);
+  line-height: 1.12;
+}
+
+@utility ma-section-title {
+  font-size: clamp(1rem, 4.2vw, 1.125rem);
+  line-height: 1.25;
+}
+
+@utility ma-body {
+  font-size: clamp(0.8125rem, 3.6vw, 0.9375rem);
+  line-height: 1.45;
+}
+
+@utility ma-caption {
+  font-size: 0.6875rem;
+  line-height: 1.35;
 }
 
 @theme inline {

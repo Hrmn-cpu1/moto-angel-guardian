@@ -83,7 +83,7 @@ function SharingPage() {
       <div className="space-y-4 px-5 pt-4">
         <div className="glass-card rounded-xl p-5 text-center animate-fade-up">
           <div
-            className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full border ${
+            className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full border ${
               sharing
                 ? "border-gold bg-gold/15 text-gold animate-pulse"
                 : "border-gold/20 text-muted-foreground"

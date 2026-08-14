@@ -29,7 +29,7 @@ export function AppShell({
 
   return (
     <div
-      className={`mx-auto flex min-h-screen max-w-md flex-col bg-background ${fullBleed ? "" : "pb-24"}`}
+      className={`mx-auto flex min-h-[100dvh] max-w-md flex-col bg-background ${fullBleed ? "" : "pb-[calc(var(--ma-bottom)+1rem)]"}`}
     >
       {children}
       {!hideNav && <BottomNavigation />}

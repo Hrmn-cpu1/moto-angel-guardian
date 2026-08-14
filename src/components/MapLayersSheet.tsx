@@ -21,7 +21,7 @@ export function MapLayersSheet({ itens, onFechar }: { itens: CamadaItem[]; onFec
       onClick={onFechar}
     >
       <div
-        className="w-full rounded-3xl border border-gold/30 bg-background p-4"
+        className="ma-sheet rounded-3xl border border-gold/30 bg-background"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
@@ -45,7 +45,7 @@ export function MapLayersSheet({ itens, onFechar }: { itens: CamadaItem[]; onFec
                 role="switch"
                 aria-checked={i.ativa}
                 onClick={i.alternar}
-                className={`flex min-h-[44px] w-full items-center justify-between rounded-2xl border px-3 text-sm ${
+                className={`flex ma-control-h w-full items-center justify-between rounded-2xl border px-3 text-[13px] ${
                   i.ativa
                     ? "border-gold/45 bg-gold/10 text-foreground"
                     : "border-white/10 bg-black/40 text-muted-foreground"

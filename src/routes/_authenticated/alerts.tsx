@@ -166,13 +166,13 @@ function AlertsPage() {
         )}
 
         {loading && (
-          <p className="py-6 text-center text-xs uppercase tracking-widest text-muted-foreground">
+          <p className="py-4 text-center text-xs uppercase tracking-widest text-muted-foreground">
             Buscando alertas...
           </p>
         )}
 
         {!loading && visible.length === 0 && (
-          <div className="glass-card rounded-xl p-6 text-center">
+          <div className="glass-card rounded-xl p-4 text-center">
             <p className="text-sm font-semibold text-foreground">Nenhum alerta por perto</p>
             <p className="mt-1 text-xs text-muted-foreground">
               Boa viagem. Você será avisado se algo for reportado num raio de 25 km.

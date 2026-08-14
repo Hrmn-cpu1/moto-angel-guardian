@@ -55,7 +55,7 @@ function Splash() {
   }, [navigate]);
 
   return (
-    <div className="relative mx-auto flex min-h-screen max-w-md flex-col overflow-hidden bg-background">
+    <div className="relative mx-auto flex min-h-[100dvh] max-w-md flex-col overflow-hidden bg-background">
       <img
         src={poster.url}
         alt="Moto Anjo — um por todos, todos por um"
@@ -73,7 +73,7 @@ function Splash() {
           Porque o mais importante é voltar para casa.
         </p>
 
-        <div className="mt-6 grid grid-cols-5 gap-1">
+        <div className="mt-4 grid grid-cols-5 gap-1">
           {FEATURES.map((f) => (
             <div key={f.label} className="flex flex-col items-center gap-1.5">
               <f.icon size={20} className={f.red ? "text-emergency" : "text-gold"} />

@@ -108,11 +108,11 @@ function Notifications() {
 
       <div className="space-y-3 px-5 pt-4">
         {loading ? (
-          <div className="glass-card flex items-center justify-center gap-2 rounded-2xl p-8 text-sm text-muted-foreground">
+          <div className="glass-card flex items-center justify-center gap-2 rounded-2xl p-5 text-sm text-muted-foreground">
             <Loader2 className="animate-spin text-gold" size={16} /> Carregando...
           </div>
         ) : notes.length === 0 ? (
-          <div className="glass-card flex flex-col items-center gap-2 rounded-2xl p-8 text-center">
+          <div className="glass-card flex flex-col items-center gap-2 rounded-2xl p-5 text-center">
             <Bell className="text-gold" size={28} />
             <p className="text-sm text-muted-foreground">Nenhuma notificação agora.</p>
             <p className="text-xs text-muted-foreground">

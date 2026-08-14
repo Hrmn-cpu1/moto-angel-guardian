@@ -30,7 +30,7 @@ export function DestinationBar({
       : null);
 
   return (
-    <div className={`absolute inset-x-3 top-[64px] ${camada("cartoesDoMapa")}`}>
+    <div className={`absolute inset-x-3 top-[calc(var(--ma-top)+54px)] ${camada("cartoesDoMapa")}`}>
       <button
         type="button"
         onClick={onAbrirDestino}

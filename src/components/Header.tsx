@@ -12,8 +12,8 @@ interface Props {
 
 export function Header({ title, subtitle, back, right, showBell }: Props) {
   return (
-    <header className="sticky top-0 z-30 border-b border-gold/10 bg-black/70 px-5 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
-      <div className="flex min-h-14 items-center justify-between gap-3 py-3">
+    <header className="sticky top-0 z-30 border-b border-gold/10 bg-black/70 ma-gutter-x pt-[env(safe-area-inset-top)] backdrop-blur-xl">
+      <div className="flex min-h-12 items-center justify-between gap-2.5 py-2">
         <div className="flex min-w-0 items-center gap-3">
           {back && (
             <Link
@@ -31,7 +31,9 @@ export function Header({ title, subtitle, back, right, showBell }: Props) {
               </p>
             )}
             {title && (
-              <h1 className="truncate text-lg font-bold tracking-tight text-foreground">{title}</h1>
+              <h1 className="truncate ma-section-title font-bold tracking-tight text-foreground">
+                {title}
+              </h1>
             )}
           </div>
         </div>
@@ -40,7 +42,7 @@ export function Header({ title, subtitle, back, right, showBell }: Props) {
           {showBell && (
             <Link
               to="/notifications"
-              className="relative flex h-10 w-10 items-center justify-center rounded-full border border-gold/20 text-gold transition hover:bg-gold/10"
+              className="relative flex h-9 w-9 items-center justify-center rounded-full border border-gold/20 text-gold transition hover:bg-gold/10"
               aria-label="Notificações"
             >
               <Bell size={18} />

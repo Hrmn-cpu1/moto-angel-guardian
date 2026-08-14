@@ -126,7 +126,7 @@ function Register() {
 
   if (confirmSent) {
     return (
-      <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 bg-background px-6 text-center">
+      <div className="mx-auto flex min-h-[100dvh] max-w-md flex-col items-center justify-center gap-4 bg-background px-4 text-center">
         <BrandMark size={72} withWordmark />
         <h1 className="text-xl font-black tracking-tight text-foreground">Confirme seu e-mail</h1>
         <p className="text-sm text-muted-foreground">
@@ -143,16 +143,16 @@ function Register() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col bg-background px-6 pt-10 pb-10">
+    <div className="mx-auto flex min-h-[100dvh] max-w-md flex-col bg-background px-4 pt-6 pb-6">
       <div className="flex flex-col items-center text-center">
         <BrandMark size={64} withWordmark />
-        <h1 className="mt-4 text-2xl font-black tracking-tight text-foreground">Criar conta</h1>
+        <h1 className="mt-4 ma-title font-black tracking-tight text-foreground">Criar conta</h1>
         <p className="mt-1 text-xs text-muted-foreground">
           Um por todos. <span className="gold-text">Todos por um.</span>
         </p>
       </div>
 
-      <form onSubmit={submit} className="mt-8 space-y-3 animate-fade-up">
+      <form onSubmit={submit} className="mt-5 space-y-3 animate-fade-up">
         <button
           type="button"
           onClick={googleSignIn}

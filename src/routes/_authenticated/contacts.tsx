@@ -114,7 +114,7 @@ function ContactsPage() {
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm animate-fade-up">
-          <div className="w-full max-w-md rounded-t-3xl glass-card p-6">
+          <div className="w-full max-w-md rounded-t-3xl glass-card ma-sheet">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-bold text-foreground">Novo contato</h2>
               <button onClick={() => setOpen(false)} className="text-muted-foreground">

@@ -42,7 +42,7 @@ export function HomeTopBar({
   ];
 
   return (
-    <div className="pointer-events-auto absolute inset-x-3 top-2 z-30 flex items-center gap-2.5 rounded-full border border-gold/25 bg-black/70 px-3 py-1.5 backdrop-blur-md">
+    <div className="pointer-events-auto absolute inset-x-3 top-[var(--ma-top)] z-30 flex items-center gap-2.5 rounded-full border border-gold/25 bg-black/70 px-3 py-1.5 backdrop-blur-md">
       <Link to="/profile" aria-label="Abrir perfil" className="shrink-0">
         {user?.avatar ? (
           <img

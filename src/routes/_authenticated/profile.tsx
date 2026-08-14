@@ -90,7 +90,7 @@ function ProfilePage() {
         </div>
 
         <div className="glass-card flex items-center gap-4 rounded-2xl p-5 animate-fade-up">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl gold-gradient text-2xl font-black text-black">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl gold-gradient text-xl font-black text-black">
             {user.name.slice(0, 1).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">

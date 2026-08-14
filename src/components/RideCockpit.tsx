@@ -53,9 +53,9 @@ export function PreparacaoDeViagem({
 
   return (
     <div
-      className={`absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+150px)] ${camada(
+      className={`absolute inset-x-3 bottom-[calc(var(--ma-bottom)+86px)] ${camada(
         "painelInferior",
-      )} rounded-3xl border border-gold/30 bg-black/85 p-4 backdrop-blur`}
+      )} rounded-3xl border border-gold/30 bg-black/85 ma-card-pad backdrop-blur`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -97,7 +97,7 @@ export function PreparacaoDeViagem({
 
       <button
         onClick={onIniciar}
-        className="mt-4 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl gold-gradient text-sm font-bold text-black"
+        className="mt-3 flex ma-cta-h w-full items-center justify-center gap-2 rounded-2xl gold-gradient text-sm font-bold text-black"
       >
         <ShieldCheck size={16} /> Iniciar viagem segura
       </button>
@@ -172,7 +172,7 @@ export function CockpitDeViagem({
         vozSuportada={vozSuportada}
         onAlternarVoz={onAlternarVoz}
         onFinalizar={onFinalizar}
-        className="absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+124px)]"
+        className="absolute inset-x-3 bottom-[calc(var(--ma-bottom)+86px)]"
       />
     </>
   );
@@ -186,9 +186,9 @@ export function ChamadaViagemSegura({ onAbrir }: { onAbrir: () => void }) {
   return (
     <button
       onClick={onAbrir}
-      className={`absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+150px)] ${camada(
+      className={`absolute inset-x-3 bottom-[calc(var(--ma-bottom)+86px)] ${camada(
         "painelInferior",
-      )} flex min-h-[52px] items-center justify-center gap-2 rounded-2xl border border-gold/40 bg-black/80 text-sm font-bold uppercase tracking-widest text-gold backdrop-blur`}
+      )} flex ma-cta-h items-center justify-center gap-2 rounded-2xl border border-gold/40 bg-black/80 text-sm font-bold uppercase tracking-widest text-gold backdrop-blur`}
     >
       <Gauge size={16} /> Iniciar viagem segura
     </button>

@@ -97,7 +97,9 @@ test("SOS continua na Home, acima da navegação e com safe-area", () => {
   // na Home, com safe-area e acima da navegação.
   assert.match(home, /<SosFabControlado\b/);
   const fab = ler("components/SosFab.tsx");
-  assert.match(fab, /env\(safe-area-inset-bottom\)/);
+  // RC4: a safe-area passou a viver no token --ma-bottom
+  // (env(safe-area-inset-bottom) + altura da navegação), definido em styles.css.
+  assert.match(fab, /var\(--ma-bottom\)|env\(safe-area-inset-bottom\)/);
   assert.match(fab, /z-50/);
 });
 
@@ -105,8 +107,11 @@ test("os painéis inferiores não invadem a faixa do SOS", () => {
   const cockpit = ler("components/RideCockpit.tsx");
   const home = ler("routes/_authenticated/dashboard.tsx");
   for (const fonte of [cockpit, home]) {
-    for (const [, valor] of fonte.matchAll(/safe-area-inset-bottom\)\+(\d+)px/g)) {
-      assert.ok(Number(valor) >= 96, `painel a ${valor}px colide com o SOS`);
+    for (const [, valor] of fonte.matchAll(/--ma-bottom\)\+(\d+)px/g)) {
+      const px = Number(valor);
+      // Até 8px é a faixa lateral de resumo (pílulas nas bordas, o SOS fica
+      // no centro). Qualquer painel de largura cheia começa acima de 86px.
+      assert.ok(px <= 8 || px >= 86, `painel a ${valor}px colide com o SOS`);
     }
   }
 });

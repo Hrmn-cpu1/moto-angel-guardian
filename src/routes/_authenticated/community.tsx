@@ -336,11 +336,11 @@ function Community() {
 
       <div className="space-y-3 px-5 pt-4">
         {loading ? (
-          <div className="glass-card rounded-2xl p-8 text-center text-xs uppercase tracking-widest text-muted-foreground">
+          <div className="glass-card rounded-2xl p-5 text-center text-xs uppercase tracking-widest text-muted-foreground">
             Carregando feed...
           </div>
         ) : filtered.length === 0 ? (
-          <div className="glass-card rounded-2xl p-8 text-center">
+          <div className="glass-card rounded-2xl p-5 text-center">
             <Users size={28} className="mx-auto text-gold" />
             <p className="mt-3 text-sm text-muted-foreground">
               Nenhuma publicação {regionFilter ? `em ${regionFilter}` : "nesta categoria"}.

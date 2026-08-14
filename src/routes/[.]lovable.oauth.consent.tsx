@@ -48,7 +48,7 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
   },
   component: Consent,
   errorComponent: ({ error }) => (
-    <main className="mx-auto max-w-md p-8 text-foreground">
+    <main className="mx-auto max-w-md p-5 text-foreground">
       <p className="text-sm text-emergency">
         Não foi possível carregar esta autorização: {String((error as Error)?.message ?? error)}
       </p>
@@ -84,8 +84,8 @@ function Consent() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center bg-background px-6 py-10">
-      <div className="glass-card w-full rounded-2xl p-6 text-center">
+    <main className="mx-auto flex min-h-[100dvh] max-w-md flex-col items-center justify-center bg-background px-4 py-4">
+      <div className="glass-card w-full rounded-2xl p-4 text-center">
         <div className="mx-auto mb-4">
           <BrandMark size={56} />
         </div>
@@ -101,7 +101,7 @@ function Consent() {
             {error}
           </p>
         )}
-        <div className="mt-6 space-y-2">
+        <div className="mt-4 space-y-2">
           <GoldButton size="lg" disabled={busy} onClick={() => decide(true)}>
             {busy ? "Aguarde..." : "Aprovar"}
           </GoldButton>

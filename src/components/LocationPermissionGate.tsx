@@ -58,7 +58,7 @@ export function LocationPermissionGate({ onGranted }: Props) {
 
   return (
     <div className="animate-fade-up px-5 pt-4">
-      <div className="glass-card rounded-3xl p-6">
+      <div className="glass-card rounded-3xl p-4">
         <div className="flex flex-col items-center text-center">
           <div className="relative mb-4">
             <div
@@ -120,7 +120,7 @@ export function LocationPermissionGate({ onGranted }: Props) {
             ))}
           </ul>
 
-          <div className="mt-6 w-full space-y-2">
+          <div className="mt-4 w-full space-y-2">
             {!indisponivel && (
               <GoldButton onClick={() => void solicitar()} disabled={pedindo}>
                 {pedindo ? (

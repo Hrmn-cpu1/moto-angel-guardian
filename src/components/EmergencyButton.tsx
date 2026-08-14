@@ -49,7 +49,7 @@ export function EmergencyButton({ onActivate, disabled }: Props) {
   const countdown = Math.max(1, 3 - Math.floor(progress * 3));
 
   return (
-    <div className="flex flex-col items-center gap-6">
+    <div className="flex flex-col items-center gap-4">
       <button
         onPointerDown={start}
         onPointerUp={stop}

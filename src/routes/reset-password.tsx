@@ -61,7 +61,7 @@ function ResetPassword() {
   };
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col bg-background px-6 pt-14 pb-10">
+    <div className="mx-auto flex min-h-[100dvh] max-w-md flex-col bg-background px-4 pt-14 pb-6">
       <div className="flex flex-col items-center text-center">
         <BrandMark size={88} withWordmark />
         <h1 className="mt-4 text-xl font-black uppercase tracking-tight text-foreground">
@@ -74,7 +74,7 @@ function ResetPassword() {
           Abra esta página pelo link enviado ao seu e-mail para redefinir a senha.
         </p>
       ) : (
-        <form onSubmit={submit} className="mt-8 space-y-4 animate-fade-up">
+        <form onSubmit={submit} className="mt-5 space-y-4 animate-fade-up">
           <PasswordField label="Nova senha" value={password} onChange={setPassword} />
           <PasswordField label="Confirmar senha" value={confirm} onChange={setConfirm} />
           {error && (

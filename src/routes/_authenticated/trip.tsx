@@ -167,18 +167,18 @@ function TripPage() {
 
         {phase === "running" && (
           <div className="space-y-4 animate-fade-up">
-            <div className="glass-card rounded-3xl p-6 text-center">
+            <div className="glass-card rounded-3xl p-4 text-center">
               <StatusBadge
                 status={paused ? "warning" : "active"}
                 label={paused ? "Em pausa" : "Em viagem"}
               />
-              <p className="mt-4 font-mono text-5xl font-black tabular-nums text-foreground">
+              <p className="mt-4 font-mono ma-hero font-black tabular-nums text-foreground">
                 {formatDuration(elapsed)}
               </p>
               <p className="mt-1 text-xs uppercase tracking-widest text-muted-foreground">
                 Tempo em movimento
               </p>
-              <div className="mt-6 grid grid-cols-2 gap-3">
+              <div className="mt-4 grid grid-cols-2 gap-3">
                 <Metric
                   icon={<MapPin size={14} />}
                   label="Distância"
@@ -204,12 +204,12 @@ function TripPage() {
 
         {phase === "summary" && (
           <div className="space-y-4 animate-scale-in">
-            <div className="glass-card rounded-3xl p-6 text-center">
+            <div className="glass-card rounded-3xl p-4 text-center">
               <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-gold">
                 Viagem concluída
               </p>
-              <h2 className="mt-2 text-3xl font-black text-foreground">Chegada segura</h2>
-              <div className="mt-6 grid grid-cols-3 gap-3">
+              <h2 className="mt-2 ma-hero font-black text-foreground">Chegada segura</h2>
+              <div className="mt-4 grid grid-cols-3 gap-3">
                 <Metric label="Tempo" value={formatDuration(elapsed)} />
                 <Metric label="Distância" value={`${distance.toFixed(1)} km`} />
                 <Metric label="Média" value={`${average} km/h`} />

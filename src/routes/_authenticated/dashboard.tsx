@@ -222,7 +222,7 @@ function Dashboard() {
   if (!granted) {
     return (
       <AppShell>
-        <div className="px-5 pt-8">
+        <div className="px-5 pt-5">
           <LocationPermissionGate onGranted={() => undefined} />
         </div>
       </AppShell>
@@ -231,7 +231,7 @@ function Dashboard() {
 
   return (
     <AppShell fullBleed>
-      <div className="relative h-[100dvh] min-h-screen w-full overflow-hidden bg-background">
+      <div className="relative h-[100dvh] w-full overflow-hidden bg-background">
         <ClientOnly
           fallback={
             <div className="absolute inset-0 flex items-center justify-center text-xs uppercase tracking-widest text-gold">
@@ -290,12 +290,17 @@ function Dashboard() {
         />
 
         {/* Próxima manobra: prioridade máxima durante a viagem. */}
-        {viagemAtiva && <NextManeuver rota={rota} className="absolute inset-x-3 top-[124px]" />}
+        {viagemAtiva && (
+          <NextManeuver
+            rota={rota}
+            className="absolute inset-x-3 top-[calc(var(--ma-top)+112px)]"
+          />
+        )}
 
         {/* Controles do mapa: anjos, camadas, combustível e centralizar. */}
         <div
           className={`absolute right-3 ${
-            viagemAtiva ? "top-[196px]" : "top-[148px]"
+            viagemAtiva ? "top-[calc(var(--ma-top)+186px)]" : "top-[calc(var(--ma-top)+138px)]"
           } z-30 flex flex-col gap-2`}
         >
           <LayerToggle
@@ -332,7 +337,7 @@ function Dashboard() {
         {!viagemAtiva && (
           <div
             data-testid="estado-anjos"
-            className={`absolute right-3 top-[112px] ${camada(
+            className={`absolute right-3 top-[calc(var(--ma-top)+100px)] ${camada(
               "cartoesDoMapa",
             )} rounded-full border border-gold/25 bg-black/75 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-widest text-gold`}
           >
@@ -388,12 +393,13 @@ function Dashboard() {
           <ChamadaViagemSegura onAbrir={() => setFolha((f) => abrirFolha(f, "destino"))} />
         )}
 
-        {/* O copiloto acompanha a Home inteira, com ou sem viagem. */}
-        {folha === "nenhuma" && (
+        {/* O copiloto acompanha a Home inteira, com ou sem viagem — menos
+            durante a preparação, onde o painel ocupa a mesma faixa. */}
+        {folha === "nenhuma" && viagem.estado !== "preparando" && (
           <CopilotCard
             aviso={aviso}
             viagemAtiva={viagemAtiva}
-            className="absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+212px)]"
+            className="absolute inset-x-3 bottom-[calc(var(--ma-bottom)+156px)]"
           />
         )}
 
@@ -434,7 +440,7 @@ function Dashboard() {
 
         {/* Resumo: escondido durante a viagem, para não competir com o painel */}
         <div
-          className={`absolute inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+96px)] ${camada(
+          className={`absolute inset-x-3 bottom-[calc(var(--ma-bottom)+8px)] ${camada(
             "cartoesDoMapa",
           )} flex justify-between gap-2 text-[10px] font-semibold uppercase tracking-widest ${
             viagem.estado === "ocioso" && folha === "nenhuma" ? "" : "hidden"

@@ -11,10 +11,10 @@ export const GoldButton = forwardRef<HTMLButtonElement, Props>(
   ({ children, className, size = "md", ...rest }, ref) => {
     const sizeCls =
       size === "sm"
-        ? "h-10 px-4 text-xs"
+        ? "h-9 px-3.5 text-[11px]"
         : size === "lg"
-          ? "h-13 px-8 text-sm"
-          : "h-12 px-6 text-sm";
+          ? "h-[50px] px-4 text-sm"
+          : "h-[46px] px-5 text-[13px]";
     return (
       <button
         ref={ref}

@@ -71,7 +71,7 @@ function IntroPage() {
   };
 
   return (
-    <div className="relative mx-auto flex min-h-screen max-w-md flex-col overflow-hidden bg-background">
+    <div className="relative mx-auto flex min-h-[100dvh] max-w-md flex-col overflow-hidden bg-background">
       <img
         src={poster.url}
         alt=""
@@ -82,10 +82,10 @@ function IntroPage() {
       />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/70 via-black/90 to-black" />
 
-      <div className="relative z-10 flex flex-1 flex-col px-6 pt-12 pb-10">
+      <div className="relative z-10 flex flex-1 flex-col px-4 pt-7 pb-6">
         <div className="flex flex-col items-center text-center animate-fade-up">
           <BrandMark size={78} withWordmark />
-          <h1 className="mt-6 text-2xl font-black leading-tight text-foreground">
+          <h1 className="mt-4 ma-title font-black leading-tight text-foreground">
             Bem-vindo ao <span className="gold-text">Moto Anjo</span>
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
@@ -100,7 +100,7 @@ function IntroPage() {
           </p>
         </div>
 
-        <div className="mt-8 space-y-3">
+        <div className="mt-5 space-y-3">
           {BLOCKS.map((b, i) => (
             <article
               key={b.title}
@@ -133,11 +133,11 @@ function IntroPage() {
           ))}
         </div>
 
-        <p className="mt-8 text-center text-base font-bold italic leading-snug gold-text animate-fade-up">
+        <p className="mt-5 text-center text-base font-bold italic leading-snug gold-text animate-fade-up">
           “Porque quem espera você em casa merece ver você voltar.”
         </p>
 
-        <div className="mt-8 space-y-4">
+        <div className="mt-5 space-y-4">
           <button
             type="button"
             role="checkbox"
