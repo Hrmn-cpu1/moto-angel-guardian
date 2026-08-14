@@ -79,7 +79,7 @@ export function useTrip() {
       hidratado = true;
       const recuperada = carregarViagem();
       if (recuperada.estado !== "ocioso") publicar(recuperada);
-      else void pararServicoDeViagem(); // sem viagem, nenhum serviço órfão
+      else void pararServicoDeViagem().catch(() => undefined); // sem viagem, nenhum serviço órfão
     }
     setViagem(viagemAtual);
     return () => {
