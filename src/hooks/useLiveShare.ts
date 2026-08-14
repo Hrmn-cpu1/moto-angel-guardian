@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { dbNovo } from "@/lib/db-novo";
 import { publicarPresenca } from "@/lib/presence";
 
 /**
@@ -74,7 +73,7 @@ export function useLiveShare() {
       watchId.current = null;
     }
     setSharing(false);
-    const { error: err } = await dbNovo().rpc("set_location_sharing", { _enabled: false });
+    const { error: err } = await supabase.rpc("set_location_sharing", { _enabled: false });
     if (err) setError(err.message);
   }, []);
 
@@ -87,7 +86,7 @@ export function useLiveShare() {
     setSharing(true);
     // Liga a publicação antes de mandar posição: a ordem importa, porque
     // presence_touch nunca liga sharing sozinho.
-    void dbNovo()
+    void supabase
       .rpc("set_location_sharing", { _enabled: true })
       .then(({ error: err }) => {
         if (err) setError(err.message);

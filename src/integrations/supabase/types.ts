@@ -22,6 +22,9 @@ export type Database = {
           id: string
           lat: number
           lng: number
+          resolved_at: string | null
+          sos_event_id: string | null
+          status: string
           title: string
           type: string
           user_id: string
@@ -33,6 +36,9 @@ export type Database = {
           id?: string
           lat: number
           lng: number
+          resolved_at?: string | null
+          sos_event_id?: string | null
+          status?: string
           title: string
           type: string
           user_id: string
@@ -44,11 +50,22 @@ export type Database = {
           id?: string
           lat?: number
           lng?: number
+          resolved_at?: string | null
+          sos_event_id?: string | null
+          status?: string
           title?: string
           type?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "community_alerts_sos_event_id_fkey"
+            columns: ["sos_event_id"]
+            isOneToOne: false
+            referencedRelation: "sos_events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       community_comments: {
         Row: {
@@ -325,6 +342,7 @@ export type Database = {
           name: string
           phone: string
           plate: string
+          share_with_riders: boolean
           terms_accepted_at: string | null
           terms_version: string | null
           updated_at: string
@@ -341,6 +359,7 @@ export type Database = {
           name?: string
           phone?: string
           plate?: string
+          share_with_riders?: boolean
           terms_accepted_at?: string | null
           terms_version?: string | null
           updated_at?: string
@@ -357,6 +376,7 @@ export type Database = {
           name?: string
           phone?: string
           plate?: string
+          share_with_riders?: boolean
           terms_accepted_at?: string | null
           terms_version?: string | null
           updated_at?: string
@@ -680,7 +700,23 @@ export type Database = {
           user_id: string
         }[]
       }
+      presence_touch: {
+        Args: {
+          _heading?: number
+          _lat: number
+          _lng: number
+          _speed_kmh?: number
+        }
+        Returns: string
+      }
       purge_native_auth_codes: { Args: never; Returns: undefined }
+      purge_stale_presence: {
+        Args: { _days?: number }
+        Returns: {
+          anonimizadas: number
+          apagadas: number
+        }[]
+      }
       request_location_access: { Args: { _phone: string }; Returns: string }
       risk_heatmap: {
         Args: {
@@ -695,6 +731,7 @@ export type Database = {
           weight: number
         }[]
       }
+      set_location_sharing: { Args: { _enabled: boolean }; Returns: boolean }
       settle_sos_notification: {
         Args: {
           _claim_token: string
@@ -752,6 +789,25 @@ export type Database = {
           resolved_at: string
           sos_event_id: string
           status: string
+        }[]
+      }
+      trusted_contacts_online: {
+        Args: {
+          _lat: number
+          _lng: number
+          _minutes?: number
+          _radius_km?: number
+        }
+        Returns: {
+          avatar_url: string
+          distance_km: number
+          heading: number
+          lat: number
+          lng: number
+          name: string
+          speed_kmh: number
+          updated_at: string
+          user_id: string
         }[]
       }
       user_history: {

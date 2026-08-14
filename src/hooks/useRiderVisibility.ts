@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { dbNovo } from "@/lib/db-novo";
 
 /**
  * Opt-in "Aparecer para outros motoqueiros" (RC2 checkpoint C).
@@ -29,7 +28,7 @@ export function useRiderVisibility() {
         setCarregando(false);
         return;
       }
-      const { data, error } = await dbNovo()
+      const { data, error } = await supabase
         .from("profiles")
         .select("share_with_riders")
         .eq("id", user.id)
@@ -53,7 +52,7 @@ export function useRiderVisibility() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Sessão expirada.");
-      const { error } = await dbNovo()
+      const { error } = await supabase
         .from("profiles")
         .update({ share_with_riders: proximo })
         .eq("id", user.id);
