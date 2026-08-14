@@ -72,7 +72,7 @@ function BenefitsPage() {
         </div>
 
         {isLoading && (
-          <p className="py-6 text-center text-xs uppercase tracking-widest text-muted-foreground">
+          <p className="py-4 text-center text-xs uppercase tracking-widest text-muted-foreground">
             Carregando parceiros...
           </p>
         )}
@@ -139,7 +139,7 @@ function BenefitsPage() {
           ))}
 
           {!isLoading && partners.length === 0 && (
-            <div className="glass-card rounded-xl p-6 text-center text-xs text-muted-foreground">
+            <div className="glass-card rounded-xl p-4 text-center text-xs text-muted-foreground">
               Nenhum parceiro nesta categoria por enquanto.
             </div>
           )}

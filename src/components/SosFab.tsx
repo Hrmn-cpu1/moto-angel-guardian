@@ -49,7 +49,7 @@ export function SosFabControlado({
           disabled={sos.busy || sos.recovering}
           onHoldComplete={(heldMs) => sos.trigger(heldMs)}
           className={cn(
-            "fixed bottom-[calc(env(safe-area-inset-bottom)+66px)] left-1/2 z-50 -translate-x-1/2",
+            "fixed bottom-[calc(var(--ma-bottom)+6px)] left-1/2 z-50 -translate-x-1/2",
             className,
           )}
         />

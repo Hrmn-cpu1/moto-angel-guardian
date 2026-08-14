@@ -90,7 +90,7 @@ function AuthCallback() {
   }, [navigate]);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center">
+    <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-background px-4 text-center">
       <BrandMark size={72} />
       <p className="text-sm text-muted-foreground">{message}</p>
     </main>

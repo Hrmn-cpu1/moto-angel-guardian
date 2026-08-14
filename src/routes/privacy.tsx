@@ -19,7 +19,7 @@ export const Route = createFileRoute("/privacy")({
 function PrivacyPage() {
   const navigate = useNavigate();
   return (
-    <div className="mx-auto min-h-screen max-w-md bg-background">
+    <div className="mx-auto min-h-[100dvh] max-w-md bg-background">
       <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-gold/10 bg-background/85 px-5 py-4 backdrop-blur">
         <button
           onClick={() => navigate({ to: ".." as never })}
@@ -89,7 +89,7 @@ function PrivacyPage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="mt-6 animate-fade-up">
+    <section className="mt-4 animate-fade-up">
       <h2 className="text-sm font-black uppercase tracking-wider text-gold">{title}</h2>
       <p className="mt-2 text-sm leading-relaxed text-foreground/85">{children}</p>
     </section>

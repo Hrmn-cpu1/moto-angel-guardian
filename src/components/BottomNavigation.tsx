@@ -19,11 +19,11 @@ export function BottomNavigation() {
     <Link
       to={to}
       className={cn(
-        "flex flex-1 flex-col items-center gap-1 py-2.5 text-[9px] font-semibold uppercase tracking-wider transition-colors",
+        "flex flex-1 flex-col items-center gap-0.5 py-2 text-[9px] font-semibold uppercase tracking-wider transition-colors",
         isActive(to) ? "text-gold" : "text-muted-foreground hover:text-gold",
       )}
     >
-      <Icon size={20} strokeWidth={isActive(to) ? 2.4 : 1.9} />
+      <Icon size={19} strokeWidth={isActive(to) ? 2.4 : 1.9} />
       <span>{label}</span>
     </Link>
   );

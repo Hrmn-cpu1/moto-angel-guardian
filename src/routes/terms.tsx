@@ -34,7 +34,7 @@ function TermsPage() {
   };
 
   return (
-    <div className="mx-auto min-h-screen max-w-md bg-background">
+    <div className="mx-auto min-h-[100dvh] max-w-md bg-background">
       <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-gold/10 bg-background/85 px-5 py-4 backdrop-blur">
         <button
           onClick={() => navigate({ to: ".." as never })}
@@ -147,7 +147,7 @@ function TermsPage() {
         </Section>
 
         {accept && user && (
-          <div className="mt-8 rounded-2xl border border-emergency/40 bg-emergency/5 p-4 text-xs text-foreground">
+          <div className="mt-5 rounded-2xl border border-emergency/40 bg-emergency/5 p-4 text-xs text-foreground">
             <p className="font-semibold text-emergency">Nova versão dos Termos de Uso</p>
             <p className="mt-1 text-muted-foreground">
               Para continuar usando o Moto Anjo, aceite a versão atualizada abaixo.
@@ -164,7 +164,7 @@ function TermsPage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="mt-6 animate-fade-up">
+    <section className="mt-4 animate-fade-up">
       <h2 className="text-sm font-black uppercase tracking-wider text-gold">{title}</h2>
       <p className="mt-2 text-sm leading-relaxed text-foreground/85">{children}</p>
     </section>

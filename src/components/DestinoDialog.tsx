@@ -34,7 +34,7 @@ export function DestinoDialog({
       // é essa altura que vale, não a da janela.
       style={{ height: "100dvh", maxHeight: "100dvh" }}
     >
-      <div className="max-h-full w-full overflow-y-auto rounded-3xl border border-gold/30 bg-background p-3">
+      <div className="ma-sheet ma-sheet-compact rounded-3xl border border-gold/30 bg-background">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-gold">
@@ -61,7 +61,7 @@ export function DestinoDialog({
             if (e.key === "Enter" && valido) onEscolher(texto);
           }}
           placeholder="Endereço, link do mapa ou -23.55, -46.63"
-          className="mt-2.5 min-h-[48px] w-full rounded-2xl border border-white/10 bg-black/50 px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-gold/50"
+          className="mt-2.5 ma-input w-full rounded-2xl border border-white/10 bg-black/50 px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-gold/50"
         />
         {!teclado && (
           <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
@@ -72,7 +72,7 @@ export function DestinoDialog({
         <button
           disabled={!valido}
           onClick={() => onEscolher(texto)}
-          className="mt-2.5 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl gold-gradient text-sm font-bold text-black disabled:opacity-40"
+          className="mt-2.5 flex ma-cta-h w-full items-center justify-center gap-2 rounded-2xl gold-gradient text-sm font-bold text-black disabled:opacity-40"
         >
           <MapPin size={16} /> Usar este destino
         </button>

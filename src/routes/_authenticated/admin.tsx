@@ -84,8 +84,8 @@ function AdminPage() {
     return (
       <AppShell>
         <Header title="Admin" subtitle="Acesso restrito" />
-        <div className="px-5 pt-8">
-          <div className="glass-card rounded-2xl p-6 text-center">
+        <div className="px-5 pt-5">
+          <div className="glass-card rounded-2xl p-4 text-center">
             <ShieldCheck className="mx-auto mb-3 text-gold" size={32} />
             <p className="text-sm text-foreground">
               Você não tem permissão para acessar esta área.
@@ -138,7 +138,7 @@ function AdminPage() {
           </div>
           <div className="divide-y divide-white/5">
             {rows.length === 0 && (
-              <p className="py-6 text-center text-xs text-muted-foreground">
+              <p className="py-4 text-center text-xs text-muted-foreground">
                 Nenhum usuário ainda.
               </p>
             )}
@@ -180,7 +180,7 @@ function StatCard({
           <Icon size={16} />
         </div>
       </div>
-      <p className="mt-3 text-2xl font-black text-foreground">{value}</p>
+      <p className="mt-3 ma-title font-black text-foreground">{value}</p>
       <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
         {label}
       </p>

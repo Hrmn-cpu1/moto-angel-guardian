@@ -25,7 +25,7 @@ export const Route = createFileRoute("/welcome")({
 
 function Welcome() {
   return (
-    <div className="relative mx-auto flex min-h-screen max-w-md flex-col overflow-hidden bg-background">
+    <div className="relative mx-auto flex min-h-[100dvh] max-w-md flex-col overflow-hidden bg-background">
       <img
         src={poster.url}
         alt=""
@@ -35,14 +35,14 @@ function Welcome() {
         className="absolute inset-x-0 bottom-0 h-[62%] w-full object-cover object-bottom opacity-40"
       />
       <div className="absolute inset-0 bg-gradient-to-b from-black via-black/85 to-black/95" />
-      <div className="relative z-10 flex flex-1 flex-col justify-between px-6 pt-14 pb-8">
+      <div className="relative z-10 flex flex-1 flex-col justify-between px-4 pt-14 pb-8">
         <div className="flex flex-col items-center text-center animate-fade-up">
           <BrandMark size={88} withWordmark />
         </div>
 
-        <div className="space-y-6 animate-fade-up" style={{ animationDelay: "0.15s" }}>
+        <div className="space-y-4 animate-fade-up" style={{ animationDelay: "0.15s" }}>
           <div className="space-y-3 text-center">
-            <h1 className="text-3xl font-black leading-tight text-foreground">
+            <h1 className="ma-hero font-black leading-tight text-foreground">
               Porque o mais importante <br />
               <span className="gold-text">é voltar para casa.</span>
             </h1>

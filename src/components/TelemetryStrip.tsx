@@ -38,7 +38,7 @@ export function TelemetryStrip({
   return (
     <div
       data-testid="telemetria-compacta"
-      className={`${camada("painelInferior")} flex h-16 items-center gap-2 rounded-2xl border border-gold/25 bg-black/80 px-3 backdrop-blur-md ${className ?? ""}`}
+      className={`${camada("painelInferior")} flex h-[58px] items-center gap-2 rounded-2xl border border-gold/25 bg-black/80 px-3 backdrop-blur-md ${className ?? ""}`}
     >
       <Item
         icone={<Gauge size={11} />}
@@ -102,7 +102,7 @@ function Item({
     <div className="min-w-0 flex-1">
       <p
         className={`flex items-baseline gap-1 leading-none tabular-nums ${
-          destaque ? "text-[22px] font-bold text-foreground" : "text-base font-bold text-foreground"
+          destaque ? "text-[20px] font-bold text-foreground" : "text-base font-bold text-foreground"
         }`}
       >
         <span className="truncate">{valor}</span>

@@ -46,7 +46,7 @@ function ForgotPassword() {
   };
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col bg-background px-6 pt-14 pb-10">
+    <div className="mx-auto flex min-h-[100dvh] max-w-md flex-col bg-background px-4 pt-14 pb-6">
       <div className="flex flex-col items-center text-center">
         <BrandMark size={88} withWordmark />
         <h1 className="mt-4 text-xl font-black uppercase tracking-tight text-foreground">
@@ -58,7 +58,7 @@ function ForgotPassword() {
       </div>
 
       {sent ? (
-        <div className="mt-8 space-y-4 animate-fade-up">
+        <div className="mt-5 space-y-4 animate-fade-up">
           <div className="glass-card flex items-start gap-3 rounded-2xl p-5">
             <CheckCircle2 className="mt-0.5 shrink-0 text-success" size={18} />
             <p className="text-sm text-foreground">
@@ -71,7 +71,7 @@ function ForgotPassword() {
           </Link>
         </div>
       ) : (
-        <form onSubmit={submit} className="mt-8 space-y-4 animate-fade-up">
+        <form onSubmit={submit} className="mt-5 space-y-4 animate-fade-up">
           <label className="block">
             <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
               E-mail

@@ -33,10 +33,10 @@ function SOS() {
   const sos = useSosController();
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col bg-black">
+    <div className="mx-auto flex min-h-[100dvh] max-w-md flex-col bg-black">
       <Header back="/dashboard" title="SOS" subtitle="Emergência" />
 
-      <div className="flex flex-1 flex-col items-center gap-8 px-6 py-10">
+      <div className="flex flex-1 flex-col items-center gap-5 px-4 py-4">
         {sos.recovering && !sos.open ? (
           <p className="mt-16 flex items-center gap-2 text-xs text-muted-foreground">
             <Loader2 size={14} className="animate-spin text-gold" /> Verificando se você tem um
@@ -51,8 +51,8 @@ function SOS() {
           />
         ) : (
           <>
-            <div className="mt-6 text-center">
-              <h2 className="text-2xl font-black uppercase tracking-tight text-emergency">
+            <div className="mt-4 text-center">
+              <h2 className="ma-title font-black uppercase tracking-tight text-emergency">
                 ⚠ Emergência
               </h2>
               <p className="mt-2 text-sm text-foreground">Precisa de ajuda?</p>
@@ -76,7 +76,7 @@ function SOS() {
         )}
       </div>
 
-      <p className="px-6 pb-8 text-center text-[10px] uppercase tracking-widest text-muted-foreground">
+      <p className="px-4 pb-8 text-center text-[10px] uppercase tracking-widest text-muted-foreground">
         Em uma emergência com risco de vida, ligue também 190 / 193 / 192.
       </p>
     </div>

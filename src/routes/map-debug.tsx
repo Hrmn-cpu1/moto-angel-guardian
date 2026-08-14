@@ -18,7 +18,7 @@ import { DARK_STYLE, RISK_BANDS, loadGoogleMaps } from "@/components/RealMap";
  *
  * O seletor de LAYOUT é a segunda metade do teste: o mesmo mapa é montado
  * (a) num container com altura fixa e (b) na mesma estrutura de CSS que o
- * Dashboard usa hoje (`min-h-screen` no pai + `h-full` no filho). Se o mapa
+ * Dashboard usa hoje (`min-h-[100dvh]` no pai + `h-full` no filho). Se o mapa
  * aparecer em (a) e ficar preto em (b), a causa é altura de container, não o
  * Google Maps.
  */
@@ -415,7 +415,7 @@ function MapDebugPage() {
   const chaveMapa = `${nivel}-${layout}`;
 
   return (
-    <div className="mx-auto min-h-screen max-w-md bg-background px-4 py-5 text-foreground">
+    <div className="mx-auto min-h-[100dvh] max-w-md bg-background px-4 py-5 text-foreground">
       <h1 className="text-base font-bold text-gold">Diagnóstico do mapa</h1>
       <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
         Página temporária. Suba do nível 0 e pare no primeiro nível em que o mapa apagar — esse é o

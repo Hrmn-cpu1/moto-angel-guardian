@@ -19,9 +19,9 @@ const TAMANHOS: Record<
   SosHoldVariant,
   { box: string; icone: number; rotulo: string; anel: string }
 > = {
-  fab: { box: "h-[86px] w-[86px]", icone: 24, rotulo: "text-[13px]", anel: "inset-[4px]" },
+  fab: { box: "h-[72px] w-[72px]", icone: 22, rotulo: "text-[12px]", anel: "inset-[4px]" },
   map: { box: "h-[68px] w-[68px]", icone: 20, rotulo: "text-[11px]", anel: "inset-[3px]" },
-  page: { box: "h-64 w-64", icone: 44, rotulo: "text-xl", anel: "inset-2" },
+  page: { box: "h-[min(56vw,208px)] w-[min(56vw,208px)]", icone: 38, rotulo: "text-base", anel: "inset-2" },
 };
 
 /**
@@ -123,7 +123,7 @@ export function SosHoldButton({
       <span className="relative z-10 flex flex-col items-center leading-none">
         {holding ? (
           <span
-            className={cn("font-black tabular-nums", variant === "page" ? "text-6xl" : "text-2xl")}
+            className={cn("font-black tabular-nums", variant === "page" ? "text-4xl" : "text-xl")}
           >
             {segundosRestantes}
           </span>
