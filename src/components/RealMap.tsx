@@ -423,6 +423,11 @@ export default function RealMap({
     : "";
   const originKey = center ? `${center.lat.toFixed(2)},${center.lng.toFixed(2)}` : "";
 
+  /* O enquadramento precisa da posição ATUAL, não da que existia quando o
+   * pedido de rota partiu: o GPS anda enquanto a Directions responde. */
+  const centerRef = useRef(center);
+  centerRef.current = center;
+
   useEffect(() => {
     const map = mapRef.current;
     if (state !== "ready" || !map) return;
@@ -500,7 +505,8 @@ export default function RealMap({
           const quantos = passosDoEnquadramento(passos.map((s) => s.distance?.value ?? 0));
           if (quantos > 0) {
             const limites = new g.maps.LatLngBounds();
-            limites.extend({ lat: center.lat, lng: center.lng });
+            const atual = centerRef.current ?? center;
+            limites.extend({ lat: atual.lat, lng: atual.lng });
             passos.slice(0, quantos).forEach((s) => {
               if (s.end_location) limites.extend(s.end_location);
             });
