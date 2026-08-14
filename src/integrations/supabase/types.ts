@@ -342,6 +342,7 @@ export type Database = {
           name: string
           phone: string
           plate: string
+          share_with_riders: boolean
           terms_accepted_at: string | null
           terms_version: string | null
           updated_at: string
@@ -358,6 +359,7 @@ export type Database = {
           name?: string
           phone?: string
           plate?: string
+          share_with_riders?: boolean
           terms_accepted_at?: string | null
           terms_version?: string | null
           updated_at?: string
@@ -374,6 +376,7 @@ export type Database = {
           name?: string
           phone?: string
           plate?: string
+          share_with_riders?: boolean
           terms_accepted_at?: string | null
           terms_version?: string | null
           updated_at?: string
@@ -786,6 +789,25 @@ export type Database = {
           resolved_at: string
           sos_event_id: string
           status: string
+        }[]
+      }
+      trusted_contacts_online: {
+        Args: {
+          _lat: number
+          _lng: number
+          _minutes?: number
+          _radius_km?: number
+        }
+        Returns: {
+          avatar_url: string
+          distance_km: number
+          heading: number
+          lat: number
+          lng: number
+          name: string
+          speed_kmh: number
+          updated_at: string
+          user_id: string
         }[]
       }
       user_history: {
