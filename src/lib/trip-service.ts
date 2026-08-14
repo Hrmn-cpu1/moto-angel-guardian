@@ -35,8 +35,31 @@ type PluginViagem = {
   addListener: (
     evento: string,
     cb: (p: PosicaoNativa) => void,
-  ) => Promise<{ remove: () => Promise<void> }>;
+  ) => ListenerHandle | Promise<ListenerHandle>;
 };
+
+/**
+ * Handle devolvido pelo `addListener`.
+ *
+ * O Capacitor 7 devolve o handle SÍNCRONO nos plugins nativos e uma Promise em
+ * implementações web/legadas. Tratar sempre como Promise (`.then`) explode com
+ * `addListener(...).then is not a function` — foi exatamente o que derrubou a
+ * Home ao iniciar a viagem.
+ */
+export interface ListenerHandle {
+  remove: () => void | Promise<void>;
+}
+
+/** Normaliza o retorno do `addListener` para os dois contratos possíveis. */
+export async function normalizarHandle(
+  resultado: ListenerHandle | Promise<ListenerHandle>,
+): Promise<ListenerHandle> {
+  const talvezPromise = resultado as { then?: unknown } | null;
+  if (talvezPromise && typeof talvezPromise.then === "function") {
+    return await (resultado as Promise<ListenerHandle>);
+  }
+  return resultado as ListenerHandle;
+}
 
 function plugin(): PluginViagem | null {
   if (!isNativeApp() || typeof window === "undefined") return null;
@@ -103,40 +126,62 @@ export async function pararServicoDeViagem(): Promise<void> {
 export function ouvirPosicaoNativa(cb: (p: PosicaoNativa) => void): () => void {
   const p = plugin();
   if (!p?.addListener) return () => {};
-  let remover: (() => Promise<void>) | null = null;
+  let handle: ListenerHandle | null = null;
   let cancelado = false;
-  void p
-    .addListener("posicao", (pos) => {
-      if (cancelado) return;
-      if (
-        !pos ||
-        typeof pos.lat !== "number" ||
-        typeof pos.lng !== "number" ||
-        typeof pos.precisaoM !== "number" ||
-        typeof pos.velocidadeMs !== "number"
-      ) {
-        console.error(
-          TRIP_NATIVE_ERROR,
-          recordTripDiagnostic("native.trip.position_payload", new Error("Invalid native payload")),
-        );
+  const aoReceber = (pos: PosicaoNativa) => {
+    if (cancelado) return;
+    if (
+      !pos ||
+      typeof pos.lat !== "number" ||
+      typeof pos.lng !== "number" ||
+      typeof pos.precisaoM !== "number" ||
+      typeof pos.velocidadeMs !== "number"
+    ) {
+      console.error(
+        TRIP_NATIVE_ERROR,
+        recordTripDiagnostic("native.trip.position_payload", new Error("Invalid native payload")),
+      );
+      return;
+    }
+    try {
+      cb(pos);
+    } catch (error) {
+      console.error(
+        TRIP_NATIVE_ERROR,
+        recordTripDiagnostic("native.trip.position_callback", error),
+      );
+    }
+  };
+
+  // O registro é feito dentro de uma async IIFE com try/catch: `addListener`
+  // pode lançar de forma SÍNCRONA (plugin ausente/incompatível) e esse throw
+  // subiria até o boundary raiz, derrubando a Home no início da viagem.
+  void (async () => {
+    try {
+      const h = await normalizarHandle(p.addListener("posicao", aoReceber));
+      if (!h || typeof h.remove !== "function") {
+        recordTripDiagnostic("native.trip.listener", new Error("Invalid listener handle"));
         return;
       }
-      try {
-        cb(pos);
-      } catch (error) {
-        console.error(TRIP_NATIVE_ERROR, recordTripDiagnostic("native.trip.position_callback", error));
-      }
-    })
-    .then((h) => {
-      if (cancelado) void h.remove();
-      else remover = h.remove;
-    })
-    .catch((error) => {
+      if (cancelado) await h.remove();
+      else handle = h;
+    } catch (error) {
       console.error(TRIP_NATIVE_ERROR, recordTripDiagnostic("native.trip.listener", error));
-    });
+    }
+  })();
+
   return () => {
     cancelado = true;
-    if (remover) void remover();
+    const h = handle;
+    handle = null;
+    if (!h) return;
+    try {
+      void Promise.resolve(h.remove()).catch((error) => {
+        recordTripDiagnostic("native.trip.listener_remove", error);
+      });
+    } catch (error) {
+      recordTripDiagnostic("native.trip.listener_remove", error);
+    }
   };
 }
 

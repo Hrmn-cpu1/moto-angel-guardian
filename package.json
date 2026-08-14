@@ -11,7 +11,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test src/lib/phone.test.ts src/lib/coords.test.ts src/lib/sos.server.test.ts src/lib/sos-client.test.ts src/lib/sos-unificacao.test.ts src/lib/sos-sql-ambiguidade.test.ts src/lib/external-navigation.test.ts src/lib/location-permission.test.ts src/lib/rc2-estrutural.test.ts src/lib/map-layers.test.ts src/lib/presence.test.ts src/lib/crash-detection.test.ts src/lib/rc3.test.ts src/lib/rc31.test.ts src/lib/rc32.test.ts"
+    "test": "node --experimental-strip-types --test src/lib/phone.test.ts src/lib/coords.test.ts src/lib/sos.server.test.ts src/lib/sos-client.test.ts src/lib/sos-unificacao.test.ts src/lib/sos-sql-ambiguidade.test.ts src/lib/external-navigation.test.ts src/lib/location-permission.test.ts src/lib/rc2-estrutural.test.ts src/lib/map-layers.test.ts src/lib/presence.test.ts src/lib/crash-detection.test.ts src/lib/rc3.test.ts src/lib/rc31.test.ts src/lib/rc32.test.ts src/lib/hotfix-p0-viagem.test.ts"
   },
   "dependencies": {
     "@capacitor/android": "^7",
@@ -79,7 +79,7 @@
   "devDependencies": {
     "@capacitor/cli": "^7",
     "@eslint/js": "^9.32.0",
-    "@lovable.dev/vite-tanstack-config": "2.12.0",
+    "@lovable.dev/vite-tanstack-config": "2.13.1",
     "@types/google.maps": "^3.65.3",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",

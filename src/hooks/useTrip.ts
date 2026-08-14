@@ -56,10 +56,12 @@ function publicar(v: Viagem) {
 
   // O serviço nativo acompanha o estado, não o contrário. Idempotente: só age
   // quando a viagem realmente entra ou sai do estado ativo.
+  // Modo degradado: se o serviço nativo não subir, a viagem continua — o
+  // início da viagem nunca pode derrubar a Home.
   if (anterior.estado !== "ativa" && v.estado === "ativa") {
-    void iniciarServicoDeViagem(rotuloDoDestino(v));
+    void iniciarServicoDeViagem(rotuloDoDestino(v)).catch(() => undefined);
   } else if (anterior.estado === "ativa" && v.estado !== "ativa") {
-    void pararServicoDeViagem();
+    void pararServicoDeViagem().catch(() => undefined);
   }
 
   for (const a of assinantes) a(v);
@@ -77,7 +79,7 @@ export function useTrip() {
       hidratado = true;
       const recuperada = carregarViagem();
       if (recuperada.estado !== "ocioso") publicar(recuperada);
-      else void pararServicoDeViagem(); // sem viagem, nenhum serviço órfão
+      else void pararServicoDeViagem().catch(() => undefined); // sem viagem, nenhum serviço órfão
     }
     setViagem(viagemAtual);
     return () => {

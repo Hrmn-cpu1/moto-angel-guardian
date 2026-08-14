@@ -292,6 +292,11 @@ export default function RealMap({
   const [hasArea, setHasArea] = useState<boolean | null>(null);
   // Incrementa a cada "Tentar novamente": reexecuta o efeito de inicialização.
   const [tentativa, setTentativa] = useState(0);
+  /* Rota indisponível (ex.: Directions REQUEST_DENIED). Estado controlado: o
+   * destino escolhido é preservado, a Home segue de pé e o usuário pode pedir
+   * o recálculo. Nunca vira exception. */
+  const [rotaIndisponivel, setRotaIndisponivel] = useState(false);
+  const [tentativaRota, setTentativaRota] = useState(0);
 
   // Prefer the project's own Google Cloud key (works on custom domains and in
   // the Android/Capacitor WebView); fall back to the Lovable-managed key.
@@ -440,6 +445,7 @@ export default function RealMap({
 
     if (!destKey || !center) {
       limpar();
+      setRotaIndisponivel(false);
       onRouteRef.current?.(null);
       return;
     }
@@ -467,6 +473,7 @@ export default function RealMap({
     } catch (error) {
       console.error(error);
       limpar();
+      setRotaIndisponivel(true);
       onRouteRef.current?.(null);
       return;
     }
@@ -474,6 +481,7 @@ export default function RealMap({
     request
       .then((res) => {
         if (cancelled || requestId !== routeRequestRef.current) return;
+        setRotaIndisponivel(false);
         if (!routeRendererRef.current) {
           routeRendererRef.current = new g.maps.DirectionsRenderer({
             suppressMarkers: true,
@@ -536,6 +544,7 @@ export default function RealMap({
         console.error("Falha ao calcular rota do Google Maps", error);
         if (!cancelled && requestId === routeRequestRef.current) {
           limpar();
+          setRotaIndisponivel(true);
           onRouteRef.current?.(null);
         }
       });
@@ -543,7 +552,7 @@ export default function RealMap({
     return () => {
       cancelled = true;
     };
-  }, [destKey, originKey, state]);
+  }, [destKey, originKey, state, tentativaRota]);
 
   useEffect(
     () => () => {
@@ -936,6 +945,20 @@ export default function RealMap({
           </span>
         </div>
       ) : null}
+      {state === "ready" && rotaIndisponivel && destination && (
+        <div className="absolute inset-x-4 top-3 z-10 flex items-center justify-between gap-3 rounded-2xl border border-gold/30 bg-black/80 px-4 py-2.5">
+          <p className="text-[11px] leading-snug text-muted-foreground">
+            Rota temporariamente indisponível. Seu destino continua salvo.
+          </p>
+          <button
+            type="button"
+            onClick={() => setTentativaRota((t) => t + 1)}
+            className="shrink-0 rounded-full border border-gold/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-gold"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      )}
     </div>
   );
 }
