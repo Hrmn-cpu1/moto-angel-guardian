@@ -58,8 +58,8 @@ export async function publicarPresenca(pos: {
   try {
     // Import dinâmico: mantém este módulo carregável fora do navegador, então
     // a regra de frequência acima é testável sem puxar o cliente Supabase.
-    const { dbNovo } = await import("./db-novo.ts");
-    const { data, error } = await dbNovo().rpc("presence_touch", {
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { data, error } = await supabase.rpc("presence_touch", {
       _lat: pos.lat,
       _lng: pos.lng,
       _speed_kmh: pos.speedKmh ?? null,

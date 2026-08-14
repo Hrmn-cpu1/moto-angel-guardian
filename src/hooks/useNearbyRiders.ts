@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useId, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { dbNovo } from "@/lib/db-novo";
 import { registrarPresenca } from "@/lib/presence";
 import type { OnlineRider } from "./useOnlineRiders";
 import { CAMADAS_PADRAO, consultasHabilitadas, type CamadasDoMapa } from "@/lib/map-layers";
@@ -50,7 +49,7 @@ export function useNearbyRiders(
       if (!pos) return [];
       // A RPC usa a posição registrada do viewer como origem (P0.5-A).
       await registrarPresenca(pos);
-      const { data, error } = await dbNovo().rpc("trusted_contacts_online", {
+      const { data, error } = await supabase.rpc("trusted_contacts_online", {
         _lat: pos.lat,
         _lng: pos.lng,
         _radius_km: radiusKm,
