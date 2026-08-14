@@ -594,19 +594,18 @@ test("P0.4-C: o controle de VER é separado do de APARECER", () => {
  * O andaime não pode virar arquitetura
  * ================================================================== */
 
-test("db-novo é temporário, documentado e não está crescendo", () => {
-  const ponte = ler("src/lib/db-novo.ts");
-  assert.ok(/TODO — REMOVER ESTA PONTE/.test(ponte), "falta o aviso de remoção");
-  assert.ok(/typecheck/.test(ponte), "o TODO precisa dizer o que rodar depois");
-
-  const chamadores = ["src/hooks/useRiderVisibility.ts", "src/hooks/useNearbyRiders.ts"].filter(
-    (f) => /from "@\/lib\/db-novo"/.test(ler(f)),
+test("o andaime db-novo foi removido: ninguém mais o importa", () => {
+  assert.ok(
+    !existsSync(caminho("src/lib/db-novo.ts")),
+    "db-novo.ts deveria ter sumido depois que os tipos do Supabase foram regerados",
   );
-  assert.deepEqual(
-    chamadores.sort(),
-    ["src/hooks/useNearbyRiders.ts", "src/hooks/useRiderVisibility.ts"],
-    "a lista de chamadores da ponte mudou — ela deveria estar encolhendo, não crescendo",
-  );
+  const chamadores = [
+    "src/hooks/useRiderVisibility.ts",
+    "src/hooks/useNearbyRiders.ts",
+    "src/hooks/useLiveShare.ts",
+    "src/lib/presence.ts",
+  ].filter((f) => /db-novo/.test(ler(f)));
+  assert.deepEqual(chamadores, [], "ainda há import da ponte removida");
 });
 
 /* ================================================================== *

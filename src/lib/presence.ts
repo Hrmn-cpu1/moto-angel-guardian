@@ -62,8 +62,8 @@ export async function publicarPresenca(pos: {
     const { data, error } = await supabase.rpc("presence_touch", {
       _lat: pos.lat,
       _lng: pos.lng,
-      _speed_kmh: pos.speedKmh ?? null,
-      _heading: pos.heading ?? null,
+      _speed_kmh: pos.speedKmh ?? undefined,
+      _heading: pos.heading ?? undefined,
     });
     if (error) return { status: "desconhecido", erro: error.message };
     return { status: interpretarStatus(data), erro: null };
