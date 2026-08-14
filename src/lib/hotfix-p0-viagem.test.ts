@@ -32,17 +32,17 @@ const espera = () => new Promise((r) => setTimeout(r, 0));
 
 test("1) listener com handle SÍNCRONO não lança e entrega posições", async () => {
   let removido = false;
-  let cb: ((p: unknown) => void) | null = null;
+  const capturado: { cb: ((p: unknown) => void) | null } = { cb: null };
   instalarPlugin({
     addListener: (_e: string, f: (p: unknown) => void) => {
-      cb = f;
+      capturado.cb = f;
       return { remove: () => { removido = true; } };
     },
   });
   const recebidas: unknown[] = [];
   const cancelar = ouvirPosicaoNativa((p) => recebidas.push(p));
   await espera();
-  cb?.({ lat: 1, lng: 2, precisaoM: 5, velocidadeMs: 3, quandoMs: 1 });
+  capturado.cb?.({ lat: 1, lng: 2, precisaoM: 5, velocidadeMs: 3, quandoMs: 1 });
   assert.equal(recebidas.length, 1);
   cancelar();
   await espera();
