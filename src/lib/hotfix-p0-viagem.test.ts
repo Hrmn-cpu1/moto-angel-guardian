@@ -11,14 +11,16 @@ import { normalizarHandle, ouvirPosicaoNativa, iniciarServicoDeViagem } from "./
 type Plugin = Record<string, unknown>;
 
 function instalarPlugin(p: Plugin | null) {
-  (globalThis as Record<string, unknown>).window = {
-    location: { pathname: "/dashboard", href: "http://localhost/dashboard" },
-    navigator: { userAgent: "test" },
-  };
-  (globalThis as Record<string, unknown>).Capacitor = {
+  const capacitor = {
     isNativePlatform: () => true,
     Plugins: p ? { ViagemSegura: p } : {},
   };
+  (globalThis as Record<string, unknown>).window = {
+    location: { pathname: "/dashboard", href: "http://localhost/dashboard" },
+    navigator: { userAgent: "test" },
+    Capacitor: capacitor,
+  };
+  (globalThis as Record<string, unknown>).Capacitor = capacitor;
 }
 
 function limpar() {
