@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 /**
@@ -596,7 +596,7 @@ test("P0.4-C: o controle de VER é separado do de APARECER", () => {
 
 test("o andaime db-novo foi removido: ninguém mais o importa", () => {
   assert.ok(
-    !existsSync(caminho("src/lib/db-novo.ts")),
+    !existsSync(join(RAIZ, "src/lib/db-novo.ts")),
     "db-novo.ts deveria ter sumido depois que os tipos do Supabase foram regerados",
   );
   const chamadores = [
