@@ -129,25 +129,28 @@ export function ouvirPosicaoNativa(cb: (p: PosicaoNativa) => void): () => void {
   let handle: ListenerHandle | null = null;
   let cancelado = false;
   const aoReceber = (pos: PosicaoNativa) => {
-      if (cancelado) return;
-      if (
-        !pos ||
-        typeof pos.lat !== "number" ||
-        typeof pos.lng !== "number" ||
-        typeof pos.precisaoM !== "number" ||
-        typeof pos.velocidadeMs !== "number"
-      ) {
-        console.error(
-          TRIP_NATIVE_ERROR,
-          recordTripDiagnostic("native.trip.position_payload", new Error("Invalid native payload")),
-        );
-        return;
-      }
-      try {
-        cb(pos);
-      } catch (error) {
-        console.error(TRIP_NATIVE_ERROR, recordTripDiagnostic("native.trip.position_callback", error));
-      }
+    if (cancelado) return;
+    if (
+      !pos ||
+      typeof pos.lat !== "number" ||
+      typeof pos.lng !== "number" ||
+      typeof pos.precisaoM !== "number" ||
+      typeof pos.velocidadeMs !== "number"
+    ) {
+      console.error(
+        TRIP_NATIVE_ERROR,
+        recordTripDiagnostic("native.trip.position_payload", new Error("Invalid native payload")),
+      );
+      return;
+    }
+    try {
+      cb(pos);
+    } catch (error) {
+      console.error(
+        TRIP_NATIVE_ERROR,
+        recordTripDiagnostic("native.trip.position_callback", error),
+      );
+    }
   };
 
   // O registro é feito dentro de uma async IIFE com try/catch: `addListener`

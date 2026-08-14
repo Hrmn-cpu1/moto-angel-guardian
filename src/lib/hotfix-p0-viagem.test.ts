@@ -36,7 +36,11 @@ test("1) listener com handle SÍNCRONO não lança e entrega posições", async 
   instalarPlugin({
     addListener: (_e: string, f: (p: unknown) => void) => {
       capturado.cb = f;
-      return { remove: () => { removido = true; } };
+      return {
+        remove: () => {
+          removido = true;
+        },
+      };
     },
   });
   const recebidas: unknown[] = [];
@@ -53,7 +57,11 @@ test("1) listener com handle SÍNCRONO não lança e entrega posições", async 
 test("2) listener que devolve Promise de handle continua funcionando", async () => {
   let removido = false;
   instalarPlugin({
-    addListener: async () => ({ remove: async () => { removido = true; } }),
+    addListener: async () => ({
+      remove: async () => {
+        removido = true;
+      },
+    }),
   });
   const cancelar = ouvirPosicaoNativa(() => {});
   await espera();
