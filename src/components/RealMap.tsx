@@ -945,6 +945,20 @@ export default function RealMap({
           </span>
         </div>
       ) : null}
+      {state === "ready" && rotaIndisponivel && destination && (
+        <div className="absolute inset-x-4 top-3 z-10 flex items-center justify-between gap-3 rounded-2xl border border-gold/30 bg-black/80 px-4 py-2.5">
+          <p className="text-[11px] leading-snug text-muted-foreground">
+            Rota temporariamente indisponível. Seu destino continua salvo.
+          </p>
+          <button
+            type="button"
+            onClick={() => setTentativaRota((t) => t + 1)}
+            className="shrink-0 rounded-full border border-gold/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-gold"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      )}
     </div>
   );
 }
