@@ -290,7 +290,12 @@ function Dashboard() {
         />
 
         {/* Próxima manobra: prioridade máxima durante a viagem. */}
-        {viagemAtiva && <NextManeuver rota={rota} className="absolute inset-x-3 top-[calc(var(--ma-top)+112px)]" />}
+        {viagemAtiva && (
+          <NextManeuver
+            rota={rota}
+            className="absolute inset-x-3 top-[calc(var(--ma-top)+112px)]"
+          />
+        )}
 
         {/* Controles do mapa: anjos, camadas, combustível e centralizar. */}
         <div

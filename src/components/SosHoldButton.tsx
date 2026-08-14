@@ -21,7 +21,12 @@ const TAMANHOS: Record<
 > = {
   fab: { box: "h-[72px] w-[72px]", icone: 22, rotulo: "text-[12px]", anel: "inset-[4px]" },
   map: { box: "h-[68px] w-[68px]", icone: 20, rotulo: "text-[11px]", anel: "inset-[3px]" },
-  page: { box: "h-[min(56vw,208px)] w-[min(56vw,208px)]", icone: 38, rotulo: "text-base", anel: "inset-2" },
+  page: {
+    box: "h-[min(56vw,208px)] w-[min(56vw,208px)]",
+    icone: 38,
+    rotulo: "text-base",
+    anel: "inset-2",
+  },
 };
 
 /**
