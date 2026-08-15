@@ -130,7 +130,10 @@ function BenefitsPage() {
                 <button
                   type="button"
                   onClick={() =>
-                    void abrirNavegacaoExterna("google", { latitude: p.lat, longitude: p.lng })
+                    void abrirNavegacaoExterna("google", {
+                      latitude: p.lat ?? undefined,
+                      longitude: p.lng ?? undefined,
+                    })
                   }
                   className="mt-3 inline-flex items-center gap-1.5 rounded-full gold-gradient px-3 py-1.5 text-[11px] font-semibold text-black"
                 >
