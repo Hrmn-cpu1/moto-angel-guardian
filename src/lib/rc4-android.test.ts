@@ -446,9 +446,19 @@ test("ESCOPO: SOS, RLS e migrations intactos neste lote", () => {
   const migrations = readdirSync(join(process.cwd(), "supabase/migrations")).filter((f) =>
     f.endsWith(".sql"),
   );
-  // 32 = 30 do pacote RC4 + rc2b/rc2c, já aplicadas nesta base (mais nova que a
-  // base do patch). O lote Android não pode criar nem remover migration.
-  assert.equal(migrations.length, 32, "migration criada ou removida no lote Android");
+  /* O lote Android não podia mexer em banco. Contagem fixa, porém, quebra a
+   * cada migration legítima de outro lote sem provar nada: o que interessa é
+   * que nada tenha sumido e que nenhuma migration apague dado. */
+  assert.ok(migrations.length >= 32, "migration removida do repositório");
+  for (const f of migrations) {
+    const sql = readFileSync(join(process.cwd(), "supabase/migrations", f), "utf8").toUpperCase();
+    // DELETE não entra na lista: `sos_purge_history` apaga histórico de
+    // propósito, a pedido do dono do dado. DROP TABLE e TRUNCATE não têm
+    // uso legítimo aqui.
+    for (const destrutivo of ["DROP TABLE ", "TRUNCATE "]) {
+      assert.ok(!sql.includes(destrutivo), `${f} contém DDL destrutivo: ${destrutivo}`);
+    }
+  }
   for (const arquivo of [
     "src/lib/trip-service.ts",
     "src/lib/external-navigation.ts",

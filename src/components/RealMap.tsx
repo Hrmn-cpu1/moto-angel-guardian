@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { abrirNavegacaoExterna } from "@/lib/external-navigation";
 import { passosDoEnquadramento } from "@/lib/navigation-cue";
+import { diagnosticarRota, type DiagnosticoDeRota } from "@/lib/directions-status";
+import { pontosDeRiscoVisiveis } from "@/lib/map-layers";
 import type { POI } from "@/lib/pois.functions";
 
 // Premium dark style with gold accents
@@ -295,7 +297,25 @@ export default function RealMap({
   /* Rota indisponível (ex.: Directions REQUEST_DENIED). Estado controlado: o
    * destino escolhido é preservado, a Home segue de pé e o usuário pode pedir
    * o recálculo. Nunca vira exception. */
+  /* Antes era um boolean: toda falha virava "temporariamente indisponível" com
+   * botão de repetir — inclusive REQUEST_DENIED, que repetir nunca resolve, e
+   * ZERO_RESULTS, que é resposta definitiva. Agora guardamos O QUE falhou. */
   const [rotaIndisponivel, setRotaIndisponivel] = useState(false);
+  const [diagnostico, setDiagnostico] = useState<DiagnosticoDeRota | null>(null);
+  const [esperandoCota, setEsperandoCota] = useState(false);
+
+  /* OVER_QUERY_LIMIT é o único caso em que repetir faz sentido — e o único em
+   * que repetir NA HORA piora, porque a cota já estourou. O botão fica travado
+   * pelo tempo que o diagnóstico pedir. */
+  useEffect(() => {
+    if (!diagnostico?.esperaS) {
+      setEsperandoCota(false);
+      return;
+    }
+    setEsperandoCota(true);
+    const t = window.setTimeout(() => setEsperandoCota(false), diagnostico.esperaS * 1000);
+    return () => window.clearTimeout(t);
+  }, [diagnostico]);
   const [tentativaRota, setTentativaRota] = useState(0);
 
   // Prefer the project's own Google Cloud key (works on custom domains and in
@@ -446,6 +466,7 @@ export default function RealMap({
     if (!destKey || !center) {
       limpar();
       setRotaIndisponivel(false);
+      setDiagnostico(null);
       onRouteRef.current?.(null);
       return;
     }
@@ -474,6 +495,7 @@ export default function RealMap({
       console.error(error);
       limpar();
       setRotaIndisponivel(true);
+      setDiagnostico(diagnosticarRota(error));
       onRouteRef.current?.(null);
       return;
     }
@@ -482,6 +504,7 @@ export default function RealMap({
       .then((res) => {
         if (cancelled || requestId !== routeRequestRef.current) return;
         setRotaIndisponivel(false);
+        setDiagnostico(null);
         if (!routeRendererRef.current) {
           routeRendererRef.current = new g.maps.DirectionsRenderer({
             suppressMarkers: true,
@@ -545,6 +568,7 @@ export default function RealMap({
         if (!cancelled && requestId === routeRequestRef.current) {
           limpar();
           setRotaIndisponivel(true);
+          setDiagnostico(diagnosticarRota(error));
           onRouteRef.current?.(null);
         }
       });
@@ -570,8 +594,16 @@ export default function RealMap({
     heatCirclesRef.current.forEach((c) => c.setMap(null));
     heatCirclesRef.current = [];
     if (!showHeatmap || riskPoints.length === 0) return;
-    const maxWeight = Math.max(...riskPoints.map((p) => p.weight), 1);
-    riskPoints.forEach((p) => {
+    /* TETO DE OVERLAYS (RC5).
+     *
+     * `risk_heatmap` devolve até 500 pontos e cada ponto vira RISK_BANDS
+     * círculos — 1.500 objetos google.maps.Circle criados e destruídos a cada
+     * refetch, dentro de uma WebView de celular intermediário durante a
+     * viagem. Ficamos com os mais pesados: são os que a camada existe para
+     * mostrar, e os leves viram ruído visual de qualquer forma. */
+    const visiveis = pontosDeRiscoVisiveis(riskPoints);
+    const maxWeight = Math.max(...visiveis.map((p) => p.weight), 1);
+    visiveis.forEach((p) => {
       const intensity = Math.min(1, p.weight / maxWeight);
       const baseRadius = 260 + intensity * 520;
       RISK_BANDS.forEach((band) => {
@@ -948,15 +980,22 @@ export default function RealMap({
       {state === "ready" && rotaIndisponivel && destination && (
         <div className="absolute inset-x-4 top-3 z-10 flex items-center justify-between gap-3 rounded-2xl border border-gold/30 bg-black/80 px-4 py-2.5">
           <p className="text-[11px] leading-snug text-muted-foreground">
-            Rota temporariamente indisponível. Seu destino continua salvo.
+            {diagnostico?.mensagem ??
+              "Rota temporariamente indisponível. Seu destino continua salvo."}
           </p>
-          <button
-            type="button"
-            onClick={() => setTentativaRota((t) => t + 1)}
-            className="shrink-0 rounded-full border border-gold/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-gold"
-          >
-            Tentar novamente
-          </button>
+          {/* O botão só aparece quando repetir pode mudar o resultado. Oferecer
+              "tentar novamente" para REQUEST_DENIED é empurrar o motociclista
+              contra uma parede — e gastar cota a cada toque. */}
+          {(diagnostico?.podeTentarDeNovo ?? true) && (
+            <button
+              type="button"
+              disabled={esperandoCota}
+              onClick={() => setTentativaRota((t) => t + 1)}
+              className="shrink-0 rounded-full border border-gold/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-gold disabled:opacity-50"
+            >
+              {esperandoCota ? "Aguarde..." : "Tentar novamente"}
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -214,9 +214,12 @@ function ehCheckpoint(f: string, marca: "1" | "1B" | "qualquer"): boolean {
   // RC2 também são migrations nossas: não podem ser contadas entre as 23
   // pré-existentes nem confundidas com o checkpoint 1/1B.
   const rc2 = /CHECKPOINT RC2-/.test(sql);
+  // RC5 idem: heatmap sem dupla contagem. O que este teste protege é o
+  // conjunto das 23 pré-existentes, não o total do diretório.
+  const rc5 = /CHECKPOINT RC5 —/.test(sql);
   if (marca === "1") return um;
   if (marca === "1B") return umB;
-  return um || umB || p02 || rc2;
+  return um || umB || p02 || rc2 || rc5;
 }
 
 function sqlNovo(): string {

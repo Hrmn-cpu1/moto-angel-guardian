@@ -108,3 +108,21 @@ export function rotuloDeRiders(
   }
   return partes.length ? partes.join(" · ") : null;
 }
+
+/**
+ * Teto de pontos do mapa de risco realmente desenhados.
+ *
+ * `risk_heatmap` devolve até 500 pontos e cada ponto vira uma faixa de
+ * círculos no mapa. Sem teto, são mais de mil objetos criados e destruídos a
+ * cada refetch dentro da WebView, durante a viagem, num celular intermediário.
+ * Fica aqui — e não no componente — para poder ser testado sem JSX.
+ */
+export const MAX_PONTOS_RISCO = 120;
+
+/** Os mais pesados primeiro: cortar sem ordenar jogaria fora o risco mais grave. */
+export function pontosDeRiscoVisiveis<T extends { weight: number }>(
+  pontos: readonly T[],
+  teto: number = MAX_PONTOS_RISCO,
+): T[] {
+  return [...pontos].sort((a, b) => b.weight - a.weight).slice(0, Math.max(teto, 0));
+}
