@@ -1,3 +1,6 @@
+-- CHECKPOINT RC5 — cópia carimbada pelo aplicador de migrations.
+-- Conteúdo idêntico a 20260815120000_rc5_heatmap_sem_dupla_contagem.sql.
+
 CREATE OR REPLACE FUNCTION public.risk_heatmap(
   _lat double precision,
   _lng double precision,
