@@ -11,6 +11,7 @@ import { useLiveShare } from "@/hooks/useLiveShare";
 import { useContacts } from "@/hooks/useContacts";
 import { useLocationShares } from "@/hooks/useLocationShares";
 import { useRiderVisibility } from "@/hooks/useRiderVisibility";
+import { abrirUrlExterna } from "@/lib/external-navigation";
 
 export const Route = createFileRoute("/_authenticated/sharing")({
   head: () => ({
