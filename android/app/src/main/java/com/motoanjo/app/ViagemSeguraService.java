@@ -19,6 +19,7 @@ import android.os.IBinder;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 
 /**
  * Serviço de primeiro plano da Viagem Segura.
@@ -63,9 +64,42 @@ public class ViagemSeguraService extends Service {
     public static final String EXTRA_DESTINO = "destino";
     public static final String EXTRA_ALERTA = "alerta";
     public static final String EXTRA_DISTANCIA = "distancia";
+    public static final String EXTRA_MANOBRA = "manobra";
+
+    /**
+     * Motivos publicados para o app.
+     *
+     * Existem porque "ativo = true" não era verdade: o serviço podia recusar
+     * subir (sem permissão) e o JavaScript continuava anunciando proteção em
+     * segundo plano. Agora todo caminho que não termina em primeiro plano
+     * publica o porquê, e a tela diz exatamente isso.
+     */
+    public static final String MOTIVO_ATIVO = "ativo";
+    public static final String MOTIVO_PARADO = "parado";
+    public static final String MOTIVO_SEM_LOCALIZACAO = "sem_permissao_localizacao";
+    public static final String MOTIVO_SEM_NOTIFICACAO = "sem_permissao_notificacao";
+    public static final String MOTIVO_FALHA_FOREGROUND = "falha_ao_iniciar";
 
     /** Evita chamar startForeground duas vezes: iniciar é idempotente. */
     private boolean emPrimeiroPlano = false;
+
+    /**
+     * Último texto conhecido de cada campo da notificação.
+     *
+     * BUG REAL (RC4): a Home chamava `atualizar` com alerta e distância e SEM
+     * destino. O plugin preenchia destino com "" e a notificação era remontada
+     * do zero, então o destino sumia na PRIMEIRA atualização — que acontece
+     * logo no início da viagem, quando ainda não há aviso nenhum. Na tela de
+     * bloqueio sobrava a palavra "Protegido".
+     *
+     * Agora o serviço guarda o que já sabe e só troca o campo que chegou no
+     * Intent. Campo ausente = mantém; campo presente e vazio = limpa. É o que
+     * permite o alerta ir e vir sem levar o destino junto.
+     */
+    private String destinoAtual = "";
+    private String alertaAtual = "";
+    private String distanciaAtual = "";
+    private String manobraAtual = "";
 
     /** Intervalo mínimo entre posições. Conservador de propósito: o produto
      *  precisa de trajeto, não de amostragem contínua — GPS a 1 Hz durante um
@@ -92,6 +126,54 @@ public class ViagemSeguraService extends Service {
         ouvinteExterno = d;
     }
 
+    /**
+     * Estado REAL do serviço, para o app parar de prometer o que o Android
+     * recusou. `ativo` é o serviço em primeiro plano; `notificacaoVisivel` é
+     * outra pergunta — no Android 13+ a notificação pode estar bloqueada com o
+     * serviço rodando, e é exatamente esse caso que a tela precisa mostrar.
+     */
+    public interface EstadoDoServico {
+        void aoMudar(boolean ativo, boolean notificacaoVisivel, String motivo);
+    }
+
+    private static EstadoDoServico ouvinteDeEstado = null;
+    private static boolean ativoAgora = false;
+    private static boolean notificacaoVisivelAgora = false;
+    private static String motivoAgora = MOTIVO_PARADO;
+
+    public static void definirOuvinteDeEstado(EstadoDoServico d) {
+        ouvinteDeEstado = d;
+    }
+
+    public static boolean estaAtivo() {
+        return ativoAgora;
+    }
+
+    public static boolean notificacaoVisivel() {
+        return notificacaoVisivelAgora;
+    }
+
+    public static String motivoAtual() {
+        return motivoAgora;
+    }
+
+    private static void publicarEstado(boolean ativo, boolean visivel, String motivo) {
+        ativoAgora = ativo;
+        notificacaoVisivelAgora = visivel;
+        motivoAgora = motivo;
+        final EstadoDoServico d = ouvinteDeEstado;
+        if (d != null) d.aoMudar(ativo, visivel, motivo);
+    }
+
+    /** A notificação vai mesmo aparecer? Vale em qualquer API, inclusive < 33. */
+    private boolean podeMostrarNotificacao() {
+        try {
+            return NotificationManagerCompat.from(this).areNotificationsEnabled();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     @Override
     public IBinder onBind(Intent intent) {
         return null;
@@ -106,35 +188,54 @@ public class ViagemSeguraService extends Service {
             return START_NOT_STICKY;
         }
 
-        final String destinoTexto = intent == null ? null : intent.getStringExtra(EXTRA_DESTINO);
-        final String alerta = intent == null ? null : intent.getStringExtra(EXTRA_ALERTA);
-        final String distancia = intent == null ? null : intent.getStringExtra(EXTRA_DISTANCIA);
+        // Só troca o campo que veio no Intent. Ausente mantém o valor anterior;
+        // presente e vazio limpa. É isto que impede a atualização de alerta de
+        // apagar o destino da tela de bloqueio.
+        absorver(intent);
 
         // API 34+ derruba o app com SecurityException se um serviço do tipo
         // `location` subir sem a permissão concedida. Falhar limpo é melhor
         // que crashar em cima de alguém que está pilotando.
         if (!temPermissaoDeLocalizacao()) {
             pararTudo();
+            publicarEstado(false, podeMostrarNotificacao(), MOTIVO_SEM_LOCALIZACAO);
             return START_NOT_STICKY;
         }
 
         criarCanal();
-        final Notification notificacao = montarNotificacao(destinoTexto, alerta, distancia);
+        final Notification notificacao = montarNotificacao();
+        final boolean visivel = podeMostrarNotificacao();
 
         if (!emPrimeiroPlano) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                // API 34+ exige declarar o tipo na chamada, não só no Manifest.
-                startForeground(NOTIFICACAO_ID, notificacao, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
-            } else {
-                startForeground(NOTIFICACAO_ID, notificacao);
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    // API 34+ exige declarar o tipo na chamada, não só no Manifest.
+                    startForeground(NOTIFICACAO_ID, notificacao, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
+                } else {
+                    startForeground(NOTIFICACAO_ID, notificacao);
+                }
+                emPrimeiroPlano = true;
+                iniciarCaptura();
+            } catch (Exception e) {
+                // API 31+ recusa subir FGS a partir do segundo plano
+                // (ForegroundServiceStartNotAllowedException) e a 34+ recusa o
+                // tipo `location` em algumas combinações. Antes isso subia como
+                // exception nativa; agora vira estado, e a viagem continua em
+                // primeiro plano.
+                pararTudo();
+                publicarEstado(false, visivel, MOTIVO_FALHA_FOREGROUND);
+                return START_NOT_STICKY;
             }
-            emPrimeiroPlano = true;
-            iniciarCaptura();
         } else {
             final NotificationManager nm =
                     (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) nm.notify(NOTIFICACAO_ID, notificacao);
         }
+
+        // O serviço está de pé. Se a notificação não pode aparecer, ele continua
+        // valendo (mantém o processo e o GPS), mas NÃO é honesto dizer que o
+        // usuário está vendo o status: o motivo carrega essa diferença.
+        publicarEstado(true, visivel, visivel ? MOTIVO_ATIVO : MOTIVO_SEM_NOTIFICACAO);
 
         // START_NOT_STICKY de propósito: se o Android matar o processo, NÃO
         // queremos que ele ressuscite o serviço sozinho com um Intent vazio.
@@ -159,6 +260,25 @@ public class ViagemSeguraService extends Service {
     public void onTaskRemoved(Intent rootIntent) {
         pararTudo();
         super.onTaskRemoved(rootIntent);
+    }
+
+    /**
+     * Copia do Intent apenas os campos que ele realmente traz.
+     *
+     * `hasExtra` é a diferença entre "não falei sobre o destino" e "apague o
+     * destino". Sem essa distinção qualquer atualização parcial zeraria o
+     * resto da notificação.
+     */
+    private void absorver(Intent intent) {
+        if (intent == null) return;
+        if (intent.hasExtra(EXTRA_DESTINO)) destinoAtual = texto(intent.getStringExtra(EXTRA_DESTINO));
+        if (intent.hasExtra(EXTRA_ALERTA)) alertaAtual = texto(intent.getStringExtra(EXTRA_ALERTA));
+        if (intent.hasExtra(EXTRA_DISTANCIA)) distanciaAtual = texto(intent.getStringExtra(EXTRA_DISTANCIA));
+        if (intent.hasExtra(EXTRA_MANOBRA)) manobraAtual = texto(intent.getStringExtra(EXTRA_MANOBRA));
+    }
+
+    private static String texto(String v) {
+        return v == null ? "" : v.trim();
     }
 
     /**
@@ -244,6 +364,12 @@ public class ViagemSeguraService extends Service {
         final NotificationManager nm =
                 (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm != null) nm.cancel(NOTIFICACAO_ID);
+        // Viagem encerrada não deixa destino velho para a próxima.
+        destinoAtual = "";
+        alertaAtual = "";
+        distanciaAtual = "";
+        manobraAtual = "";
+        publicarEstado(false, notificacaoVisivelAgora, MOTIVO_PARADO);
         stopSelf();
     }
 
@@ -268,7 +394,7 @@ public class ViagemSeguraService extends Service {
         nm.createNotificationChannel(canal);
     }
 
-    private Notification montarNotificacao(String destinoTexto, String alerta, String distancia) {
+    private Notification montarNotificacao() {
         final Intent abrir = new Intent(this, MainActivity.class);
         abrir.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
@@ -278,20 +404,38 @@ public class ViagemSeguraService extends Service {
         }
         final PendingIntent voltar = PendingIntent.getActivity(this, 0, abrir, flags);
 
+        /*
+         * Uma linha só cabe na tela de bloqueio recolhida, então ela mostra o
+         * mais urgente que EXISTE — nada é inventado para preencher:
+         *   1. alerta de risco (com distância, quando veio junto);
+         *   2. próxima manobra;
+         *   3. destino.
+         * O texto expandido mostra o resto, sem repetir a linha principal.
+         */
         final StringBuilder linha = new StringBuilder("Protegido");
-        if (alerta != null && !alerta.isEmpty()) {
-            linha.append(" · ").append(alerta);
-            if (distancia != null && !distancia.isEmpty()) {
-                linha.append(" a ").append(distancia);
-            }
-        } else if (destinoTexto != null && !destinoTexto.isEmpty()) {
-            linha.append(" · ").append(destinoTexto);
+        if (!alertaAtual.isEmpty()) {
+            linha.append(" · ").append(alertaAtual);
+            if (!distanciaAtual.isEmpty()) linha.append(" a ").append(distanciaAtual);
+        } else if (!manobraAtual.isEmpty()) {
+            linha.append(" · ").append(manobraAtual);
+        } else if (!destinoAtual.isEmpty()) {
+            linha.append(" · ").append(destinoAtual);
+        }
+
+        final StringBuilder expandido = new StringBuilder(linha);
+        if (!alertaAtual.isEmpty() && !manobraAtual.isEmpty()) {
+            expandido.append("\nPróxima: ").append(manobraAtual);
+        }
+        if (!destinoAtual.isEmpty() && linha.indexOf(destinoAtual) < 0) {
+            expandido.append("\nDestino: ").append(destinoAtual);
         }
 
         final NotificationCompat.Builder b = new NotificationCompat.Builder(this, CANAL_ID)
                 .setContentTitle("Moto Anjo — Viagem Segura")
                 .setContentText(linha.toString())
-                .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+                // Ícone monocromático do próprio app: o de sistema virava um
+                // pino genérico na barra, e o arquivo já existia sem uso.
+                .setSmallIcon(R.drawable.ic_stat_moto_anjo)
                 .setContentIntent(voltar)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
@@ -301,9 +445,8 @@ public class ViagemSeguraService extends Service {
                 // de bloqueio, pelo caminho oficial do Android.
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC);
 
-        if (destinoTexto != null && !destinoTexto.isEmpty()) {
-            b.setStyle(new NotificationCompat.BigTextStyle()
-                    .bigText(linha + "\nDestino: " + destinoTexto));
+        if (expandido.length() > linha.length()) {
+            b.setStyle(new NotificationCompat.BigTextStyle().bigText(expandido.toString()));
         }
 
         return b.build();

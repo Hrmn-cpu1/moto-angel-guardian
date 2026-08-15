@@ -475,9 +475,17 @@ test("1B — o WhatsApp nunca abre sozinho", () => {
     const src = semComentarios(ler(arquivo));
     assert.ok(!src.includes("window.open"), `${arquivo} abre o WhatsApp sem toque do usuário`);
   }
-  // O único caminho para o WhatsApp é um <a href> que exige toque.
+  // O único caminho para o WhatsApp continua exigindo toque — RC4 trocou o
+  // <a target="_blank"> por um botão que passa pela ponte nativa, porque
+  // dentro do APK o redirecionamento do wa.me podia levar a WebView do SOS
+  // para uma página de erro.
   const painel = ler("src/components/SosPanel.tsx");
-  assert.ok(painel.includes("href={r.href}"), "o envio manual precisa ser um link tocável");
+  assert.ok(/onClick=\{\(\) => \{[\s\S]{0,120}abrirUrlExterna\(r\.href\)/.test(painel),
+    "o envio manual precisa ser um toque que passa pela ponte");
+  assert.ok(
+    !/target="_blank"/.test(semComentarios(painel)),
+    "target=_blank devolve o wa.me para a WebView principal",
+  );
 });
 
 test("1B — o painel não renderiza todo destinatário como link", () => {
@@ -488,8 +496,8 @@ test("1B — o painel não renderiza todo destinatário como link", () => {
     "precisa existir um caminho de renderização SEM link",
   );
   const posRegra = painel.indexOf("allowsManualSend(r.state)");
-  const posLink = painel.indexOf("href={r.href}");
-  assert.ok(posRegra > 0 && posLink > posRegra, "a regra precisa ser avaliada antes do link");
+  const posLink = painel.indexOf("abrirUrlExterna(r.href)");
+  assert.ok(posRegra > 0 && posLink > posRegra, "a regra precisa ser avaliada antes do envio");
 });
 
 test("1B — os acionadores ficam bloqueados durante a recuperação", () => {

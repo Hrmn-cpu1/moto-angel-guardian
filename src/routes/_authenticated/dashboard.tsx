@@ -17,6 +17,7 @@ import { useAlerts } from "@/hooks/useAlerts";
 import { useNearbyRiders } from "@/hooks/useNearbyRiders";
 import { useMapLayers } from "@/hooks/useMapLayers";
 import { useTrip } from "@/hooks/useTrip";
+import { rotuloDoDestino } from "@/lib/trip";
 import { useCockpitTelemetry } from "@/hooks/useCockpitTelemetry";
 import { useSafetyCopilot } from "@/hooks/useSafetyCopilot";
 import { useSosController } from "@/hooks/useSosController";
@@ -26,7 +27,15 @@ import { NextManeuver } from "@/components/NextManeuver";
 import { camada } from "@/lib/layers";
 import { abrirFolha, sosFlutuanteVisivel, type Folha } from "@/lib/sheets";
 import { celulaDeBusca } from "@/lib/coords";
-import { atualizarServicoDeViagem } from "@/lib/trip-service";
+import {
+  atualizarServicoDeViagem,
+  consultarPermissaoDeNotificacao,
+  descricaoDoServico,
+  montarAtualizacaoDaViagem,
+  servicoDisponivel,
+  type PermissaoNotificacao,
+} from "@/lib/trip-service";
+import { distanciaDaManobra, viaDaInstrucao } from "@/lib/navigation-cue";
 import { APARENCIA, distanciaCurta } from "@/lib/map-events";
 import { useRiskZones } from "@/hooks/useRiskZones";
 import { usePartners } from "@/hooks/usePartners";
@@ -81,7 +90,7 @@ function Dashboard() {
 
   // Viagem Segura: fonte única, no módulo. Trocar de aba não mata a viagem
   // (RC3 seções 8 e 39).
-  const { viagem, definirDestino, iniciar, cancelar, finalizar } = useTrip();
+  const { viagem, servico, definirDestino, iniciar, cancelar, finalizar } = useTrip();
   const viagemAtiva = viagem.estado === "ativa";
   const { velocidade, rumo, inclinacao, modo } = useCockpitTelemetry(viagemAtiva);
   // O SOS ativo é lido do controlador que já existe, pela fase — não invento
@@ -103,6 +112,40 @@ function Dashboard() {
   // A rota vem do Google pelo mapa; guardá-la aqui é o que permite mostrar
   // distância e ETA reais na faixa de destino.
   const aoCalcularRota = useCallback((r: RouteInfo | null) => setRota(r), []);
+
+  /* ---------------------------------------------------------------- *
+   * Proteção em segundo plano — o que o Android realmente disse.
+   *
+   * Nunca deduzido do estado da viagem: viagem ativa com serviço recusado é
+   * uma combinação possível, e era justamente ela que o app escondia.
+   * ---------------------------------------------------------------- */
+  const [permissaoNotificacao, setPermissaoNotificacao] = useState<PermissaoNotificacao | null>(
+    null,
+  );
+  const temServico = servicoDisponivel();
+
+  useEffect(() => {
+    if (!temServico) return;
+    void consultarPermissaoDeNotificacao()
+      .then(setPermissaoNotificacao)
+      .catch(() => undefined);
+  }, [temServico, viagem.estado]);
+
+  const segundoPlanoNaBarra = useMemo(
+    () => (temServico ? { ok: servico.ativo && servico.notificacaoVisivel, descricao: descricaoDoServico(servico) } : null),
+    [temServico, servico],
+  );
+
+  const segundoPlanoNaPreparacao = useMemo(() => {
+    if (!temServico) return null;
+    if (!permissaoNotificacao) return { ok: false, rotulo: "Verificando" };
+    return {
+      ok: permissaoNotificacao.podeMostrar,
+      rotulo: permissaoNotificacao.podeMostrar ? "Pronto" : "Sem notificação",
+    };
+  }, [temServico, permissaoNotificacao]);
+
+  const destinoDaNotificacao = useMemo(() => rotuloDoDestino(viagem), [viagem]);
 
   /* ---------------------------------------------------------------- *
    * Estabilidade de props do mapa.
@@ -176,15 +219,36 @@ function Dashboard() {
     [viagem.destino?.latitude, viagem.destino?.longitude, viagem.destino?.address],
   );
 
-  // A notificação da viagem mostra o próximo alerta — é o que aparece na tela
-  // de bloqueio. Só atualiza durante a viagem, e só quando o aviso muda.
+  /* Notificação da viagem = o que aparece na tela de bloqueio.
+   *
+   * BUG REAL (RC4): esta chamada mandava só alerta e distância. O plugin
+   * completava o destino com "" e o serviço remontava a notificação do zero,
+   * então a PRIMEIRA atualização — que acontece no início da viagem, quando
+   * ainda não há aviso — apagava o destino e sobrava a palavra "Protegido".
+   *
+   * Agora o destino e a próxima manobra viajam junto, e `montarAtualizacaoDaViagem`
+   * omite o que não conhecemos em vez de mandar vazio. Nenhum campo é
+   * inventado: sem rota, `manobra` vai vazia e o Android mantém o resto. */
   useEffect(() => {
     if (!viagemAtiva) return;
-    void atualizarServicoDeViagem({
-      alerta: aviso ? APARENCIA[aviso.categoria].rotulo : "",
-      distancia: aviso ? distanciaCurta(aviso.distanciaKm) : "",
-    });
-  }, [viagemAtiva, aviso?.id, aviso?.categoria, aviso?.distanciaKm]);
+    void atualizarServicoDeViagem(
+      montarAtualizacaoDaViagem({
+        destino: destinoDaNotificacao,
+        alerta: aviso ? APARENCIA[aviso.categoria].rotulo : "",
+        distanciaDoAlerta: aviso ? distanciaCurta(aviso.distanciaKm) : "",
+        manobra: viaDaInstrucao(rota?.proximaInstrucao),
+        distanciaDaManobra: distanciaDaManobra(rota?.proximaDistanciaM),
+      }),
+    );
+  }, [
+    viagemAtiva,
+    destinoDaNotificacao,
+    aviso?.id,
+    aviso?.categoria,
+    aviso?.distanciaKm,
+    rota?.proximaInstrucao,
+    rota?.proximaDistanciaM,
+  ]);
 
   useEffect(() => {
     if (!granted) return;
@@ -281,6 +345,7 @@ function Dashboard() {
           gpsOnline={watching && !!position}
           copilotOnline={!!position}
           tripActive={viagemAtiva}
+          segundoPlano={segundoPlanoNaBarra}
         />
 
         <DestinationBar
@@ -408,6 +473,7 @@ function Dashboard() {
             viagem={viagem}
             gpsOk={!!position}
             contato={null}
+            segundoPlano={segundoPlanoNaPreparacao}
             onIniciar={iniciar}
             onCancelar={cancelar}
           />

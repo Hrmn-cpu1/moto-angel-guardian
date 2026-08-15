@@ -2,7 +2,7 @@ import { ShieldCheck, Gauge, X } from "lucide-react";
 import { camada } from "@/lib/layers";
 import { distanciaCurta, APARENCIA, type EventoNoMapa } from "@/lib/map-events";
 import type { Cardeal, Inclinacao } from "@/lib/ride-telemetry";
-import type { Viagem } from "@/lib/trip";
+import { rotuloDoDestino, type Viagem } from "@/lib/trip";
 import { TelemetryStrip } from "@/components/TelemetryStrip";
 
 /**
@@ -15,15 +15,9 @@ import { TelemetryStrip } from "@/components/TelemetryStrip";
  *   . nenhuma animação decorativa.
  */
 
-function rotuloDoDestino(v: Viagem): string {
-  const d = v.destino;
-  if (!d) return "Destino";
-  if (d.label) return d.label;
-  if (d.address) return d.address;
-  if (d.latitude != null && d.longitude != null) {
-    return `${d.latitude.toFixed(4)}, ${d.longitude.toFixed(4)}`;
-  }
-  return "Destino";
+/** Uma fonte só para o rótulo (`trip.ts`); aqui só o texto de espera. */
+function rotuloVisivel(v: Viagem): string {
+  return rotuloDoDestino(v) || "Destino";
 }
 
 /* ================================================================== *
@@ -34,6 +28,11 @@ interface PreparacaoProps {
   viagem: Viagem;
   gpsOk: boolean;
   contato: string | null;
+  /**
+   * Estado do segundo plano ANTES de começar — é aqui que ainda dá para
+   * resolver. `null` fora do Android: nada a prometer onde não há serviço.
+   */
+  segundoPlano?: { ok: boolean; rotulo: string } | null;
   onIniciar: () => void;
   onCancelar: () => void;
 }
@@ -42,6 +41,7 @@ export function PreparacaoDeViagem({
   viagem,
   gpsOk,
   contato,
+  segundoPlano = null,
   onIniciar,
   onCancelar,
 }: PreparacaoProps) {
@@ -50,6 +50,7 @@ export function PreparacaoDeViagem({
     ["Escudo Moto Anjo", "Ativo", true],
     ["Acompanhamento", contato ?? "Nenhum contato", contato != null],
   ];
+  if (segundoPlano) itens.push(["Segundo plano", segundoPlano.rotulo, segundoPlano.ok]);
 
   return (
     <div
@@ -63,7 +64,7 @@ export function PreparacaoDeViagem({
             Viagem segura
           </p>
           <p className="mt-1 truncate text-sm font-semibold text-foreground">
-            {rotuloDoDestino(viagem)}
+            {rotuloVisivel(viagem)}
           </p>
         </div>
         <button
@@ -92,6 +93,16 @@ export function PreparacaoDeViagem({
         <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
           Sem contato de acompanhamento, o SOS continua funcionando — mas ninguém será avisado
           automaticamente.
+        </p>
+      )}
+
+      {/* A viagem NUNCA é bloqueada por isto: sem notificação ela roda em
+          primeiro plano. O que não pode é o app dizer que protege com a tela
+          apagada quando o Android negou o aviso permanente. */}
+      {segundoPlano && !segundoPlano.ok && (
+        <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
+          Sem a notificação da viagem, o Moto Anjo não consegue mostrar nada na tela de bloqueio.
+          Ative as notificações do app nas configurações do Android.
         </p>
       )}
 

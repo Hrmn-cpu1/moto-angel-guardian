@@ -638,7 +638,9 @@ test("FGS.6/7: nenhuma permissão invasiva foi adicionada", () => {
 
 test("FGS: o plugin é uma ponte fina, sem estado de viagem próprio", () => {
   const plugin = ler(`${ANDROID_JAVA}/ViagemSeguraPlugin.java`);
-  assert.ok(/@CapacitorPlugin\(name = "ViagemSegura"\)/.test(plugin));
+  // RC4: a anotação ganhou `permissions` (POST_NOTIFICATIONS). O nome do
+  // plugin continua sendo o contrato com o JS.
+  assert.ok(/@CapacitorPlugin\(\s*name = "ViagemSegura"/.test(plugin));
   for (const metodo of ["iniciar", "atualizar", "parar"]) {
     assert.ok(new RegExp(`public void ${metodo}\\(PluginCall`).test(plugin), `falta ${metodo}`);
   }
@@ -898,7 +900,11 @@ test("APK: o motivo de não embutir o frontend está escrito, não subentendido"
 
 test("APK: o CI declara qual frontend o APK carrega e nomeia o artefato", () => {
   const wf = ler(".github/workflows/android.yml");
-  assert.ok(/moto-anjo-RC3-hotfix\.apk/.test(wf), "artefato precisa de nome claro");
+  // RC4: o nome do APK passou a ser derivado do build.gradle. Nome fixo no
+  // YAML foi exatamente o que fez o workflow antigo publicar "v3 / 1.2"
+  // enquanto o projeto já estava em outra versão.
+  assert.ok(/moto-anjo-\$\{VNAME\}-\$\{VCODE\}-debug\.apk/.test(wf), "nome do APK fixo no YAML");
+  assert.ok(!/versionCode: 3|versionName: 1\.2/.test(wf), "metadado antigo de volta no CI");
   assert.ok(/APK_WEB_URL/.test(wf), "o log precisa dizer qual URL o APK abre");
   assert.ok(/frontend embutido no APK: NAO/.test(wf), "o metadado precisa ser honesto");
   assert.ok(/MOTOANJO_WEB_URL/.test(wf));

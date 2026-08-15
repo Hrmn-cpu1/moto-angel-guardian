@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { BadgePercent, MapPin, Navigation } from "lucide-react";
+import { abrirNavegacaoExterna } from "@/lib/external-navigation";
 import { AppShell } from "@/components/AppShell";
 import { Header } from "@/components/Header";
 import { usePartners, filterPartners, BENEFIT_FILTERS } from "@/hooks/usePartners";
@@ -126,14 +127,15 @@ function BenefitsPage() {
                 </p>
               )}
               {p.lat != null && p.lng != null && (
-                <a
-                  href={`https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
+                  onClick={() =>
+                    void abrirNavegacaoExterna("google", { latitude: p.lat, longitude: p.lng })
+                  }
                   className="mt-3 inline-flex items-center gap-1.5 rounded-full gold-gradient px-3 py-1.5 text-[11px] font-semibold text-black"
                 >
                   <Navigation size={12} /> Traçar rota
-                </a>
+                </button>
               )}
             </article>
           ))}

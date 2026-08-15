@@ -68,8 +68,14 @@ const config: CapacitorConfig = {
       "*.google.com",
       "*.googleapis.com",
       "*.gstatic.com",
-      "wa.me",
-      "*.whatsapp.com",
+      // `wa.me` e `*.whatsapp.com` saíram daqui de propósito.
+      //
+      // Estar nesta lista AUTORIZA a WebView principal a navegar para o host.
+      // O wa.me responde com redirecionamento para esquema de aplicativo, que
+      // a WebView não sabe abrir — era assim que a tela do SOS podia virar uma
+      // página de erro. Fora da lista, o Capacitor entrega o link ao sistema,
+      // que é o comportamento correto. Todo acesso ao WhatsApp passa por
+      // `src/lib/external-navigation.ts`.
     ],
   },
   android: {

@@ -94,14 +94,19 @@ test("4) plugin indisponível devolve cancelador inerte", () => {
   limpar();
 });
 
-test("5) falha ao iniciar o serviço devolve false em vez de lançar", async () => {
+test("5) falha ao iniciar o serviço vira estado controlado, não exceção", async () => {
   instalarPlugin({
     iniciar: () => {
       throw new Error("service start failed");
     },
     addListener: () => ({ remove: () => {} }),
   });
-  assert.equal(await iniciarServicoDeViagem("Centro"), false);
+  // RC4: o retorno deixou de ser boolean. O contrato continua o mesmo — não
+  // lançar — e ficou mais forte: agora o motivo da falha viaja junto, em vez
+  // de virar um `false` mudo.
+  const r = await iniciarServicoDeViagem("Centro");
+  assert.equal(r.ativo, false, "não pode anunciar proteção que não existe");
+  assert.equal(r.motivo, "falha_ao_iniciar");
   limpar();
 });
 

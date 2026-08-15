@@ -129,8 +129,15 @@ jobs:
           set -e
           ORIGEM=android/app/build/outputs/apk/debug/app-debug.apk
           test -f "$ORIGEM" || { echo "APK não foi gerado"; exit 1; }
-          APK=moto-anjo-RC3-hotfix.apk
+          # O nome sai do build.gradle, nunca de constante no YAML: era assim
+          # que o outro workflow publicava "v3 / 1.2" enquanto o projeto já
+          # estava em outra versão.
+          VCODE=$(grep -oE "versionCode +[0-9]+" android/app/build.gradle | grep -oE "[0-9]+")
+          VNAME=$(grep -oE 'versionName +"[^"]+"' android/app/build.gradle | cut -d'"' -f2)
+          test -n "$VCODE" && test -n "$VNAME" || { echo "versão não lida do build.gradle"; exit 1; }
+          APK="moto-anjo-${VNAME}-${VCODE}-debug.apk"
           cp "$ORIGEM" "$APK"
+          echo "apk=$APK" >> "$GITHUB_OUTPUT"
           echo "sha256: $(sha256sum $APK | cut -d' ' -f1)"
           echo "tamanho: $(du -h $APK | cut -f1)"
           {
@@ -150,9 +157,9 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: moto-anjo-RC3-hotfix
+          name: moto-anjo-android-debug
           path: |
-            moto-anjo-RC3-hotfix.apk
+            ${{ steps.meta.outputs.apk }}
             android-build-metadata.txt
           retention-days: 14
 

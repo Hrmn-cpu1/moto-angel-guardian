@@ -51,6 +51,26 @@ export const CHAVE_VIAGEM = "moto-anjo:viagem";
  * tenha pedido significa ligar rastreamento e sensores sem consentimento. O
  * destino chega, aparece na tela, e espera confirmação.
  */
+/**
+ * Rótulo curto do destino.
+ *
+ * Uma implementação só: a tela e a notificação da tela de bloqueio precisam
+ * dizer a MESMA coisa. Havia duas cópias divergentes (cockpit e hook), e a
+ * notificação acabou recebendo uma terceira versão — que é como o destino
+ * some sem ninguém notar. Vazio quando não há destino; quem quiser um texto
+ * de espera coloca o seu.
+ */
+export function rotuloDoDestino(v: Viagem): string {
+  const d = v.destino;
+  if (!d) return "";
+  if (d.label) return d.label;
+  if (d.address) return d.address;
+  if (d.latitude != null && d.longitude != null) {
+    return `${d.latitude.toFixed(3)}, ${d.longitude.toFixed(3)}`;
+  }
+  return "";
+}
+
 export function receberDestino(
   viagem: Viagem,
   entrada: unknown,
