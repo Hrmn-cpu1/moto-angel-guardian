@@ -16,6 +16,21 @@ dist-ssr
 .nitro
 *.local
 
+# Segredos e configuração local.
+#
+# `.env` estava versionado com valores reais. Ele volta a ser arquivo LOCAL:
+# o modelo de variáveis fica em `.env.example`, que continua no repositório
+# e não carrega valor de verdade.
+#
+# Tirar do índice sem apagar a cópia local (rodar UMA vez):
+#     git rm --cached .env
+#     git commit -m "chore: remove .env do versionamento"
+# `git rm --cached` remove só do Git; o arquivo continua no disco e o app
+# local segue funcionando.
+.env
+.env.*
+!.env.example
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars

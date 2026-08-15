@@ -20,6 +20,10 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+        with:
+          # O lint incremental compara com o commit anterior. Com o padrão
+          # (fetch-depth: 1) não existe base e `git diff` falharia.
+          fetch-depth: 0
 
       - name: Node
         uses: actions/setup-node@v4
@@ -49,12 +53,45 @@ jobs:
       - name: Build web
         run: npm run build
 
-      # Lint é informativo por enquanto: a base tem formatação herdada do
-      # shadcn que não vale uma refatoração. O que não pode passar é erro
-      # novo — por isso o resultado fica visível no log, sem derrubar o gate.
-      - name: Lint (informativo)
-        run: npm run lint || echo "LINT_WARNINGS=1 >> ver log acima"
+      # Lint em duas camadas.
+      #
+      # O problema real não era o lint bloquear — ele nunca bloqueou (`|| echo`
+      # E `continue-on-error`). O problema é o inverso: com centenas de erros
+      # históricos de Prettier na base herdada do shadcn, um erro NOVO fica
+      # invisível no meio do ruído, e ninguém lê um passo que sempre grita.
+      #
+      # Camada 1: o total histórico continua sem derrubar nada, mas agora sai
+      # como número, que dá para acompanhar de um build para o outro.
+      - name: Lint global (informativo — não bloqueia)
+        run: |
+          npm run lint > /tmp/lint.txt 2>&1 || true
+          TOTAL=$(grep -cE "error|warning" /tmp/lint.txt || true)
+          echo "problemas de lint na base inteira: $TOTAL (histórico, não bloqueia)"
+          tail -40 /tmp/lint.txt
         continue-on-error: true
+
+      # Camada 2: só o que ESTE push mudou. Arquivo histórico não entra, então
+      # os erros antigos não bloqueiam nada; erro novo bloqueia, que é o único
+      # jeito de a base parar de piorar. Conserto: `npx prettier --write <arquivo>`.
+      - name: Lint dos arquivos alterados (bloqueia)
+        run: |
+          set -e
+          BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            echo "sem base de comparação (primeiro push ou force-push) — nada a lintar"
+            exit 0
+          fi
+          if ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "commit base indisponível no checkout — nada a lintar"
+            exit 0
+          fi
+          ALTERADOS=$(git diff --name-only --diff-filter=ACMR "$BASE" HEAD -- '*.ts' '*.tsx' | tr '\n' ' ')
+          if [ -z "$ALTERADOS" ]; then
+            echo "nenhum arquivo TS/TSX alterado neste push"
+            exit 0
+          fi
+          echo "lintando apenas: $ALTERADOS"
+          npx eslint $ALTERADOS
 
       # ---- Verificações de release ----
       - name: Conferir configuração Android
@@ -73,17 +110,33 @@ jobs:
             echo "package id mudou: $PKG"; exit 1
           fi
 
+      # Este passo estava QUEBRADO e provado quebrado: a linha de continuação
+      # `\` era seguida de uma linha só com espaços, então o comando terminava
+      # ali. O shell executava `--include=*.ts` como se fosse um programa
+      # ("command not found"), esse era o último status do `if`, e a condição
+      # dava falso SEMPRE — o gate nunca reprovou nada. Pior: o primeiro grep
+      # rodava mesmo assim, sobre o repositório inteiro, com `-o`, e IMPRIMIA
+      # OS VALORES ENCONTRADOS no log do Actions.
+      #
+      # Agora: varre exatamente o que está versionado (`git ls-files`, que pega
+      # arquivos sem extensão como `.env`, invisíveis para o filtro anterior) e
+      # imprime SÓ O NOME DO ARQUIVO, nunca o trecho casado.
       - name: Nenhum segredo no repositório
         run: |
           set -e
-          if grep -rnoE "AIza[0-9A-Za-z_-]{20,}|sb_secret_[A-Za-z0-9]+|EAA[A-Za-z0-9]{30,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}" \
-          --exclude-dir=node_modules \
-        
-              --include="*.ts" --include="*.tsx" --include="*.sql" --include="*.json" \
-              --include="*.gradle" --include="*.xml" --include="*.yml" . ; then
-            echo "possível segredo commitado"; exit 1
+          PADRAO='AIza[0-9A-Za-z_-]{20,}|sb_secret_[A-Za-z0-9]+|EAA[A-Za-z0-9]{30,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}'
+          # Sem esta guarda, um `git ls-files` que falhasse deixaria a lista
+          # vazia e o gate passaria em silêncio — o defeito que estamos matando.
+          git rev-parse --is-inside-work-tree > /dev/null
+          ACHADOS=$(git ls-files -z | xargs -0 -r grep -lIE "$PADRAO" 2>/dev/null || true)
+          # Arquivos de exemplo e patches de histórico usam chave de amostra.
+          ACHADOS=$(echo "$ACHADOS" | grep -vE '^(\.env\.example|RC[0-9].*\.patch)$' || true)
+          if [ -n "$ACHADOS" ]; then
+            echo "possível segredo em arquivo versionado (valor não impresso de propósito):"
+            echo "$ACHADOS"
+            exit 1
           fi
-          echo "nenhum segredo encontrado"
+          echo "nenhum segredo em arquivo versionado"
 
       - name: Migrations presentes e ordenadas
         run: |
