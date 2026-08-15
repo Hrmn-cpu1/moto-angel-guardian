@@ -230,7 +230,10 @@ test("PERF.2: o teto fica com os pontos de MAIOR peso", () => {
   );
   assert.deepEqual(pontosDeRiscoVisiveis([], 10), [], "lista vazia não quebra");
   // O componente precisa usar o helper, e não uma cópia da regra.
-  assert.match(semComentarios(ler("src/components/RealMap.tsx")), /pontosDeRiscoVisiveis\(riskPoints\)/);
+  assert.match(
+    semComentarios(ler("src/components/RealMap.tsx")),
+    /pontosDeRiscoVisiveis\(riskPoints\)/,
+  );
 });
 
 /* ================================================================== *
@@ -247,7 +250,10 @@ test("ESCOPO.RC5: SOS, RLS e presença seguem intactos", () => {
     "DROP POLICY",
     "ALTER TABLE public.sos_events",
   ]) {
-    assert.ok(!heat.toUpperCase().includes(proibido.toUpperCase()), `migration destrutiva: ${proibido}`);
+    assert.ok(
+      !heat.toUpperCase().includes(proibido.toUpperCase()),
+      `migration destrutiva: ${proibido}`,
+    );
   }
   // Só substitui a função de leitura, nada mais.
   assert.match(heat, /CREATE OR REPLACE FUNCTION public\.risk_heatmap/);

@@ -980,7 +980,8 @@ export default function RealMap({
       {state === "ready" && rotaIndisponivel && destination && (
         <div className="absolute inset-x-4 top-3 z-10 flex items-center justify-between gap-3 rounded-2xl border border-gold/30 bg-black/80 px-4 py-2.5">
           <p className="text-[11px] leading-snug text-muted-foreground">
-            {diagnostico?.mensagem ?? "Rota temporariamente indisponível. Seu destino continua salvo."}
+            {diagnostico?.mensagem ??
+              "Rota temporariamente indisponível. Seu destino continua salvo."}
           </p>
           {/* O botão só aparece quando repetir pode mudar o resultado. Oferecer
               "tentar novamente" para REQUEST_DENIED é empurrar o motociclista
