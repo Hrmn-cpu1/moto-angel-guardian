@@ -290,6 +290,55 @@ export async function abrirNavegacaoExterna(
   return { ok: false, url, via: "nenhum" };
 }
 
+/**
+ * URL externa aceitável.
+ *
+ * Só HTTPS. Recusa `javascript:`, `data:`, `file:`, `content:` e — o motivo
+ * de este módulo existir — `intent:`. Nenhuma URL relativa: relativo abriria
+ * DENTRO da WebView, que é exatamente o que não pode acontecer.
+ */
+export function urlExternaSegura(bruta: unknown): string | null {
+  if (typeof bruta !== "string") return null;
+  const texto = bruta.trim();
+  if (!texto) return null;
+  try {
+    const u = new URL(texto);
+    return u.protocol === "https:" ? u.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Abre qualquer link externo FORA da WebView principal.
+ *
+ * Existe porque o WhatsApp escapava desta ponte: `SosPanel` usava
+ * `<a target="_blank">` e a tela de compartilhamento usava `window.open`,
+ * ambos com `wa.me` — que redireciona para esquema de aplicativo. No pior
+ * caso a WebView do SOS ia parar numa página de erro. Agora todo mundo passa
+ * pelo mesmo caminho da navegação de mapas.
+ */
+export async function abrirUrlExterna(
+  bruta: unknown,
+  ponte: PonteExterna = ponteReal,
+): Promise<AberturaExterna> {
+  const url = urlExternaSegura(bruta);
+  if (!url) return { ok: false, url: "", via: "nenhum" };
+
+  if (ponte.abrirJanela(url)) return { ok: true, url, via: "janela" };
+
+  if (ponte.nativo()) {
+    try {
+      await ponte.abrirNavegadorNativo(url);
+      return { ok: true, url, via: "navegador-nativo" };
+    } catch {
+      return { ok: false, url, via: "nenhum" };
+    }
+  }
+
+  return { ok: false, url, via: "nenhum" };
+}
+
 /** Só ver o ponto no mapa, sem traçar rota — mesma ponte. */
 export async function abrirPontoExterno(
   destino: Destination | null,

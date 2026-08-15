@@ -10,6 +10,15 @@ interface Props {
   copilotOnline?: boolean;
   /** Viagem Segura em curso. */
   tripActive?: boolean;
+  /**
+   * Proteção em segundo plano: um ponto, não um painel.
+   *
+   * `null` fora do Android — nada a prometer onde o serviço não existe.
+   * A descrição vai no title/aria-label porque quem está pilotando não tem
+   * espaço para ler um parágrafo aqui; a explicação por extenso mora no
+   * painel de preparação, onde ainda dá para resolver.
+   */
+  segundoPlano?: { ok: boolean; descricao: string } | null;
 }
 
 /** Slim translucent status strip floating over the full-screen home map. */
@@ -18,6 +27,7 @@ export function HomeTopBar({
   sharing = false,
   copilotOnline = false,
   tripActive = false,
+  segundoPlano = null,
 }: Props) {
   const { user } = useAuth();
   const [online, setOnline] = useState(true);
@@ -35,11 +45,16 @@ export function HomeTopBar({
 
   const initial = (user?.name ?? "M").slice(0, 1).toUpperCase();
 
-  const indicadores: Array<[string, boolean]> = [
-    ["GPS", gpsOnline],
-    ["COPILOT", copilotOnline],
-    ["VIAGEM", tripActive],
+  const indicadores: Array<[string, boolean, string | null]> = [
+    ["GPS", gpsOnline, null],
+    ["COPILOT", copilotOnline, null],
+    ["VIAGEM", tripActive, null],
   ];
+  // Só aparece durante a viagem: fora dela não há serviço a reportar, e um
+  // indicador apagado por definição só ensinaria a ignorar indicador.
+  if (tripActive && segundoPlano) {
+    indicadores.push(["FUNDO", segundoPlano.ok, segundoPlano.descricao]);
+  }
 
   return (
     <div className="pointer-events-auto absolute inset-x-3 top-[var(--ma-top)] z-30 flex items-center gap-2.5 rounded-full border border-gold/25 bg-black/70 px-3 py-1.5 backdrop-blur-md">
@@ -64,13 +79,19 @@ export function HomeTopBar({
           {user?.name?.split(" ")[0] ?? "Motociclista"}
         </p>
         <div className="flex items-center gap-2 text-[8px] font-semibold uppercase tracking-widest">
-          {indicadores.map(([rotulo, ativo]) => (
+          {indicadores.map(([rotulo, ativo, aviso]) => (
             <span
               key={rotulo}
-              className={`flex items-center gap-1 ${ativo ? "text-gold" : "text-muted-foreground"}`}
+              title={aviso ?? undefined}
+              aria-label={aviso ?? undefined}
+              className={`flex items-center gap-1 ${
+                ativo ? "text-gold" : aviso ? "text-emergency" : "text-muted-foreground"
+              }`}
             >
               <span
-                className={`h-1.5 w-1.5 rounded-full ${ativo ? "bg-gold" : "bg-muted-foreground/60"}`}
+                className={`h-1.5 w-1.5 rounded-full ${
+                  ativo ? "bg-gold" : aviso ? "bg-emergency" : "bg-muted-foreground/60"
+                }`}
               />
               {rotulo}
             </span>

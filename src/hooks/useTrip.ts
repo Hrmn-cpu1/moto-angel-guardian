@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { iniciarServicoDeViagem, pararServicoDeViagem } from "@/lib/trip-service";
+import {
+  assinarEstadoDoServico,
+  consultarEstadoDoServico,
+  estadoAtualDoServico,
+  iniciarServicoDeViagem,
+  ouvirEstadoDoServico,
+  pararServicoDeViagem,
+  type EstadoServicoViagem,
+} from "@/lib/trip-service";
 import { setTripDiagnosticState } from "@/lib/trip-diagnostics";
 import {
   VIAGEM_INICIAL,
@@ -8,6 +16,7 @@ import {
   finalizarViagem,
   iniciarViagem,
   receberDestino,
+  rotuloDoDestino,
   salvarViagem,
   type Viagem,
 } from "@/lib/trip";
@@ -27,17 +36,6 @@ import {
 let viagemAtual: Viagem = { ...VIAGEM_INICIAL };
 let hidratado = false;
 const assinantes = new Set<(v: Viagem) => void>();
-
-function rotuloDoDestino(v: Viagem): string {
-  const d = v.destino;
-  if (!d) return "";
-  if (d.label) return d.label;
-  if (d.address) return d.address;
-  if (d.latitude != null && d.longitude != null) {
-    return `${d.latitude.toFixed(3)}, ${d.longitude.toFixed(3)}`;
-  }
-  return "";
-}
 
 function publicar(v: Viagem) {
   const anterior = viagemAtual;
@@ -67,11 +65,29 @@ function publicar(v: Viagem) {
   for (const a of assinantes) a(v);
 }
 
+/**
+ * O listener nativo de estado vive enquanto o app viver: é uma ponte de
+ * processo, como o bootstrap de autenticação. Registrar por montagem criaria e
+ * destruiria o listener a cada troca de aba.
+ */
+let ouvindoServico = false;
+
 export function useTrip() {
   const [viagem, setViagem] = useState<Viagem>(viagemAtual);
+  // Estado REAL do serviço de primeiro plano — nunca deduzido do estado da
+  // viagem. Viagem ativa e serviço recusado é uma combinação possível, e é
+  // exatamente ela que a tela precisa conseguir mostrar.
+  const [servico, setServico] = useState<EstadoServicoViagem>(estadoAtualDoServico);
 
   useEffect(() => {
     assinantes.add(setViagem);
+    const desassinarServico = assinarEstadoDoServico(setServico);
+    if (!ouvindoServico) {
+      ouvindoServico = true;
+      // O store publica para todos os assinantes; aqui só ligamos o cano.
+      ouvirEstadoDoServico(() => {});
+    }
+    setServico(estadoAtualDoServico());
     // A leitura do armazenamento acontece depois da montagem: esta rota roda
     // com SSR, e tocar em localStorage na renderização do servidor quebraria
     // a hidratação.
@@ -82,8 +98,12 @@ export function useTrip() {
       else void pararServicoDeViagem().catch(() => undefined); // sem viagem, nenhum serviço órfão
     }
     setViagem(viagemAtual);
+    // Voltar para a tela não pode herdar um estado velho: quem sabe se o
+    // serviço está de pé é o Android.
+    if (viagemAtual.estado === "ativa") void consultarEstadoDoServico().catch(() => undefined);
     return () => {
       assinantes.delete(setViagem);
+      desassinarServico();
     };
   }, []);
 
@@ -105,5 +125,5 @@ export function useTrip() {
     [],
   );
 
-  return { viagem, definirDestino, iniciar, cancelar, finalizar };
+  return { viagem, servico, definirDestino, iniciar, cancelar, finalizar };
 }

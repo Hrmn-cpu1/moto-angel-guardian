@@ -11,6 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { camada } from "@/lib/layers";
 import { allowsManualSend, claimsDelivery, sosDeliveryLabel } from "@/lib/sos-client";
+import { abrirUrlExterna } from "@/lib/external-navigation";
 import type { SosController } from "@/hooks/useSosController";
 
 export type SosPanelLayout = "overlay" | "inline" | "page";
@@ -180,20 +181,25 @@ export function SosPanel({ sos, layout = "overlay", onAddContacts, className }: 
                   }
 
                   return (
-                    <a
+                    // Botão, não <a target="_blank">: dentro do APK o link do
+                    // wa.me redireciona para esquema de aplicativo e podia
+                    // levar a WebView do SOS para uma página de erro. O toque
+                    // continua obrigatório — nada abre sozinho.
+                    <button
                       key={r.id}
-                      href={r.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => sos.markOpened(r.id)}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-gold/25 bg-black/50 px-3 py-2.5 transition hover:bg-gold/10"
+                      type="button"
+                      onClick={() => {
+                        void abrirUrlExterna(r.href);
+                        sos.markOpened(r.id);
+                      }}
+                      className="flex w-full items-center justify-between gap-3 rounded-xl border border-gold/25 bg-black/50 px-3 py-2.5 text-left transition hover:bg-gold/10"
                     >
                       {identidade}
                       <span className="flex shrink-0 items-center gap-1 text-[11px] font-semibold uppercase tracking-widest text-gold">
                         <Send size={12} />
                         {r.state === "recusada_pelo_provedor" ? "Enviar à mão" : "Enviar"}
                       </span>
-                    </a>
+                    </button>
                   );
                 })}
               </div>

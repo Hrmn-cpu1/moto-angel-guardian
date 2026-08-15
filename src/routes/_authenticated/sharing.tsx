@@ -11,6 +11,7 @@ import { useLiveShare } from "@/hooks/useLiveShare";
 import { useContacts } from "@/hooks/useContacts";
 import { useLocationShares } from "@/hooks/useLocationShares";
 import { useRiderVisibility } from "@/hooks/useRiderVisibility";
+import { abrirUrlExterna } from "@/lib/external-navigation";
 
 export const Route = createFileRoute("/_authenticated/sharing")({
   head: () => ({
@@ -57,10 +58,10 @@ function SharingPage() {
       return;
     }
     const msg = `🏍️ MOTO ANJO — Estou compartilhando minha localização com você, ${name}.\n📍 ${link}`;
-    window.open(
+    // Pela ponte: `window.open` direto podia levar a WebView principal para o
+    // redirecionamento do wa.me e derrubar a tela do app.
+    void abrirUrlExterna(
       `https://wa.me/${phone.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`,
-      "_blank",
-      "noopener,noreferrer",
     );
   };
 

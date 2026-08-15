@@ -24,17 +24,61 @@ export interface PosicaoNativa {
   quandoMs: number;
 }
 
+/**
+ * Motivo publicado pelo Android. Os quatro primeiros vêm de
+ * `ViagemSeguraService`; os dois últimos nascem aqui, quando nem chegamos a
+ * falar com o serviço.
+ */
+export type MotivoServico =
+  | "ativo"
+  | "parado"
+  | "sem_permissao_localizacao"
+  | "sem_permissao_notificacao"
+  | "falha_ao_iniciar"
+  | "sem_plugin";
+
+/**
+ * Estado REAL do serviço de primeiro plano.
+ *
+ * `ativo` e `notificacaoVisivel` são perguntas diferentes de propósito: no
+ * Android 13+ o serviço pode estar rodando com a notificação bloqueada, e é
+ * justamente esse caso que a tela precisa contar em vez de esconder.
+ */
+export interface EstadoServicoViagem {
+  ativo: boolean;
+  notificacaoVisivel: boolean;
+  motivo: MotivoServico;
+  /** O app chegou a pedir o início nesta transição. */
+  solicitado: boolean;
+}
+
+export interface PermissaoNotificacao {
+  /** Android 13+: existe diálogo a ser mostrado. */
+  suportaRuntime: boolean;
+  concedida: boolean;
+  /** Concedida E canal ligado nas configurações do sistema. */
+  podeMostrar: boolean;
+}
+
+/** O que a notificação da viagem deve mostrar. Ver `montarAtualizacaoDaViagem`. */
+export interface AtualizacaoDeViagem {
+  /** Ausente = mantém o que o serviço já sabe. Nunca mandamos destino vazio. */
+  destino?: string;
+  alerta: string;
+  distancia: string;
+  manobra: string;
+}
+
 type PluginViagem = {
-  iniciar: (o: { destino?: string }) => Promise<{ ativo: boolean }>;
-  atualizar: (o: {
-    destino?: string;
-    alerta?: string;
-    distancia?: string;
-  }) => Promise<{ ativo: boolean }>;
-  parar: () => Promise<{ ativo: boolean }>;
+  iniciar: (o: { destino?: string }) => Promise<Partial<EstadoServicoViagem>>;
+  atualizar: (o: AtualizacaoDeViagem) => Promise<Partial<EstadoServicoViagem>>;
+  parar: () => Promise<Partial<EstadoServicoViagem>>;
+  consultarEstado?: () => Promise<Partial<EstadoServicoViagem>>;
+  permissaoNotificacao?: () => Promise<Partial<PermissaoNotificacao>>;
+  pedirPermissaoNotificacao?: () => Promise<Partial<PermissaoNotificacao>>;
   addListener: (
     evento: string,
-    cb: (p: PosicaoNativa) => void,
+    cb: (dados: PosicaoNativa & Partial<EstadoServicoViagem>) => void,
   ) => ListenerHandle | Promise<ListenerHandle>;
 };
 
@@ -70,34 +114,200 @@ function plugin(): PluginViagem | null {
 
 /** O serviço existe neste aparelho? A interface usa para não prometer nada. */
 export function servicoDisponivel(): boolean {
+  if (typeof window === "undefined") return false;
   return plugin() !== null;
-}
-
-export async function iniciarServicoDeViagem(destino?: string): Promise<boolean> {
-  const p = plugin();
-  if (!p) return false;
-  try {
-    setTripDiagnosticState({ action: "native_trip_service_start" });
-    await p.iniciar({ destino: destino ?? "" });
-    return true;
-  } catch (error) {
-    console.error(TRIP_NATIVE_ERROR, recordTripDiagnostic("native.trip.start", error));
-    // Falhar aqui não pode derrubar a viagem: ela continua em primeiro plano.
-    return false;
-  }
 }
 
 const TRIP_NATIVE_ERROR = "Moto Anjo native trip service error";
 
-export async function atualizarServicoDeViagem(dados: {
-  destino?: string;
-  alerta?: string;
-  distancia?: string;
-}): Promise<void> {
+export const SERVICO_INICIAL: EstadoServicoViagem = {
+  ativo: false,
+  notificacaoVisivel: false,
+  motivo: "parado",
+  solicitado: false,
+};
+
+/* ================================================================== *
+ * Espelho do estado do serviço
+ *
+ * Isto NÃO é uma segunda fonte de verdade da viagem — essa continua sendo
+ * `trip.ts`. É a última resposta do Android sobre o serviço dele, guardada
+ * para a tela poder dizer o que está acontecendo sem perguntar de novo.
+ * ================================================================== */
+
+let estadoDoServico: EstadoServicoViagem = { ...SERVICO_INICIAL };
+const assinantesDeEstado = new Set<(e: EstadoServicoViagem) => void>();
+
+export function estadoAtualDoServico(): EstadoServicoViagem {
+  return estadoDoServico;
+}
+
+export function assinarEstadoDoServico(cb: (e: EstadoServicoViagem) => void): () => void {
+  assinantesDeEstado.add(cb);
+  return () => {
+    assinantesDeEstado.delete(cb);
+  };
+}
+
+const MOTIVOS: MotivoServico[] = [
+  "ativo",
+  "parado",
+  "sem_permissao_localizacao",
+  "sem_permissao_notificacao",
+  "falha_ao_iniciar",
+  "sem_plugin",
+];
+
+/** Normaliza o que veio do Java e avisa quem estiver ouvindo. */
+function publicarEstadoDoServico(bruto: Partial<EstadoServicoViagem>): EstadoServicoViagem {
+  const motivo = MOTIVOS.includes(bruto.motivo as MotivoServico)
+    ? (bruto.motivo as MotivoServico)
+    : "parado";
+  estadoDoServico = {
+    ativo: bruto.ativo === true,
+    notificacaoVisivel: bruto.notificacaoVisivel === true,
+    motivo,
+    solicitado: bruto.solicitado === true,
+  };
+  for (const a of assinantesDeEstado) a(estadoDoServico);
+  return estadoDoServico;
+}
+
+/** Frase curta para a tela. Pura: o texto é testado sem Android. */
+export function descricaoDoServico(e: EstadoServicoViagem): string {
+  if (e.ativo && e.notificacaoVisivel) return "Proteção em segundo plano ativa";
+  if (e.ativo) return "Rodando sem aviso na tela — notificações desligadas";
+  switch (e.motivo) {
+    case "sem_permissao_localizacao":
+      return "Sem permissão de localização para o segundo plano";
+    case "sem_permissao_notificacao":
+      return "Notificações desligadas: sem aviso na tela de bloqueio";
+    case "falha_ao_iniciar":
+      return "O Android recusou iniciar o segundo plano";
+    case "sem_plugin":
+      return "Segundo plano indisponível neste dispositivo";
+    default:
+      return "Segundo plano inativo";
+  }
+}
+
+/* ================================================================== *
+ * Permissão de notificação (Android 13+)
+ * ================================================================== */
+
+/**
+ * Pede POST_NOTIFICATIONS antes de subir o serviço.
+ *
+ * Sem isto a notificação da viagem nasce bloqueada no Android 13+ e a tela de
+ * bloqueio fica vazia — o serviço roda, e o usuário não vê nada. Negar não é
+ * erro: a viagem continua, só sem o aviso permanente.
+ */
+export async function pedirPermissaoDeNotificacao(): Promise<PermissaoNotificacao> {
+  const p = plugin();
+  if (!p?.pedirPermissaoNotificacao) {
+    return { suportaRuntime: false, concedida: false, podeMostrar: false };
+  }
+  try {
+    const r = await p.pedirPermissaoNotificacao();
+    return {
+      suportaRuntime: r?.suportaRuntime === true,
+      concedida: r?.concedida === true,
+      podeMostrar: r?.podeMostrar === true,
+    };
+  } catch (error) {
+    recordTripDiagnostic("native.trip.notification_permission", error);
+    return { suportaRuntime: false, concedida: false, podeMostrar: false };
+  }
+}
+
+export async function consultarPermissaoDeNotificacao(): Promise<PermissaoNotificacao> {
+  const p = plugin();
+  if (!p?.permissaoNotificacao) {
+    return { suportaRuntime: false, concedida: false, podeMostrar: false };
+  }
+  try {
+    const r = await p.permissaoNotificacao();
+    return {
+      suportaRuntime: r?.suportaRuntime === true,
+      concedida: r?.concedida === true,
+      podeMostrar: r?.podeMostrar === true,
+    };
+  } catch {
+    return { suportaRuntime: false, concedida: false, podeMostrar: false };
+  }
+}
+
+/* ================================================================== *
+ * Ciclo de vida do serviço
+ * ================================================================== */
+
+/**
+ * Sobe o serviço e devolve o estado REAL, nunca um otimismo.
+ *
+ * Antes esta função devolvia `true` assim que o Intent era despachado, e o
+ * plugin respondia `{ativo:true}` mesmo quando o Android recusava — o app
+ * anunciava proteção inexistente. Agora o retorno é o que o serviço disse,
+ * e o motivo viaja junto.
+ */
+export async function iniciarServicoDeViagem(destino?: string): Promise<EstadoServicoViagem> {
+  const p = plugin();
+  if (!p) return publicarEstadoDoServico({ motivo: "sem_plugin" });
+  try {
+    setTripDiagnosticState({ action: "native_trip_service_start" });
+    // A permissão precisa vir ANTES do startForeground: pedir depois deixaria
+    // a primeira viagem sem notificação nenhuma.
+    await pedirPermissaoDeNotificacao();
+    const r = await p.iniciar({ destino: destino ?? "" });
+    const estado = publicarEstadoDoServico(r ?? {});
+    if (!estado.ativo && estado.motivo !== "ativo") {
+      recordTripDiagnostic("native.trip.start_recusado", new Error(estado.motivo));
+    }
+    return estado;
+  } catch (error) {
+    console.error(TRIP_NATIVE_ERROR, recordTripDiagnostic("native.trip.start", error));
+    // Falhar aqui não pode derrubar a viagem: ela continua em primeiro plano.
+    return publicarEstadoDoServico({ motivo: "falha_ao_iniciar" });
+  }
+}
+
+/**
+ * Monta a atualização da notificação.
+ *
+ * Pura, e é aqui que mora a correção do bug do destino: um campo que não
+ * conhecemos NÃO vai no objeto, e o Android mantém o valor anterior. Alerta e
+ * manobra são transitórios, então vão sempre — inclusive vazios, que é como
+ * se limpa. Nada é preenchido por estética: sem manobra, `manobra` é "".
+ */
+export function montarAtualizacaoDaViagem(entrada: {
+  destino?: string | null;
+  alerta?: string | null;
+  distanciaDoAlerta?: string | null;
+  manobra?: string | null;
+  distanciaDaManobra?: string | null;
+}): AtualizacaoDeViagem {
+  const limpo = (v: string | null | undefined) => (typeof v === "string" ? v.trim() : "");
+  const alerta = limpo(entrada.alerta);
+  const destino = limpo(entrada.destino);
+  const manobra = limpo(entrada.manobra);
+  const distanciaDaManobra = limpo(entrada.distanciaDaManobra);
+
+  const saida: AtualizacaoDeViagem = {
+    alerta,
+    // Distância solta não diz nada: só acompanha o alerta que a gerou.
+    distancia: alerta ? limpo(entrada.distanciaDoAlerta) : "",
+    // Distância sem instrução também não: a manobra é a instrução.
+    manobra: manobra ? (distanciaDaManobra ? `${distanciaDaManobra} · ${manobra}` : manobra) : "",
+  };
+  if (destino) saida.destino = destino;
+  return saida;
+}
+
+export async function atualizarServicoDeViagem(dados: AtualizacaoDeViagem): Promise<void> {
   const p = plugin();
   if (!p) return;
   try {
-    await p.atualizar(dados);
+    const r = await p.atualizar(dados);
+    if (r) publicarEstadoDoServico(r);
   } catch {
     /* a notificação continua com o texto anterior */
   }
@@ -105,11 +315,27 @@ export async function atualizarServicoDeViagem(dados: {
 
 export async function pararServicoDeViagem(): Promise<void> {
   const p = plugin();
-  if (!p) return;
+  if (!p) {
+    publicarEstadoDoServico({ motivo: "parado" });
+    return;
+  }
   try {
-    await p.parar();
+    const r = await p.parar();
+    publicarEstadoDoServico(r ?? { motivo: "parado" });
   } catch {
     /* nada a fazer: o serviço também morre com stopWithTask */
+    publicarEstadoDoServico({ motivo: "parado" });
+  }
+}
+
+/** Relê o estado do Android — usado quando o app volta do segundo plano. */
+export async function consultarEstadoDoServico(): Promise<EstadoServicoViagem> {
+  const p = plugin();
+  if (!p?.consultarEstado) return estadoDoServico;
+  try {
+    return publicarEstadoDoServico((await p.consultarEstado()) ?? {});
+  } catch {
+    return estadoDoServico;
   }
 }
 
@@ -181,6 +407,54 @@ export function ouvirPosicaoNativa(cb: (p: PosicaoNativa) => void): () => void {
       });
     } catch (error) {
       recordTripDiagnostic("native.trip.listener_remove", error);
+    }
+  };
+}
+
+/**
+ * Escuta o estado real do serviço.
+ *
+ * Mesma defesa do `ouvirPosicaoNativa` — e escrito separado de propósito: o
+ * caminho da posição é o hotfix P0 validado, e não vai ser refatorado para
+ * economizar vinte linhas.
+ */
+export function ouvirEstadoDoServico(cb: (e: EstadoServicoViagem) => void): () => void {
+  const p = plugin();
+  if (!p?.addListener) return () => {};
+  let handle: ListenerHandle | null = null;
+  let cancelado = false;
+
+  const aoReceber = (bruto: Partial<EstadoServicoViagem>) => {
+    if (cancelado || !bruto) return;
+    try {
+      cb(publicarEstadoDoServico(bruto));
+    } catch (error) {
+      recordTripDiagnostic("native.trip.state_callback", error);
+    }
+  };
+
+  void (async () => {
+    try {
+      const h = await normalizarHandle(p.addListener("estado", aoReceber));
+      if (!h || typeof h.remove !== "function") return;
+      if (cancelado) await h.remove();
+      else handle = h;
+    } catch (error) {
+      recordTripDiagnostic("native.trip.state_listener", error);
+    }
+  })();
+
+  return () => {
+    cancelado = true;
+    const h = handle;
+    handle = null;
+    if (!h) return;
+    try {
+      void Promise.resolve(h.remove()).catch((error) => {
+        recordTripDiagnostic("native.trip.state_listener_remove", error);
+      });
+    } catch (error) {
+      recordTripDiagnostic("native.trip.state_listener_remove", error);
     }
   };
 }
