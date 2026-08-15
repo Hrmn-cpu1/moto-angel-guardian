@@ -446,7 +446,9 @@ test("ESCOPO: SOS, RLS e migrations intactos neste lote", () => {
   const migrations = readdirSync(join(process.cwd(), "supabase/migrations")).filter((f) =>
     f.endsWith(".sql"),
   );
-  assert.equal(migrations.length, 30, "migration criada ou removida no lote Android");
+  // 32 = 30 do pacote RC4 + rc2b/rc2c, já aplicadas nesta base (mais nova que a
+  // base do patch). O lote Android não pode criar nem remover migration.
+  assert.equal(migrations.length, 32, "migration criada ou removida no lote Android");
   for (const arquivo of [
     "src/lib/trip-service.ts",
     "src/lib/external-navigation.ts",
