@@ -5,6 +5,7 @@ import poster from "@/assets/moto-anjo-hero.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 import { isIntroHidden } from "@/lib/intro";
 import { bootstrapNativeAuth, getNativeAuthSnapshot } from "@/lib/native-auth";
+import { destinoInternoSeguro } from "@/lib/redirect-seguro";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -43,7 +44,8 @@ function Splash() {
         /* ignore */
       }
       if (data.session?.user) {
-        navigate({ to: next && next.startsWith("/") ? next : "/dashboard" });
+        // "//evil.com" também começa com "/": valida antes de navegar.
+        navigate({ to: destinoInternoSeguro(next) });
       } else {
         navigate({ to: isIntroHidden() ? "/welcome" : "/intro" });
       }
