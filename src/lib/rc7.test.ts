@@ -33,7 +33,7 @@ test("redirect_uri nativo é caminho limpo, sem query", () => {
 });
 
 test("a URL do broker manda só provider, redirect_uri e state", () => {
-  const trecho = NATIVE_AUTH.slice(NATIVE_AUTH.indexOf("~oauth/initiate"));
+  const trecho = NATIVE_AUTH.slice(NATIVE_AUTH.lastIndexOf("~oauth/initiate"));
   const url = trecho.slice(0, trecho.indexOf("`;"));
   for (const proibido of ["cc=", "native=", "response_mode"]) {
     assert.ok(!url.includes(proibido), `parâmetro fora do contrato: ${proibido}`);

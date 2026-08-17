@@ -326,8 +326,8 @@ export async function signInWithGoogleNative(): Promise<void> {
   salvarPendenciaDeEstado(nonce);
 
   // Contrato do broker: `provider`, `redirect_uri` e `state` — nada mais.
-  // O `redirect_uri` volta a ser um caminho limpo (sem `?native=1&cc=`), que
-  // é o formato que o SDK oficial usa e o único que temos motivo para crer
+  // O `redirect_uri` volta a ser um caminho limpo, sem parâmetros próprios —
+  // formato que o SDK oficial usa e o único que temos motivo para crer
   // que passa pela lista de permissões do broker. O `code_challenge` viaja
   // dentro do `state`, que o broker devolve intacto — e que agora também é
   // conferido na volta.
