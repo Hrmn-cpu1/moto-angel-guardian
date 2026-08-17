@@ -504,6 +504,8 @@ export default function RealMap({
 
     let cancelled = false;
     const requestId = ++routeRequestRef.current;
+    registrarEventoDeViagem("directions.begin");
+    const iniciadoEm = Date.now();
     let request: Promise<google.maps.DirectionsResult>;
     try {
       const service = new g.maps.DirectionsService();
@@ -516,7 +518,9 @@ export default function RealMap({
       console.error(error);
       limpar();
       setRotaIndisponivel(true);
-      setDiagnostico(diagnosticarRota(error));
+      const d = diagnosticarRota(error);
+      registrarEventoDeViagem("directions.fail", { detalhe: d.codigo ?? "excecao" });
+      setDiagnostico(d);
       onRouteRef.current?.(null);
       return;
     }
@@ -524,6 +528,7 @@ export default function RealMap({
     request
       .then((res) => {
         if (cancelled || requestId !== routeRequestRef.current) return;
+        registrarEventoDeViagem("directions.success", { duracaoMs: Date.now() - iniciadoEm });
         setRotaIndisponivel(false);
         setDiagnostico(null);
         if (!routeRendererRef.current) {
@@ -589,7 +594,12 @@ export default function RealMap({
         if (!cancelled && requestId === routeRequestRef.current) {
           limpar();
           setRotaIndisponivel(true);
-          setDiagnostico(diagnosticarRota(error));
+          const d = diagnosticarRota(error);
+          registrarEventoDeViagem("directions.fail", {
+            detalhe: d.codigo ?? "desconhecido",
+            duracaoMs: Date.now() - iniciadoEm,
+          });
+          setDiagnostico(d);
           onRouteRef.current?.(null);
         }
       });
