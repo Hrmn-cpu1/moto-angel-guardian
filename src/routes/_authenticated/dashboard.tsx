@@ -27,6 +27,7 @@ import { NextManeuver } from "@/components/NextManeuver";
 import { camada } from "@/lib/layers";
 import { abrirFolha, sosFlutuanteVisivel, type Folha } from "@/lib/sheets";
 import { celulaDeBusca } from "@/lib/coords";
+import { registrarEventoDeViagem } from "@/lib/trip-diagnostics";
 import {
   atualizarServicoDeViagem,
   consultarPermissaoDeNotificacao,

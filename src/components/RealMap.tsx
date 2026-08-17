@@ -7,6 +7,7 @@ import { diagnosticarRota, type DiagnosticoDeRota } from "@/lib/directions-statu
 import { pontosDeRiscoVisiveis } from "@/lib/map-layers";
 import { chaveDePonto, planejarReconciliacao } from "@/lib/marker-sync";
 import { criarElemento, inicialDe, urlDeImagemSegura } from "@/lib/dom-seguro";
+import { registrarEventoDeViagem } from "@/lib/trip-diagnostics";
 import type { POI } from "@/lib/pois.functions";
 
 // Premium dark style with gold accents
@@ -381,11 +382,15 @@ export default function RealMap({
       return;
     }
     setState((s) => (s === "error" ? s : "loading"));
+    registrarEventoDeViagem("map.init.begin");
     let cancelled = false;
     // Timeout de segurança: sem isto, uma falha silenciosa do loader (rede
     // bloqueada, script preso) deixa a Home em "carregando" para sempre.
     const timeout = setTimeout(() => {
-      if (!cancelled && !mapRef.current) setState("error");
+      if (!cancelled && !mapRef.current) {
+        registrarEventoDeViagem("map.error", { detalhe: "timeout" });
+        setState("error");
+      }
     }, 20000);
     loadGoogleMaps(apiKey, channel)
       .then((g) => {
@@ -402,10 +407,12 @@ export default function RealMap({
           styles: DARK_STYLE,
         });
         mapRef.current = map;
+        registrarEventoDeViagem("map.ready");
         setState((s) => (s === "error" || authFailed ? "error" : "ready"));
       })
       .catch((err) => {
         console.error(err);
+        registrarEventoDeViagem("map.error", { detalhe: "loader" });
         if (!cancelled) setState("error");
       });
     return () => {
