@@ -44,9 +44,9 @@ test("presença de parâmetros é gravada como flag booleana, nunca o valor", ()
   diag.registrarEventoDeAuth("callback.web.query.presence", undefined, {
     flags: { state: true, code: true, error: false, sessao: false },
   });
-  const texto = diag.diagnosticoDeAuthExportavel();
-  assert.ok(texto.includes("state+code"));
-  assert.ok(!texto.includes("false"));
+  const info = JSON.parse(diag.diagnosticoDeAuthExportavel()).eventos.at(-1).info as string;
+  assert.ok(info.includes("flags=state+code"), info);
+  assert.ok(!info.includes("error"), "flag falsa não deve aparecer");
 });
 
 test("detalhe sensível é sanitizado antes de virar diagnóstico", () => {
