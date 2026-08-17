@@ -5,6 +5,7 @@ import type { User as AppUser } from "@/types";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 import { classifyAuthError, authFailure } from "@/lib/auth-errors";
 import { isNativeApp } from "@/lib/native";
+import { nextInternoOuIndefinido } from "@/lib/redirect-seguro";
 import {
   getNativeAuthSnapshot,
   signInWithGoogleNative,
@@ -174,9 +175,10 @@ export function useAuth() {
   const loginWithGoogle = useCallback(async (nextPath?: string) => {
     const redirectBase = window.location.origin;
     // Preserve where the user was heading, if provided.
-    if (nextPath) {
+    const destino = nextInternoOuIndefinido(nextPath);
+    if (destino) {
       try {
-        sessionStorage.setItem("moto_anjo_next", nextPath);
+        sessionStorage.setItem("moto_anjo_next", destino);
       } catch {
         /* ignore */
       }

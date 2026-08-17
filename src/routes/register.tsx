@@ -5,10 +5,11 @@ import { BrandMark } from "@/components/BrandMark";
 import { GoldButton } from "@/components/GoldButton";
 import { OutlineButton } from "@/components/OutlineButton";
 import { useAuth } from "@/hooks/useAuth";
+import { destinoInternoSeguro, nextInternoOuIndefinido } from "@/lib/redirect-seguro";
 
 export const Route = createFileRoute("/register")({
   validateSearch: (s: Record<string, unknown>) => ({
-    next: typeof s.next === "string" ? s.next : undefined,
+    next: nextInternoOuIndefinido(s.next),
   }),
   head: () => ({
     meta: [
@@ -108,11 +109,9 @@ function Register() {
   };
 
   const goNext = () => {
-    if (next && next.startsWith("/")) {
-      window.location.href = next;
-    } else {
-      navigate({ to: "/dashboard" });
-    }
+    // Open redirect: "//evil.com" também começa com "/".
+    if (next) window.location.href = destinoInternoSeguro(next);
+    else navigate({ to: "/dashboard" });
   };
 
   const googleSignIn = async () => {
