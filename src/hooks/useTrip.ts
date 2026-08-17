@@ -9,6 +9,7 @@ import {
   type EstadoServicoViagem,
 } from "@/lib/trip-service";
 import { registrarEventoDeViagem, setTripDiagnosticState } from "@/lib/trip-diagnostics";
+import { reconciliarViagem, type EstadoNativo } from "@/lib/protecao";
 import {
   VIAGEM_INICIAL,
   cancelarPreparacao,
@@ -35,6 +36,8 @@ import {
 
 let viagemAtual: Viagem = { ...VIAGEM_INICIAL };
 let hidratado = false;
+/** Uma única tentativa de recuperação por transição de viagem (P1 §7). */
+let jaTentouRecuperar = false;
 const assinantes = new Set<(v: Viagem) => void>();
 
 function publicar(v: Viagem) {
@@ -57,9 +60,11 @@ function publicar(v: Viagem) {
   // Modo degradado: se o serviço nativo não subir, a viagem continua — o
   // início da viagem nunca pode derrubar a Home.
   if (anterior.estado !== "ativa" && v.estado === "ativa") {
+    jaTentouRecuperar = false;
     registrarEventoDeViagem("trip.state.active");
     void iniciarServicoDeViagem(rotuloDoDestino(v)).catch(() => undefined);
   } else if (anterior.estado === "ativa" && v.estado !== "ativa") {
+    jaTentouRecuperar = false;
     registrarEventoDeViagem("trip.stop");
     void pararServicoDeViagem().catch(() => undefined);
   }
@@ -73,6 +78,36 @@ function publicar(v: Viagem) {
  * destruiria o listener a cada troca de aba.
  */
 let ouvindoServico = false;
+
+/**
+ * Reconcilia o que o JS acha com o que o Android sabe.
+ *
+ * O caso perigoso é `localStorage` dizer "viagem ativa" depois de o processo
+ * ter morrido: sem isto a Home volta anunciando proteção que não existe. Uma
+ * tentativa de recuperação; se falhar, a viagem continua, mas o estado do
+ * serviço fica `inativo` e a interface passa a dizer só "Viagem ativa".
+ */
+export async function reconciliarComServico(): Promise<void> {
+  if (!servicoDisponivel()) return;
+  const estado = await consultarEstadoDoServico();
+  const nativo: EstadoNativo = estado.ativo
+    ? "ativo"
+    : estado.motivo === "sem_plugin"
+      ? "desconhecido"
+      : "inativo";
+  const acao = reconciliarViagem({
+    viagemAtiva: viagemAtual.estado === "ativa",
+    nativo,
+    jaTentouRecuperar,
+    temServico: true,
+  });
+  if (acao === "tentar_recuperar") {
+    jaTentouRecuperar = true;
+    await iniciarServicoDeViagem(rotuloDoDestino(viagemAtual));
+  } else if (acao === "parar_orfao") {
+    await pararServicoDeViagem();
+  }
+}
 
 export function useTrip() {
   const [viagem, setViagem] = useState<Viagem>(viagemAtual);
@@ -102,7 +137,7 @@ export function useTrip() {
     setViagem(viagemAtual);
     // Voltar para a tela não pode herdar um estado velho: quem sabe se o
     // serviço está de pé é o Android.
-    if (viagemAtual.estado === "ativa") void consultarEstadoDoServico().catch(() => undefined);
+    void reconciliarComServico().catch(() => undefined);
     return () => {
       assinantes.delete(setViagem);
       desassinarServico();
