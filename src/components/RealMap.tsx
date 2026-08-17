@@ -836,11 +836,27 @@ export default function RealMap({
 
       private render() {
         if (!this.element) return;
-        const initials = (this.rider.name || "?").trim().charAt(0).toUpperCase();
-        const inner = this.rider.avatarUrl
-          ? `<img src="${this.rider.avatarUrl}" alt="${this.rider.name}" referrerpolicy="no-referrer" />`
-          : initials;
-        this.element.innerHTML = `<span class="moto-rider-marker__avatar" title="${this.rider.name}">${inner}</span><span class="moto-rider-marker__dot"></span>`;
+        /* Nome e avatar vêm de outro usuário: nada disso pode virar marcação.
+         * Ver `lib/dom-seguro.ts`. */
+        const nome = this.rider.name ?? "";
+        const avatar = criarElemento<HTMLSpanElement>(document, "span", {
+          classe: "moto-rider-marker__avatar",
+          atributos: { title: nome },
+        });
+        const url = urlDeImagemSegura(this.rider.avatarUrl);
+        if (url) {
+          avatar.appendChild(
+            criarElemento<HTMLImageElement>(document, "img", {
+              atributos: { src: url, alt: nome, referrerpolicy: "no-referrer" },
+            }),
+          );
+        } else {
+          avatar.textContent = inicialDe(nome);
+        }
+        const ponto = criarElemento<HTMLSpanElement>(document, "span", {
+          classe: "moto-rider-marker__dot",
+        });
+        this.element.replaceChildren(avatar, ponto);
       }
 
       onAdd() {
@@ -912,13 +928,32 @@ export default function RealMap({
 
       private render() {
         if (!this.element) return;
-        const initials = (this.partner.name || "?").trim().charAt(0).toUpperCase();
-        const logo = this.partner.logoUrl
-          ? `<img src="${this.partner.logoUrl}" alt="" loading="lazy" />`
-          : `<span class="moto-partner-marker__initial">${initials}</span>`;
-        this.element.innerHTML = `
-          <span class="moto-partner-marker__badge${this.partner.featured ? " is-featured" : ""}" title="${this.partner.name}">${logo}</span>
-          <span class="moto-partner-marker__tag">${this.partner.benefit}</span>`;
+        /* Nome, benefício e logo são conteúdo de cadastro: texto, nunca HTML. */
+        const nome = this.partner.name ?? "";
+        const badge = criarElemento<HTMLSpanElement>(document, "span", {
+          classe: `moto-partner-marker__badge${this.partner.featured ? " is-featured" : ""}`,
+          atributos: { title: nome },
+        });
+        const url = urlDeImagemSegura(this.partner.logoUrl);
+        if (url) {
+          badge.appendChild(
+            criarElemento<HTMLImageElement>(document, "img", {
+              atributos: { src: url, alt: "", loading: "lazy" },
+            }),
+          );
+        } else {
+          badge.appendChild(
+            criarElemento<HTMLSpanElement>(document, "span", {
+              classe: "moto-partner-marker__initial",
+              texto: inicialDe(nome),
+            }),
+          );
+        }
+        const tag = criarElemento<HTMLSpanElement>(document, "span", {
+          classe: "moto-partner-marker__tag",
+          texto: this.partner.benefit ?? "",
+        });
+        this.element.replaceChildren(badge, tag);
       }
 
       onAdd() {
