@@ -419,10 +419,16 @@ export default function RealMap({
       userMarkerRef.current = null;
       accuracyCircleRef.current?.setMap(null);
       accuracyCircleRef.current = null;
-      poiMarkersRef.current.forEach((m) => m.setMap(null));
-      poiMarkersRef.current = [];
-      alertMarkersRef.current.forEach((m) => m.setMap(null));
-      alertMarkersRef.current = [];
+      poiMarkersRef.current.forEach((e) => {
+        e.listener?.remove();
+        e.marker.setMap(null);
+      });
+      poiMarkersRef.current.clear();
+      alertMarkersRef.current.forEach((e) => {
+        e.listener?.remove();
+        e.marker.setMap(null);
+      });
+      alertMarkersRef.current.clear();
       riderOverlaysRef.current.forEach((o) => o.setMap(null));
       riderOverlaysRef.current.clear();
       partnerOverlaysRef.current.forEach((o) => o.setMap(null));
