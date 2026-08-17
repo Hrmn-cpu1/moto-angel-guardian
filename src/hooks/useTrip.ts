@@ -72,10 +72,10 @@ function publicar(v: Viagem) {
   } else if (anterior.estado === "ativa" && v.estado !== "ativa") {
     jaTentouRecuperar = false;
     registrarEventoDeViagem("trip.stop");
+    void pararServicoDeViagem().catch(() => undefined);
     // Fim limpo: sem esta marca, o próximo boot leria a trilha como sessão
     // interrompida e o diagnóstico apontaria um crash que não houve.
     marcarSessaoFinalizada();
-    void pararServicoDeViagem().catch(() => undefined);
   }
 
   for (const a of assinantes) a(v);
