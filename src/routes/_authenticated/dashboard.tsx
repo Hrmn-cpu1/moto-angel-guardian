@@ -346,6 +346,7 @@ function Dashboard() {
           copilotOnline={!!position}
           tripActive={viagemAtiva}
           segundoPlano={segundoPlanoNaBarra}
+          temServico={temServico}
         />
 
         <DestinationBar

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Bell, WifiOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { rotuloDeProtecao } from "@/lib/protecao";
 
 interface Props {
   gpsOnline: boolean;
@@ -19,6 +20,8 @@ interface Props {
    * painel de preparação, onde ainda dá para resolver.
    */
   segundoPlano?: { ok: boolean; descricao: string } | null;
+  /** O aparelho tem o serviço nativo (Android). Fora dele nada é prometido. */
+  temServico?: boolean;
 }
 
 /** Slim translucent status strip floating over the full-screen home map. */
@@ -28,6 +31,7 @@ export function HomeTopBar({
   copilotOnline = false,
   tripActive = false,
   segundoPlano = null,
+  temServico = false,
 }: Props) {
   const { user } = useAuth();
   const [online, setOnline] = useState(true);
@@ -104,8 +108,15 @@ export function HomeTopBar({
       {!online && (
         <WifiOff size={12} className="shrink-0 text-emergency" aria-label="Sem conexão" />
       )}
+      {/* "Protegido" exige evidência de serviço ativo — ver `lib/protecao.ts`. */}
       <span className="shrink-0 text-[9px] font-bold uppercase tracking-widest text-gold">
-        {sharing ? "Compartilhando" : gpsOnline ? "Protegido" : "Sem GPS"}
+        {rotuloDeProtecao({
+          sharing,
+          gpsOnline,
+          viagemAtiva: tripActive,
+          temServico,
+          servicoAtivo: segundoPlano?.ok === true,
+        })}
       </span>
 
       <Link
