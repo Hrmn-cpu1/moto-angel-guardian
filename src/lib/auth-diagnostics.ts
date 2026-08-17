@@ -46,7 +46,14 @@ export const EVENTOS_MA_AUTH = [
 export type EventoMaAuth = (typeof EVENTOS_MA_AUTH)[number];
 
 /** Etapa macro do fluxo — facilita achar onde a tentativa parou. */
-export type EtapaMaAuth = "inicio" | "broker" | "callback" | "deeplink" | "nativo" | "troca" | "fim";
+export type EtapaMaAuth =
+  | "inicio"
+  | "broker"
+  | "callback"
+  | "deeplink"
+  | "nativo"
+  | "troca"
+  | "fim";
 
 const ETAPAS: Record<EventoMaAuth, EtapaMaAuth> = {
   "native.detect": "inicio",
