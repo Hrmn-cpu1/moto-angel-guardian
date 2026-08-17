@@ -230,7 +230,11 @@ function sqlNovo(): string {
 
 test("as migrations antigas não foram tocadas", () => {
   const antigas = arquivosSql().filter((f) => !ehCheckpoint(f, "qualquer"));
-  assert.equal(antigas.length, 23, "o número de migrations pré-existentes mudou");
+  assert.equal(
+    antigas.length,
+    24, // +1: 20260817160000_rc6_risk_heatmap_hardening.sql (hardening, aditiva)
+    "o número de migrations pré-existentes mudou",
+  );
 });
 
 test("as migrations novas são aditivas: nada de DROP TABLE nem ALTER destrutivo", () => {
@@ -537,7 +541,11 @@ test("1B — recovering nunca fica preso em true", () => {
 test("1B — as migrations do 1B também são aditivas", () => {
   const todas = arquivosSql();
   const antigas = todas.filter((f) => !ehCheckpoint(f, "qualquer"));
-  assert.equal(antigas.length, 23, "o número de migrations pré-existentes mudou");
+  assert.equal(
+    antigas.length,
+    24, // +1: 20260817160000_rc6_risk_heatmap_hardening.sql (hardening, aditiva)
+    "o número de migrations pré-existentes mudou",
+  );
   const doCheckpoint1 = todas.filter((f) => ehCheckpoint(f, "1"));
   const doCheckpoint1b = todas.filter((f) => ehCheckpoint(f, "1B"));
   assert.equal(doCheckpoint1.length, 2, "as migrations do checkpoint 1 mudaram de número");
