@@ -5,6 +5,8 @@ import { abrirNavegacaoExterna } from "@/lib/external-navigation";
 import { passosDoEnquadramento } from "@/lib/navigation-cue";
 import { diagnosticarRota, type DiagnosticoDeRota } from "@/lib/directions-status";
 import { pontosDeRiscoVisiveis } from "@/lib/map-layers";
+import { chaveDePonto, planejarReconciliacao } from "@/lib/marker-sync";
+import { criarElemento, inicialDe, urlDeImagemSegura } from "@/lib/dom-seguro";
 import type { POI } from "@/lib/pois.functions";
 
 // Premium dark style with gold accents
@@ -276,8 +278,14 @@ export default function RealMap({
   const mapRef = useRef<google.maps.Map | null>(null);
   const userMarkerRef = useRef<UserLocationOverlay | null>(null);
   const accuracyCircleRef = useRef<google.maps.Circle | null>(null);
-  const poiMarkersRef = useRef<google.maps.Marker[]>([]);
-  const alertMarkersRef = useRef<google.maps.Marker[]>([]);
+  /* Coleções reconciliadas por ID (P0 RC5+): id -> marcador + chave de
+   * conteúdo. Sem "apaga tudo e recria tudo". */
+  const poiMarkersRef = useRef<
+    Map<string, { marker: google.maps.Marker; chave: string; listener?: google.maps.MapsEventListener }>
+  >(new Map());
+  const alertMarkersRef = useRef<
+    Map<string, { marker: google.maps.Marker; chave: string; listener?: google.maps.MapsEventListener }>
+  >(new Map());
   const riderOverlaysRef = useRef<Map<string, RiderOverlay>>(new Map());
   const partnerOverlaysRef = useRef<Map<string, PartnerOverlay>>(new Map());
   const heatCirclesRef = useRef<google.maps.Circle[]>([]);
