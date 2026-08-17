@@ -100,7 +100,7 @@ test("o beacon público aceita só metadados booleanos e códigos curtos", () =>
   for (const campo of ["has_state", "has_code", "has_error", "has_session_params", "native_flow"]) {
     assert.ok(rota.includes(campo), `beacon sem campo ${campo}`);
   }
-  for (const proibido = "" as string, campo of ["access_token", "refresh_token", "code_verifier", "email"]) {
+  for (const campo of ["access_token", "refresh_token", "code_verifier", "email"]) {
     assert.ok(!rota.includes(campo), `beacon aceita campo sensível: ${campo}`);
   }
   assert.ok(rota.includes("z.object("), "payload do beacon precisa ser validado");
