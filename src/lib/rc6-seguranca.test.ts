@@ -29,7 +29,7 @@ function ultimaDefinicaoDe(nomeFuncao: string): string {
 
 const HEAT = ultimaDefinicaoDe("risk_heatmap").toLowerCase();
 const ARQUIVO_RC6 = readFileSync(
-  join(MIGRACOES, "20260817160000_rc6_risk_heatmap_hardening.sql"),
+  join(MIGRACOES, "20260817154757_af89700e-521b-4d06-b567-c399309ca759.sql"),
   "utf8",
 ).toLowerCase();
 

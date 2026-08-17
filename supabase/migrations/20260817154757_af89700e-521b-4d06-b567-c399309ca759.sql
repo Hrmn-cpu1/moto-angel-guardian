@@ -1,3 +1,52 @@
+-- ============================================================================
+-- RC5+ SECURITY HARDENING — risk_heatmap deixa de ser uma janela para o
+-- histórico de localização de SOS.
+--
+-- PROBLEMA (verificado no código, não suposto)
+-- --------------------------------------------
+-- A definição vigente (20260815120000) é SECURITY DEFINER, portanto lê
+-- `sos_events` ignorando a RLS que restringe cada evento ao seu dono, e:
+--   . confia em `_radius_km` e `_days` vindos do cliente (só aplica
+--     `greatest(x,1)`, ou seja, aceita raio 20000 km = planeta inteiro);
+--   . não valida latitude/longitude;
+--   . agrega em grade de 3 casas decimais (~110 m) ANCORADA no valor
+--     arredondado do próprio ponto, o que devolve praticamente a coordenada
+--     original da vítima;
+--   . devolve o peso somado sem teto, permitindo inferir quantos eventos há
+--     numa célula.
+-- Combinando essas quatro coisas, um usuário autenticado qualquer podia varrer
+-- o país e reconstruir o histórico de SOS alheio com precisão de rua.
+--
+-- CORREÇÃO
+-- --------
+--   . caller obrigatoriamente autenticado (falha fechada, com erro 42501);
+--   . lat/lng validados (faixa geográfica e NaN);
+--   . raio limitado a 25 km e janela a 14 dias NO SERVIDOR — o que o cliente
+--     manda é apenas um pedido, nunca o limite;
+--   . agregação numa grade GLOBAL FIXA de 0,01° (~1,1 km) cujos centros não
+--     dependem do centro consultado: repetir a consulta deslocando o centro
+--     devolve exatamente as mesmas células, então não há triangulação;
+--   . peso saturado em 12, para a célula não revelar contagem de eventos;
+--   . resposta continua sem user_id, sem sos_event_id, sem timestamp e sem
+--     qualquer coordenada individual de vítima.
+--
+-- PRESERVADO
+-- ----------
+--   . assinatura idêntica (frontend inalterado);
+--   . filtro RC5 `a.sos_event_id IS NULL` — SOS continua contado uma vez só;
+--   . `sos_events` continua sendo a fonte do peso 4 do SOS;
+--   . grants: PUBLIC/anon sem EXECUTE, apenas `authenticated`.
+--
+-- SECURITY DEFINER é mantido por necessidade arquitetural: o mapa de risco
+-- precisa somar eventos de terceiros, que a RLS (corretamente) esconde do
+-- leitor. A mitigação é a agregação irreversível acima, não o acesso.
+--
+-- ROLLBACK
+-- --------
+-- Reaplicar o corpo de 20260815120000. Nenhuma linha é escrita por esta
+-- migration; a mudança é somente de leitura.
+-- ============================================================================
+
 CREATE OR REPLACE FUNCTION public.risk_heatmap(
   _lat double precision,
   _lng double precision,
