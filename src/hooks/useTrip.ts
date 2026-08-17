@@ -6,6 +6,7 @@ import {
   iniciarServicoDeViagem,
   ouvirEstadoDoServico,
   pararServicoDeViagem,
+  servicoDisponivel,
   type EstadoServicoViagem,
 } from "@/lib/trip-service";
 import { registrarEventoDeViagem, setTripDiagnosticState } from "@/lib/trip-diagnostics";
