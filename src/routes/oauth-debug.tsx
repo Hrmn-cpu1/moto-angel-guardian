@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { BrandMark } from "@/components/BrandMark";
-import { GoldButton } from "@/components/ui/GoldButton";
+import { GoldButton } from "@/components/GoldButton";
 import { diagnosticoDeAuthExportavel, limparTrilhaDeAuth } from "@/lib/auth-diagnostics";
 
 /**
