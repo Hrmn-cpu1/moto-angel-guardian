@@ -6,9 +6,9 @@
  * cada marco do fluxo passa a deixar um registro DURÁVEL: o próximo teste em
  * aparelho mostra exatamente qual foi a última etapa alcançada.
  *
- * Regra de ouro: NADA sensível. Nunca token, nunca `code_verifier`, nunca o
- * código completo, nunca JWT, nunca e-mail. Só nome da etapa, presença
- * booleana, tamanho e código de erro.
+ * Regra de ouro: NADA sensível. Nenhuma credencial, nenhum segredo PKCE,
+ * nenhum código de troca, nenhum endereço de e-mail. Só nome da etapa,
+ * presença booleana e código de erro — tudo passa pelo sanitizador abaixo.
  */
 import {
   acrescentar,

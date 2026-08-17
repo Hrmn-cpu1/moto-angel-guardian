@@ -8,13 +8,19 @@
  * (cookie de estado/PKCE) onde havia começado.
  *
  * Fluxo adotado agora (Authorization Code + PKCE):
- *   Moto Anjo (sorteia code_verifier) -> Custom Tab (Chrome real)
- *   -> Google -> callback https /auth/callback?native=1&cc=<code_challenge>
+ *   Moto Anjo (sorteia o par PKCE) -> Custom Tab (Chrome real)
+ *   -> Google -> callback https /auth/callback (caminho limpo; o desafio
+ *      PKCE viaja dentro do `state`, que o broker devolve intacto)
  *   -> a página guarda a sessão no servidor e recebe um code opaco
- *   -> deep link com.motoanjo.app://auth/callback?code=<code>
- *   -> listener aqui troca code + code_verifier pela sessão -> setSession.
+ *   -> deep link com.motoanjo.app://auth/callback?code=...&state=...
+ *   -> aqui o `state` é CONFERIDO e só então o code vira sessão.
  *
- * O deep link nunca carrega senha, access_token ou refresh_token.
+ * RC7: o retorno antes vinha para um redirect_uri com parâmetros próprios,
+ * fora do contrato de três parâmetros que o broker oficialmente aceita — a
+ * hipótese mais provável para o fluxo travar em "Authorization Response" no
+ * aparelho. E o `state` era sorteado sem nunca ser verificado na volta.
+ *
+ * O deep link nunca carrega senha nem credencial de sessão.
  */
 import { supabase } from "@/integrations/supabase/client";
 import { isNativeApp } from "./native";

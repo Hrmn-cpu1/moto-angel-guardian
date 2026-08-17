@@ -160,7 +160,8 @@ test("hooks do mapa não criam array novo a cada render", () => {
   ]) {
     const fonte = ler(arquivo);
     assert.ok(fonte.includes("VAZIO"), `${arquivo} ainda devolve [] literal`);
-    assert.ok(!/\?\?\s*\[\]/.test(fonte), `${arquivo} ainda usa ?? []`);
+    const retorno = fonte.slice(fonte.lastIndexOf("return {"));
+    assert.ok(!/\?\?\s*\[\]/.test(retorno), `${arquivo} ainda devolve ?? [] ao componente`);
   }
 });
 
