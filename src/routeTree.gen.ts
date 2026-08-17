@@ -14,6 +14,7 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as OauthDebugRouteImport } from './routes/oauth-debug'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as MapDebugRouteImport } from './routes/map-debug'
 import { Route as LoginRouteImport } from './routes/login'
@@ -38,6 +39,7 @@ import { Route as AuthenticatedAlertsRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
+import { Route as ApiPublicAuthBeaconRouteImport } from './routes/api/public/auth-beacon'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 
@@ -64,6 +66,11 @@ const RegisterRoute = RegisterRouteImport.update({
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OauthDebugRoute = OauthDebugRouteImport.update({
+  id: '/oauth-debug',
+  path: '/oauth-debug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const McpRoute = McpRouteImport.update({
@@ -188,6 +195,11 @@ const Char91DotmcpChar93ListToolsRoute =
     path: '/.mcp/list-tools',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicAuthBeaconRoute = ApiPublicAuthBeaconRouteImport.update({
+  id: '/api/public/auth-beacon',
+  path: '/api/public/auth-beacon',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
@@ -207,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/map-debug': typeof MapDebugRoute
   '/mcp': typeof McpRoute
+  '/oauth-debug': typeof OauthDebugRoute
   '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -231,6 +244,7 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/public/auth-beacon': typeof ApiPublicAuthBeaconRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -239,6 +253,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/map-debug': typeof MapDebugRoute
   '/mcp': typeof McpRoute
+  '/oauth-debug': typeof OauthDebugRoute
   '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -263,6 +278,7 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/public/auth-beacon': typeof ApiPublicAuthBeaconRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -273,6 +289,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/map-debug': typeof MapDebugRoute
   '/mcp': typeof McpRoute
+  '/oauth-debug': typeof OauthDebugRoute
   '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -297,6 +314,7 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/public/auth-beacon': typeof ApiPublicAuthBeaconRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -307,6 +325,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/map-debug'
     | '/mcp'
+    | '/oauth-debug'
     | '/privacy'
     | '/register'
     | '/reset-password'
@@ -331,6 +350,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/public/auth-beacon'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -339,6 +359,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/map-debug'
     | '/mcp'
+    | '/oauth-debug'
     | '/privacy'
     | '/register'
     | '/reset-password'
@@ -363,6 +384,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/public/auth-beacon'
   id:
     | '__root__'
     | '/'
@@ -372,6 +394,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/map-debug'
     | '/mcp'
+    | '/oauth-debug'
     | '/privacy'
     | '/register'
     | '/reset-password'
@@ -396,6 +419,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/public/auth-beacon'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -406,6 +430,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MapDebugRoute: typeof MapDebugRoute
   McpRoute: typeof McpRoute
+  OauthDebugRoute: typeof OauthDebugRoute
   PrivacyRoute: typeof PrivacyRoute
   RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -416,6 +441,7 @@ export interface RootRouteChildren {
   AuthCallbackRoute: typeof AuthCallbackRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiPublicAuthBeaconRoute: typeof ApiPublicAuthBeaconRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -453,6 +479,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/oauth-debug': {
+      id: '/oauth-debug'
+      path: '/oauth-debug'
+      fullPath: '/oauth-debug'
+      preLoaderRoute: typeof OauthDebugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mcp': {
@@ -623,6 +656,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/auth-beacon': {
+      id: '/api/public/auth-beacon'
+      path: '/api/public/auth-beacon'
+      fullPath: '/api/public/auth-beacon'
+      preLoaderRoute: typeof ApiPublicAuthBeaconRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
       path: '/.mcp/invoke-tool/$tool'
@@ -685,6 +725,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MapDebugRoute: MapDebugRoute,
   McpRoute: McpRoute,
+  OauthDebugRoute: OauthDebugRoute,
   PrivacyRoute: PrivacyRoute,
   RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
@@ -696,6 +737,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthCallbackRoute: AuthCallbackRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiPublicAuthBeaconRoute: ApiPublicAuthBeaconRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

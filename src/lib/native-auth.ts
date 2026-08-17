@@ -26,7 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { isNativeApp } from "./native";
 import { authFailure } from "./auth-errors";
 import { exchangeNativeCode } from "./native-auth.functions";
-import { registrarEventoDeAuth } from "./auth-diagnostics";
+import { iniciarTentativaDeAuth, registrarEventoDeAuth } from "./auth-diagnostics";
 import {
   montarEstadoNativo,
   validarEstadoDeRetorno,
@@ -267,6 +267,7 @@ export async function handleNativeAuthUrl(
       const { Browser } = await import("@capacitor/browser");
       await Browser.close().catch(() => undefined);
       console.info("[NativeAuth] rota final: /dashboard");
+      registrarEventoDeAuth("dashboard.reached");
       window.location.replace("/dashboard");
       return true;
     } catch (error) {
@@ -295,6 +296,9 @@ export function bootstrapNativeAuth(): Promise<void> {
 
   nativeBootstrap = (async () => {
     setNativeAuthProcessing(true);
+    // `native.detect` estava declarado e nunca registrado: agora marca o
+    // instante em que o app confirma que roda dentro do APK.
+    registrarEventoDeAuth("native.detect", "bootstrap");
     const { App } = await import("@capacitor/app");
     await App.addListener("appUrlOpen", ({ url }) => {
       if (url) void handleNativeAuthUrl(url, "appUrlOpen").catch(() => undefined);
@@ -313,7 +317,12 @@ export function bootstrapNativeAuth(): Promise<void> {
 }
 
 export async function signInWithGoogleNative(): Promise<void> {
-  if (!isNativeApp()) throw authFailure("config", "Fluxo nativo chamado fora do aplicativo.");
+  const nativo = isNativeApp();
+  // Uma tentativa nova = um attempt_id novo: duas tentativas nunca se
+  // misturam na trilha exportada.
+  iniciarTentativaDeAuth();
+  registrarEventoDeAuth("native.detect", nativo ? "apk" : "web");
+  if (!nativo) throw authFailure("config", "Fluxo nativo chamado fora do aplicativo.");
 
   const { Browser } = await import("@capacitor/browser");
   await bootstrapNativeAuth();

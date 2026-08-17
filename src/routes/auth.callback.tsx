@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { BrandMark } from "@/components/BrandMark";
 import { NATIVE_CALLBACK_URL, parseAuthCallback } from "@/lib/native-auth";
 import { registrarEventoDeAuth } from "@/lib/auth-diagnostics";
+import { idDaTentativaDeAuth } from "@/lib/auth-diagnostics";
+import { enviarBeaconDeCallback } from "@/lib/auth-beacon";
 import { lerEstadoNativo } from "@/lib/oauth-state";
 import { stashNativeSession } from "@/lib/native-auth.functions";
 
@@ -39,8 +41,17 @@ function AuthCallback() {
 
   useEffect(() => {
     const url = INITIAL_URL || window.location.href;
+    const parsedUrl = new URL(url);
+    const params = parsedUrl.searchParams;
+    const hash = new URLSearchParams(parsedUrl.hash.replace(/^#/, ""));
+    const presenca = {
+      state: params.has("state"),
+      code: params.has("code"),
+      error: params.has("error") || params.has("error_description"),
+      sessao: hash.has("access_token") || hash.has("refresh_token"),
+    };
     registrarEventoDeAuth("callback.web.enter");
-    const params = new URL(url).searchParams;
+    registrarEventoDeAuth("callback.web.query.presence", undefined, { flags: presenca });
     const state = params.get("state") ?? "";
     const estadoNativo = lerEstadoNativo(state);
     // O caminho novo reconhece o retorno nativo pelo próprio `state`; o
@@ -48,15 +59,39 @@ function AuthCallback() {
     // esteja instalado em algum aparelho de teste.
     const isNativeReturn = estadoNativo != null || /[?&]native=1(&|$|#)/.test(url);
     const parsed = parseAuthCallback(url);
+    const beacon = (stage: "callback.web.enter" | "callback.native.detected" | "deepLink.begin") =>
+      enviarBeaconDeCallback({
+        attempt_id: idDaTentativaDeAuth(),
+        stage,
+        native_flow: isNativeReturn,
+        has_state: presenca.state,
+        has_code: presenca.code,
+        has_error: presenca.error,
+        has_session_params: presenca.sessao,
+        ...(parsed.error ? { error_code: String(parsed.error).slice(0, 60) } : {}),
+        origin_host: window.location.host,
+        pathname: window.location.pathname,
+      });
+    beacon("callback.web.enter");
 
     if (isNativeReturn) {
       registrarEventoDeAuth("callback.native.detected");
+      beacon("callback.native.detected");
       setMessage("Voltando para o Moto Anjo...");
       const challenge = estadoNativo?.challenge ?? params.get("cc") ?? "";
-      const back = (extra: Record<string, string>) =>
+      const back = (extra: Record<string, string>) => {
+        // `deepLink.begin` SEMPRE antes do replace: se o app nunca receber o
+        // deep link, é esta marca que separa "callback não montou a volta" de
+        // "Android não entregou o intent".
+        registrarEventoDeAuth("deepLink.begin", undefined, {
+          flags: { code: "code" in extra, error: "error" in extra, state: Boolean(state) },
+        });
+        beacon("deepLink.begin");
         window.location.replace(
           `${NATIVE_CALLBACK_URL}?${new URLSearchParams({ ...extra, ...(state ? { state } : {}) }).toString()}`,
         );
+        registrarEventoDeAuth("deepLink.replace.called");
+      };
       if (parsed.error) {
         back({ error: parsed.error });
         return;
@@ -77,7 +112,10 @@ function AuthCallback() {
           registrarEventoDeAuth("stash.success");
           back({ code: res.code });
         })
-        .catch((e: unknown) => back({ error: e instanceof Error ? e.message : "Falha no login." }));
+        .catch((e: unknown) => {
+          registrarEventoDeAuth("stash.fail", e instanceof Error ? e.name : "unknown");
+          back({ error: e instanceof Error ? e.message : "Falha no login." });
+        });
       return;
     }
 
@@ -93,6 +131,7 @@ function AuthCallback() {
       for (let i = 0; i < 20 && !cancelled; i++) {
         const { data } = await supabase.auth.getSession();
         if (data.session) {
+          registrarEventoDeAuth("dashboard.reached");
           navigate({ to: "/dashboard" });
           return;
         }
