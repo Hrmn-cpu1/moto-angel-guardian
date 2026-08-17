@@ -45,7 +45,9 @@ export const EVENTOS_MA_AUTH = [
 
 export type EventoMaAuth = (typeof EVENTOS_MA_AUTH)[number];
 
-/** Etapa macro do fluxo — facilita achar onde a tentativa parou. */
+/**
+ * Etapa macro do fluxo — facilita achar onde a tentativa parou.
+ */
 export type EtapaMaAuth =
   | "inicio"
   | "broker"
