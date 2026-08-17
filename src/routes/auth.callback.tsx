@@ -131,6 +131,7 @@ function AuthCallback() {
       for (let i = 0; i < 20 && !cancelled; i++) {
         const { data } = await supabase.auth.getSession();
         if (data.session) {
+          registrarEventoDeAuth("dashboard.reached");
           navigate({ to: "/dashboard" });
           return;
         }
