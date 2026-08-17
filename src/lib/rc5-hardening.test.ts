@@ -181,12 +181,17 @@ test("DIR.6: nenhuma mensagem vaza jargão do Google para o motociclista", () =>
 
 test("DIR.7: o mapa usa o diagnóstico e nunca inventa rota", () => {
   const mapa = semComentarios(ler("src/components/RealMap.tsx"));
-  assert.match(mapa, /setDiagnostico\(diagnosticarRota\(error\)\)/);
+  assert.match(mapa, /diagnosticarRota\(error\)/);
   // Nos DOIS caminhos de falha: exception síncrona e promise rejeitada.
   assert.equal(
-    (mapa.match(/setDiagnostico\(diagnosticarRota\(error\)\)/g) ?? []).length,
+    (mapa.match(/diagnosticarRota\(error\)/g) ?? []).length,
     2,
     "falta classificar um dos caminhos de falha",
+  );
+  assert.equal(
+    (mapa.match(/setDiagnostico\(d\)/g) ?? []).length,
+    2,
+    "o diagnóstico classificado precisa chegar ao estado da UI",
   );
   assert.match(mapa, /diagnostico\?\.podeTentarDeNovo \?\? true/);
 });
