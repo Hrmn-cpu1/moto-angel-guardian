@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { assinarPosicao } from "@/lib/geo-watch";
 
 export interface GeoPosition {
   lat: number;
@@ -94,7 +95,8 @@ export function useGeolocation() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<GeoError | null>(null);
   const [watching, setWatching] = useState(false);
-  const watchIdRef = useRef<number | null>(null);
+  /** Cancelador da assinatura compartilhada (não é mais um watchId próprio). */
+  const cancelarRef = useRef<(() => void) | null>(null);
 
   const capture = useCallback(async (): Promise<GeoCaptureResult> => {
     const blocked = unavailableReason();
@@ -152,32 +154,28 @@ export function useGeolocation() {
       setError(blocked);
       return;
     }
-    if (watchIdRef.current != null) return;
+    if (cancelarRef.current) return;
     setWatching(true);
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (pos) => {
+    // Fonte única: ver `lib/geo-watch.ts`. Nenhum hook abre watchPosition.
+    cancelarRef.current = assinarPosicao({
+      aoReceber: (pos) => {
         setPosition(toPosition(pos));
         setError(null);
       },
-      (err) => setError(toGeoError(err)),
-      { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 },
-    );
+      aoFalhar: (err) => setError(toGeoError(err)),
+    });
   }, []);
 
   const stopWatch = useCallback(() => {
-    if (watchIdRef.current != null && typeof navigator !== "undefined" && navigator.geolocation) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-    }
-    watchIdRef.current = null;
+    cancelarRef.current?.();
+    cancelarRef.current = null;
     setWatching(false);
   }, []);
 
   useEffect(() => {
     return () => {
-      if (watchIdRef.current != null && typeof navigator !== "undefined" && navigator.geolocation) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-        watchIdRef.current = null;
-      }
+      cancelarRef.current?.();
+      cancelarRef.current = null;
     };
   }, []);
 

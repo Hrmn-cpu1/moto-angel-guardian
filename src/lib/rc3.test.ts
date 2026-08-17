@@ -547,7 +547,13 @@ test("HOME: o cockpit só liga sensores com a viagem ativa", () => {
     "sensor ligado fora da viagem gasta bateria",
   );
   const telemetria = ler("src/hooks/useCockpitTelemetry.ts");
-  assert.ok(/clearWatch/.test(telemetria), "o watch precisa ser limpo");
+  // Desde o RC5+ o GPS é uma fonte única compartilhada (lib/geo-watch.ts): o
+  // hook assina e cancela a assinatura; quem chama clearWatch é a fonte.
+  assert.ok(/assinarPosicao\(/.test(telemetria), "o GPS vem da fonte única");
+  assert.ok(
+    /return assinarPosicao\(|cancelar\(\)/.test(telemetria),
+    "a assinatura precisa ser cancelada na limpeza do efeito",
+  );
   assert.ok(/removeEventListener\("deviceorientation"/.test(telemetria), "listener precisa sair");
 });
 

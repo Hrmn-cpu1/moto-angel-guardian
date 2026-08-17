@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ouvirPosicaoNativa } from "@/lib/trip-service";
+import { assinarPosicao } from "@/lib/geo-watch";
 import {
   MODO_INICIAL,
   calcularInclinacao,
@@ -55,11 +56,12 @@ export function useCockpitTelemetry(ativo: boolean) {
     });
   }, [ativo]);
 
-  // GPS: velocidade e rumo.
+  // GPS: velocidade e rumo. Assinante da fonte compartilhada — este hook não
+  // abre watchPosition próprio (P0 RC5+: um watcher web por contexto).
   useEffect(() => {
     if (!ativo || typeof navigator === "undefined" || !navigator.geolocation) return;
-    const id = navigator.geolocation.watchPosition(
-      (pos) => {
+    return assinarPosicao({
+      aoReceber: (pos) => {
         const bruta = velocidadeKmh({
           speedMs: pos.coords.speed,
           accuracyM: pos.coords.accuracy,
@@ -72,15 +74,13 @@ export function useCockpitTelemetry(ativo: boolean) {
         setModo((m) => proximoModo(m, suave, Date.now()));
         setInclinacao(calcularInclinacao(gamma.current, suave));
       },
-      () => {
+      aoFalhar: () => {
         // Falha de GPS não zera a tela com número falso: some o valor.
         velocidadeRef.current = null;
         setVelocidade(null);
         setRumo(null);
       },
-      { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 },
-    );
-    return () => navigator.geolocation.clearWatch(id);
+    });
   }, [ativo]);
 
   // Orientação: só durante a viagem.

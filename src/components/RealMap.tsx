@@ -5,6 +5,9 @@ import { abrirNavegacaoExterna } from "@/lib/external-navigation";
 import { passosDoEnquadramento } from "@/lib/navigation-cue";
 import { diagnosticarRota, type DiagnosticoDeRota } from "@/lib/directions-status";
 import { pontosDeRiscoVisiveis } from "@/lib/map-layers";
+import { chaveDePonto, planejarReconciliacao } from "@/lib/marker-sync";
+import { criarElemento, inicialDe, urlDeImagemSegura } from "@/lib/dom-seguro";
+import { registrarEventoDeViagem } from "@/lib/trip-diagnostics";
 import type { POI } from "@/lib/pois.functions";
 
 // Premium dark style with gold accents
@@ -276,8 +279,14 @@ export default function RealMap({
   const mapRef = useRef<google.maps.Map | null>(null);
   const userMarkerRef = useRef<UserLocationOverlay | null>(null);
   const accuracyCircleRef = useRef<google.maps.Circle | null>(null);
-  const poiMarkersRef = useRef<google.maps.Marker[]>([]);
-  const alertMarkersRef = useRef<google.maps.Marker[]>([]);
+  /* Coleções reconciliadas por ID (P0 RC5+): id -> marcador + chave de
+   * conteúdo. Sem "apaga tudo e recria tudo". */
+  const poiMarkersRef = useRef<
+    Map<string, { marker: google.maps.Marker; chave: string; listener?: google.maps.MapsEventListener }>
+  >(new Map());
+  const alertMarkersRef = useRef<
+    Map<string, { marker: google.maps.Marker; chave: string; listener?: google.maps.MapsEventListener }>
+  >(new Map());
   const riderOverlaysRef = useRef<Map<string, RiderOverlay>>(new Map());
   const partnerOverlaysRef = useRef<Map<string, PartnerOverlay>>(new Map());
   const heatCirclesRef = useRef<google.maps.Circle[]>([]);
@@ -373,11 +382,15 @@ export default function RealMap({
       return;
     }
     setState((s) => (s === "error" ? s : "loading"));
+    registrarEventoDeViagem("map.init.begin");
     let cancelled = false;
     // Timeout de segurança: sem isto, uma falha silenciosa do loader (rede
     // bloqueada, script preso) deixa a Home em "carregando" para sempre.
     const timeout = setTimeout(() => {
-      if (!cancelled && !mapRef.current) setState("error");
+      if (!cancelled && !mapRef.current) {
+        registrarEventoDeViagem("map.error", { detalhe: "timeout" });
+        setState("error");
+      }
     }, 20000);
     loadGoogleMaps(apiKey, channel)
       .then((g) => {
@@ -394,10 +407,12 @@ export default function RealMap({
           styles: DARK_STYLE,
         });
         mapRef.current = map;
+        registrarEventoDeViagem("map.ready");
         setState((s) => (s === "error" || authFailed ? "error" : "ready"));
       })
       .catch((err) => {
         console.error(err);
+        registrarEventoDeViagem("map.error", { detalhe: "loader" });
         if (!cancelled) setState("error");
       });
     return () => {
@@ -411,10 +426,16 @@ export default function RealMap({
       userMarkerRef.current = null;
       accuracyCircleRef.current?.setMap(null);
       accuracyCircleRef.current = null;
-      poiMarkersRef.current.forEach((m) => m.setMap(null));
-      poiMarkersRef.current = [];
-      alertMarkersRef.current.forEach((m) => m.setMap(null));
-      alertMarkersRef.current = [];
+      poiMarkersRef.current.forEach((e) => {
+        e.listener?.remove();
+        e.marker.setMap(null);
+      });
+      poiMarkersRef.current.clear();
+      alertMarkersRef.current.forEach((e) => {
+        e.listener?.remove();
+        e.marker.setMap(null);
+      });
+      alertMarkersRef.current.clear();
       riderOverlaysRef.current.forEach((o) => o.setMap(null));
       riderOverlaysRef.current.clear();
       partnerOverlaysRef.current.forEach((o) => o.setMap(null));
@@ -483,6 +504,8 @@ export default function RealMap({
 
     let cancelled = false;
     const requestId = ++routeRequestRef.current;
+    registrarEventoDeViagem("directions.begin");
+    const iniciadoEm = Date.now();
     let request: Promise<google.maps.DirectionsResult>;
     try {
       const service = new g.maps.DirectionsService();
@@ -495,7 +518,9 @@ export default function RealMap({
       console.error(error);
       limpar();
       setRotaIndisponivel(true);
-      setDiagnostico(diagnosticarRota(error));
+      const d = diagnosticarRota(error);
+      registrarEventoDeViagem("directions.fail", { detalhe: d.falha });
+      setDiagnostico(d);
       onRouteRef.current?.(null);
       return;
     }
@@ -503,6 +528,7 @@ export default function RealMap({
     request
       .then((res) => {
         if (cancelled || requestId !== routeRequestRef.current) return;
+        registrarEventoDeViagem("directions.success", { duracaoMs: Date.now() - iniciadoEm });
         setRotaIndisponivel(false);
         setDiagnostico(null);
         if (!routeRendererRef.current) {
@@ -568,7 +594,12 @@ export default function RealMap({
         if (!cancelled && requestId === routeRequestRef.current) {
           limpar();
           setRotaIndisponivel(true);
-          setDiagnostico(diagnosticarRota(error));
+          const d = diagnosticarRota(error);
+          registrarEventoDeViagem("directions.fail", {
+            detalhe: d.falha,
+            duracaoMs: Date.now() - iniciadoEm,
+          });
+          setDiagnostico(d);
           onRouteRef.current?.(null);
         }
       });
@@ -697,53 +728,111 @@ export default function RealMap({
     if (follow) map.panTo(center);
   }, [center, state, accuracy, follow]);
 
-  // Sync POI markers
+  /* POIs — reconciliação incremental por ID.
+   *
+   * Antes: `setMap(null)` em todos e `new Marker` para todos, a cada resposta
+   * do servidor. Agora só o delta muda de estado. Os listeners de clique de
+   * marcadores removidos são desligados explicitamente. */
   useEffect(() => {
     const map = mapRef.current;
     if (state !== "ready" || !map) return;
     const g = (window as unknown as { google: typeof google }).google;
-    poiMarkersRef.current.forEach((m) => m.setMap(null));
-    poiMarkersRef.current = pois.map((p) => {
+    const atual = poiMarkersRef.current;
+    const chaveDe = (p: POI) =>
+      chaveDePonto({ lat: p.lat, lng: p.lng, tipo: p.type, titulo: p.name });
+    const icone = (p: POI) => {
       const color = p.type === "hospital" ? "#D92323" : "#D4AF37";
       const glyphColor = p.type === "hospital" ? "#F5F5F5" : "#050505";
-      const m = new g.maps.Marker({
+      return {
+        url: pinSvg(color, glyphColor, p.type),
+        scaledSize: new g.maps.Size(30, 38),
+        anchor: new g.maps.Point(15, 38),
+      };
+    };
+    const plano = planejarReconciliacao(
+      new Map([...atual].map(([id, e]) => [id, e.chave])),
+      pois,
+      (p) => p.id,
+      chaveDe,
+    );
+    plano.criar.forEach((p) => {
+      const marker = new g.maps.Marker({
         map,
         position: { lat: p.lat, lng: p.lng },
-        icon: {
-          url: pinSvg(color, glyphColor, p.type),
-          scaledSize: new g.maps.Size(30, 38),
-          anchor: new g.maps.Point(15, 38),
-        },
+        icon: icone(p),
         title: p.name,
       });
-      if (onPoiSelect) m.addListener("click", () => onPoiSelect(p));
-      return m;
+      const listener = onPoiSelect ? marker.addListener("click", () => onPoiSelect(p)) : undefined;
+      atual.set(p.id, { marker, chave: chaveDe(p), listener });
+    });
+    plano.atualizar.forEach((p) => {
+      const entrada = atual.get(p.id);
+      if (!entrada) return;
+      entrada.marker.setPosition({ lat: p.lat, lng: p.lng });
+      entrada.marker.setIcon(icone(p));
+      entrada.marker.setTitle(p.name);
+      entrada.chave = chaveDe(p);
+    });
+    plano.remover.forEach((id) => {
+      const entrada = atual.get(id);
+      if (!entrada) return;
+      entrada.listener?.remove();
+      entrada.marker.setMap(null);
+      atual.delete(id);
     });
   }, [pois, onPoiSelect, state]);
 
-  // Sync community alert markers
+  // Alertas da comunidade — mesma reconciliação incremental dos POIs.
   useEffect(() => {
     const map = mapRef.current;
     if (state !== "ready" || !map) return;
     const g = (window as unknown as { google: typeof google }).google;
-    alertMarkersRef.current.forEach((m) => m.setMap(null));
-    alertMarkersRef.current = alerts.map((a) => {
+    const atual = alertMarkersRef.current;
+    const chaveDe = (a: MapAlert) =>
+      chaveDePonto({ lat: a.lat, lng: a.lng, tipo: a.type, titulo: a.title });
+    const icone = (a: MapAlert) => {
       const color =
         a.type === "sos" || a.type === "acidente" || a.type === "roubo" ? "#D92323" : "#D4AF37";
       const glyphColor = color === "#D92323" ? "#F5F5F5" : "#D4AF37";
-      const m = new g.maps.Marker({
+      return {
+        url: pinSvg(color, glyphColor, a.type),
+        scaledSize: new g.maps.Size(32, 40),
+        anchor: new g.maps.Point(16, 40),
+      };
+    };
+    const plano = planejarReconciliacao(
+      new Map([...atual].map(([id, e]) => [id, e.chave])),
+      alerts,
+      (a) => a.id,
+      chaveDe,
+    );
+    plano.criar.forEach((a) => {
+      const marker = new g.maps.Marker({
         map,
         position: { lat: a.lat, lng: a.lng },
-        icon: {
-          url: pinSvg(color, glyphColor, a.type),
-          scaledSize: new g.maps.Size(32, 40),
-          anchor: new g.maps.Point(16, 40),
-        },
+        icon: icone(a),
         title: a.title,
         zIndex: 20,
       });
-      if (onAlertSelect) m.addListener("click", () => onAlertSelect(a));
-      return m;
+      const listener = onAlertSelect
+        ? marker.addListener("click", () => onAlertSelect(a))
+        : undefined;
+      atual.set(a.id, { marker, chave: chaveDe(a), listener });
+    });
+    plano.atualizar.forEach((a) => {
+      const entrada = atual.get(a.id);
+      if (!entrada) return;
+      entrada.marker.setPosition({ lat: a.lat, lng: a.lng });
+      entrada.marker.setIcon(icone(a));
+      entrada.marker.setTitle(a.title);
+      entrada.chave = chaveDe(a);
+    });
+    plano.remover.forEach((id) => {
+      const entrada = atual.get(id);
+      if (!entrada) return;
+      entrada.listener?.remove();
+      entrada.marker.setMap(null);
+      atual.delete(id);
     });
   }, [alerts, onAlertSelect, state]);
 
@@ -764,11 +853,27 @@ export default function RealMap({
 
       private render() {
         if (!this.element) return;
-        const initials = (this.rider.name || "?").trim().charAt(0).toUpperCase();
-        const inner = this.rider.avatarUrl
-          ? `<img src="${this.rider.avatarUrl}" alt="${this.rider.name}" referrerpolicy="no-referrer" />`
-          : initials;
-        this.element.innerHTML = `<span class="moto-rider-marker__avatar" title="${this.rider.name}">${inner}</span><span class="moto-rider-marker__dot"></span>`;
+        /* Nome e avatar vêm de outro usuário: nada disso pode virar marcação.
+         * Ver `lib/dom-seguro.ts`. */
+        const nome = this.rider.name ?? "";
+        const avatar = criarElemento<HTMLSpanElement>(document, "span", {
+          classe: "moto-rider-marker__avatar",
+          atributos: { title: nome },
+        });
+        const url = urlDeImagemSegura(this.rider.avatarUrl);
+        if (url) {
+          avatar.appendChild(
+            criarElemento<HTMLImageElement>(document, "img", {
+              atributos: { src: url, alt: nome, referrerpolicy: "no-referrer" },
+            }),
+          );
+        } else {
+          avatar.textContent = inicialDe(nome);
+        }
+        const ponto = criarElemento<HTMLSpanElement>(document, "span", {
+          classe: "moto-rider-marker__dot",
+        });
+        this.element.replaceChildren(avatar, ponto);
       }
 
       onAdd() {
@@ -840,13 +945,32 @@ export default function RealMap({
 
       private render() {
         if (!this.element) return;
-        const initials = (this.partner.name || "?").trim().charAt(0).toUpperCase();
-        const logo = this.partner.logoUrl
-          ? `<img src="${this.partner.logoUrl}" alt="" loading="lazy" />`
-          : `<span class="moto-partner-marker__initial">${initials}</span>`;
-        this.element.innerHTML = `
-          <span class="moto-partner-marker__badge${this.partner.featured ? " is-featured" : ""}" title="${this.partner.name}">${logo}</span>
-          <span class="moto-partner-marker__tag">${this.partner.benefit}</span>`;
+        /* Nome, benefício e logo são conteúdo de cadastro: texto, nunca HTML. */
+        const nome = this.partner.name ?? "";
+        const badge = criarElemento<HTMLSpanElement>(document, "span", {
+          classe: `moto-partner-marker__badge${this.partner.featured ? " is-featured" : ""}`,
+          atributos: { title: nome },
+        });
+        const url = urlDeImagemSegura(this.partner.logoUrl);
+        if (url) {
+          badge.appendChild(
+            criarElemento<HTMLImageElement>(document, "img", {
+              atributos: { src: url, alt: "", loading: "lazy" },
+            }),
+          );
+        } else {
+          badge.appendChild(
+            criarElemento<HTMLSpanElement>(document, "span", {
+              classe: "moto-partner-marker__initial",
+              texto: inicialDe(nome),
+            }),
+          );
+        }
+        const tag = criarElemento<HTMLSpanElement>(document, "span", {
+          classe: "moto-partner-marker__tag",
+          texto: this.partner.benefit ?? "",
+        });
+        this.element.replaceChildren(badge, tag);
       }
 
       onAdd() {

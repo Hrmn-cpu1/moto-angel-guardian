@@ -2,7 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 import { MapPin, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { reportLovableError } from "@/lib/lovable-error-reporting";
-import { recordTripDiagnostic } from "@/lib/trip-diagnostics";
+import { recordTripDiagnostic, registrarEventoDeViagem } from "@/lib/trip-diagnostics";
 
 interface Props {
   children: ReactNode;
@@ -22,6 +22,7 @@ export class MapErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error(error);
+    registrarEventoDeViagem("error.boundary", { detalhe: "map" });
     const diagnostic = recordTripDiagnostic("react.map_boundary", error);
     reportLovableError(error, {
       boundary: "dashboard_map_error_boundary",

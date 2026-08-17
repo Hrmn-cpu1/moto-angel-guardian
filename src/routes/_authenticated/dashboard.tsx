@@ -27,6 +27,7 @@ import { NextManeuver } from "@/components/NextManeuver";
 import { camada } from "@/lib/layers";
 import { abrirFolha, sosFlutuanteVisivel, type Folha } from "@/lib/sheets";
 import { celulaDeBusca } from "@/lib/coords";
+import { registrarEventoDeViagem } from "@/lib/trip-diagnostics";
 import {
   atualizarServicoDeViagem,
   consultarPermissaoDeNotificacao,
@@ -271,11 +272,18 @@ function Dashboard() {
     if (!celula || !showSupport) return;
     let vivo = true;
     const [lat, lng] = celula.split(",").map(Number);
+    registrarEventoDeViagem("pois.request.begin");
     fetchPOIs({ data: { lat, lng, radius: 3000 } })
       .then((r) => {
-        if (vivo) setPois(r.pois);
+        // Resposta de uma célula já abandonada NÃO sobrescreve a atual.
+        if (!vivo) return;
+        registrarEventoDeViagem("pois.request.end", { detalhe: String(r.pois.length) });
+        setPois(r.pois);
       })
-      .catch((e) => console.error(e));
+      .catch((e) => {
+        if (vivo) registrarEventoDeViagem("pois.request.fail");
+        console.error(e);
+      });
     return () => {
       vivo = false;
     };
@@ -346,6 +354,7 @@ function Dashboard() {
           copilotOnline={!!position}
           tripActive={viagemAtiva}
           segundoPlano={segundoPlanoNaBarra}
+          temServico={temServico}
         />
 
         <DestinationBar

@@ -14,6 +14,8 @@
  * `navigator`.
  */
 
+import { registrarEventoDeViagem } from "./trip-diagnostics.ts";
+
 export interface OpcoesAssinatura {
   aoReceber: (posicao: GeolocationPosition) => void;
   aoFalhar?: (erro: GeolocationPositionError) => void;
@@ -59,6 +61,7 @@ function iniciarSeNecessario(): void {
     },
     OPCOES,
   );
+  registrarEventoDeViagem("gps.web.watch.start");
 }
 
 function pararSeVazio(): void {
@@ -66,6 +69,7 @@ function pararSeVazio(): void {
   geo()?.clearWatch(watchId);
   watchId = null;
   ultimaPosicao = null;
+  registrarEventoDeViagem("gps.web.watch.stop");
 }
 
 /**

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { publicarPresenca } from "@/lib/presence";
+import { assinarPosicao } from "@/lib/geo-watch";
 
 /**
  * Compartilhamento contínuo de localização.
@@ -22,7 +23,8 @@ export function useLiveShare() {
   const [sharing, setSharing] = useState(false);
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const watchId = useRef<number | null>(null);
+  /** Cancelador da assinatura compartilhada de GPS. */
+  const cancelarWatch = useRef<(() => void) | null>(null);
   const lastPush = useRef(0);
 
   // Restore the previous state so sharing survives navigation/reload.
@@ -68,10 +70,8 @@ export function useLiveShare() {
   }, []);
 
   const stop = useCallback(async () => {
-    if (watchId.current != null && typeof navigator !== "undefined") {
-      navigator.geolocation.clearWatch(watchId.current);
-      watchId.current = null;
-    }
+    cancelarWatch.current?.();
+    cancelarWatch.current = null;
     setSharing(false);
     const { error: err } = await supabase.rpc("set_location_sharing", { _enabled: false });
     if (err) setError(err.message);
@@ -82,7 +82,7 @@ export function useLiveShare() {
       setError("GPS indisponível neste dispositivo.");
       return;
     }
-    if (watchId.current != null) return;
+    if (cancelarWatch.current) return;
     setSharing(true);
     // Liga a publicação antes de mandar posição: a ordem importa, porque
     // presence_touch nunca liga sharing sozinho.
@@ -91,17 +91,17 @@ export function useLiveShare() {
       .then(({ error: err }) => {
         if (err) setError(err.message);
       });
-    watchId.current = navigator.geolocation.watchPosition(
-      (pos) => {
+    // Reutiliza a posição compartilhada em vez de abrir um segundo watcher.
+    cancelarWatch.current = assinarPosicao({
+      aoReceber: (pos) => {
         const now = Date.now();
         // throttle writes to one every 10s
         if (now - lastPush.current < 10_000) return;
         lastPush.current = now;
         void push(pos.coords);
       },
-      (err) => setError(err.message),
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 },
-    );
+      aoFalhar: (err) => setError(err.message),
+    });
   }, [push]);
 
   const toggle = useCallback(() => {
@@ -110,16 +110,14 @@ export function useLiveShare() {
   }, [sharing, start, stop]);
 
   useEffect(() => {
-    if (sharing && watchId.current == null) start();
+    if (sharing && cancelarWatch.current == null) start();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sharing]);
 
   useEffect(() => {
     return () => {
-      if (watchId.current != null && typeof navigator !== "undefined") {
-        navigator.geolocation.clearWatch(watchId.current);
-        watchId.current = null;
-      }
+      cancelarWatch.current?.();
+      cancelarWatch.current = null;
     };
   }, []);
 
