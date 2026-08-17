@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { assinarPosicao } from "@/lib/geo-watch";
 
 export interface RideTelemetry {
   /** current speed in km/h */
@@ -58,11 +59,11 @@ export function useRideTelemetry(active = true): RideTelemetry {
     lastTime.current = null;
   }, []);
 
-  // GPS speedometer
+  // GPS speedometer — assinante da fonte compartilhada (`lib/geo-watch.ts`).
   useEffect(() => {
     if (!active || typeof navigator === "undefined" || !navigator.geolocation) return;
-    const id = navigator.geolocation.watchPosition(
-      (pos) => {
+    return assinarPosicao({
+      aoReceber: (pos) => {
         const c = pos.coords;
         let kmh = c.speed != null && c.speed >= 0 ? c.speed * 3.6 : 0;
         if (lastCoords.current && lastTime.current) {
@@ -78,10 +79,7 @@ export function useRideTelemetry(active = true): RideTelemetry {
         setMax((m) => (clamped > m ? clamped : m));
         setSamples((s) => ({ sum: s.sum + clamped, count: s.count + 1 }));
       },
-      () => undefined,
-      { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 },
-    );
-    return () => navigator.geolocation.clearWatch(id);
+    });
   }, [active]);
 
   // Gyroscope / device orientation
