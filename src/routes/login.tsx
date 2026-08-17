@@ -8,10 +8,11 @@ import { OutlineButton } from "@/components/OutlineButton";
 import { useAuth } from "@/hooks/useAuth";
 import { resendConfirmationEmail } from "@/hooks/useAuth";
 import { AuthFailure } from "@/lib/auth-errors";
+import { destinoInternoSeguro, nextInternoOuIndefinido } from "@/lib/redirect-seguro";
 
 export const Route = createFileRoute("/login")({
   validateSearch: (s: Record<string, unknown>) => ({
-    next: typeof s.next === "string" ? s.next : undefined,
+    next: nextInternoOuIndefinido(s.next),
   }),
   head: () => ({
     meta: [
@@ -35,11 +36,9 @@ function Login() {
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
 
   const goNext = () => {
-    if (next && next.startsWith("/")) {
-      window.location.href = next;
-    } else {
-      navigate({ to: "/dashboard" });
-    }
+    // Open redirect: "//evil.com" também começa com "/".
+    if (next) window.location.href = destinoInternoSeguro(next);
+    else navigate({ to: "/dashboard" });
   };
 
   const onSubmit = async (e: React.FormEvent) => {
