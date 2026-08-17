@@ -8,7 +8,7 @@ import {
   pararServicoDeViagem,
   type EstadoServicoViagem,
 } from "@/lib/trip-service";
-import { setTripDiagnosticState } from "@/lib/trip-diagnostics";
+import { registrarEventoDeViagem, setTripDiagnosticState } from "@/lib/trip-diagnostics";
 import {
   VIAGEM_INICIAL,
   cancelarPreparacao,
@@ -57,8 +57,10 @@ function publicar(v: Viagem) {
   // Modo degradado: se o serviço nativo não subir, a viagem continua — o
   // início da viagem nunca pode derrubar a Home.
   if (anterior.estado !== "ativa" && v.estado === "ativa") {
+    registrarEventoDeViagem("trip.state.active");
     void iniciarServicoDeViagem(rotuloDoDestino(v)).catch(() => undefined);
   } else if (anterior.estado === "ativa" && v.estado !== "ativa") {
+    registrarEventoDeViagem("trip.stop");
     void pararServicoDeViagem().catch(() => undefined);
   }
 
@@ -110,6 +112,7 @@ export function useTrip() {
   const definirDestino = useCallback(
     (entrada: unknown, origem: "manual" | "externo" = "manual") => {
       setTripDiagnosticState({ action: "destination_parse" });
+      registrarEventoDeViagem("destination.selected", { detalhe: origem });
       publicar(receberDestino(viagemAtual, entrada, origem));
     },
     [],
@@ -117,6 +120,7 @@ export function useTrip() {
 
   const iniciar = useCallback(() => {
     setTripDiagnosticState({ action: "trip_start_requested" });
+    registrarEventoDeViagem("trip.start.request");
     publicar(iniciarViagem(viagemAtual, Date.now()));
   }, []);
   const cancelar = useCallback(() => publicar(cancelarPreparacao(viagemAtual)), []);

@@ -40,7 +40,6 @@ function iniciarSeNecessario(): void {
   const g = geo();
   if (!g) return;
   watchId = g.watchPosition(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (posicao) => {
       ultimaPosicao = posicao;
       for (const a of [...assinantes]) {
