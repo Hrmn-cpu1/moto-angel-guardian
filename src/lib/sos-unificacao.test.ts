@@ -232,7 +232,7 @@ test("as migrations antigas não foram tocadas", () => {
   const antigas = arquivosSql().filter((f) => !ehCheckpoint(f, "qualquer"));
   assert.equal(
     antigas.length,
-    24, // +1: 20260817160000_rc6_risk_heatmap_hardening.sql (hardening, aditiva)
+    25, // +1: RC6 revoke EXECUTE purge_native_auth_codes (ACL, aditiva)
     "o número de migrations pré-existentes mudou",
   );
 });
@@ -543,7 +543,7 @@ test("1B — as migrations do 1B também são aditivas", () => {
   const antigas = todas.filter((f) => !ehCheckpoint(f, "qualquer"));
   assert.equal(
     antigas.length,
-    24, // +1: 20260817160000_rc6_risk_heatmap_hardening.sql (hardening, aditiva)
+    25, // +1: RC6 revoke EXECUTE purge_native_auth_codes (ACL, aditiva)
     "o número de migrations pré-existentes mudou",
   );
   const doCheckpoint1 = todas.filter((f) => ehCheckpoint(f, "1"));
