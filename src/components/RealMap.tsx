@@ -519,7 +519,7 @@ export default function RealMap({
       limpar();
       setRotaIndisponivel(true);
       const d = diagnosticarRota(error);
-      registrarEventoDeViagem("directions.fail", { detalhe: d.codigo ?? "excecao" });
+      registrarEventoDeViagem("directions.fail", { detalhe: d.falha });
       setDiagnostico(d);
       onRouteRef.current?.(null);
       return;
@@ -596,7 +596,7 @@ export default function RealMap({
           setRotaIndisponivel(true);
           const d = diagnosticarRota(error);
           registrarEventoDeViagem("directions.fail", {
-            detalhe: d.codigo ?? "desconhecido",
+            detalhe: d.falha,
             duracaoMs: Date.now() - iniciadoEm,
           });
           setDiagnostico(d);
