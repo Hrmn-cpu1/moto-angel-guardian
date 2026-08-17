@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId , useMemo} from "react";
+import { useCallback, useEffect, useId } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -77,7 +77,7 @@ export function useOnlineRiders(pos: { lat: number; lng: number } | null, radius
   }, [invalidate, instanceId]);
 
   return {
-    riders: query.data ?? (VAZIO as never[]),
+    riders: query.data ?? (VAZIO as OnlineRider[]),
     loading: query.isLoading,
     error: query.error as Error | null,
     refresh: invalidate,
