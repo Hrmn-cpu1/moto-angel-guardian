@@ -12,6 +12,8 @@ export const tripDiagnosticSchema = z.object({
   destinationExists: z.boolean(),
   /** Trilha MA-TRIP compacta: marcos do fluxo antes do erro. Sem dado pessoal. */
   trail: z.string().max(900).optional(),
+  /** Trilha herdada de uma sessão anterior que terminou de forma anormal. */
+  previousTrail: z.string().max(400).optional(),
   timestamp: z.string().datetime(),
 });
 
