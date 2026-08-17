@@ -8,23 +8,36 @@
  * (cookie de estado/PKCE) onde havia começado.
  *
  * Fluxo adotado agora (Authorization Code + PKCE):
- *   Moto Anjo (sorteia code_verifier) -> Custom Tab (Chrome real)
- *   -> Google -> callback https /auth/callback?native=1&cc=<code_challenge>
+ *   Moto Anjo (sorteia o par PKCE) -> Custom Tab (Chrome real)
+ *   -> Google -> callback https /auth/callback (caminho limpo; o desafio
+ *      PKCE viaja dentro do `state`, que o broker devolve intacto)
  *   -> a página guarda a sessão no servidor e recebe um code opaco
- *   -> deep link com.motoanjo.app://auth/callback?code=<code>
- *   -> listener aqui troca code + code_verifier pela sessão -> setSession.
+ *   -> deep link com.motoanjo.app://auth/callback?code=...&state=...
+ *   -> aqui o `state` é CONFERIDO e só então o code vira sessão.
  *
- * O deep link nunca carrega senha, access_token ou refresh_token.
+ * RC7: o retorno antes vinha para um redirect_uri com parâmetros próprios,
+ * fora do contrato de três parâmetros que o broker oficialmente aceita — a
+ * hipótese mais provável para o fluxo travar em "Authorization Response" no
+ * aparelho. E o `state` era sorteado sem nunca ser verificado na volta.
+ *
+ * O deep link nunca carrega senha nem credencial de sessão.
  */
 import { supabase } from "@/integrations/supabase/client";
 import { isNativeApp } from "./native";
 import { authFailure } from "./auth-errors";
 import { exchangeNativeCode } from "./native-auth.functions";
+import { registrarEventoDeAuth } from "./auth-diagnostics";
+import {
+  montarEstadoNativo,
+  validarEstadoDeRetorno,
+  type PendenciaDeEstado,
+} from "./oauth-state";
 
 export const NATIVE_CALLBACK_SCHEME = "com.motoanjo.app";
 export const NATIVE_CALLBACK_URL = `${NATIVE_CALLBACK_SCHEME}://auth/callback`;
 const TIMEOUT_MS = 180_000;
 const PKCE_VERIFIER_KEY = "moto_anjo_native_pkce_verifier";
+const PKCE_STATE_KEY = "moto_anjo_native_oauth_state";
 
 type NativeAuthSource = "appUrlOpen" | "getLaunchUrl";
 type NativeAuthSnapshot = { processing: boolean };
@@ -66,6 +79,33 @@ function takeVerifier(): string | null {
 function randomState(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(16));
   return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * A pendência do `state` (RC7 / P0.2).
+ *
+ * Antes o `state` era sorteado, enviado e esquecido. Guardar o nonce aqui é o
+ * que permite recusar uma resposta que não corresponde à tentativa iniciada
+ * neste aparelho. Uso único: é consumido na primeira validação.
+ */
+function salvarPendenciaDeEstado(nonce: string): void {
+  window.localStorage.setItem(
+    PKCE_STATE_KEY,
+    JSON.stringify({ nonce, criadoEm: Date.now() } satisfies PendenciaDeEstado),
+  );
+}
+
+function consumirPendenciaDeEstado(): PendenciaDeEstado | null {
+  try {
+    const cru = window.localStorage.getItem(PKCE_STATE_KEY);
+    window.localStorage.removeItem(PKCE_STATE_KEY);
+    if (!cru) return null;
+    const lido = JSON.parse(cru) as Partial<PendenciaDeEstado>;
+    if (typeof lido?.nonce !== "string" || typeof lido?.criadoEm !== "number") return null;
+    return { nonce: lido.nonce, criadoEm: lido.criadoEm };
+  } catch {
+    return null;
+  }
 }
 
 function base64Url(bytes: ArrayBuffer | Uint8Array): string {
@@ -154,6 +194,7 @@ export async function handleNativeAuthUrl(
 
   console.info("[NativeAuth] native callback received");
   console.info(`[NativeAuth] origem: ${source}`);
+  registrarEventoDeAuth(source === "appUrlOpen" ? "appUrlOpen.received" : "launchUrl.received");
 
   const parsed = parseAuthCallback(rawUrl);
   console.info(`[NativeAuth] code present: ${Boolean(parsed.code)}`);
@@ -176,6 +217,21 @@ export async function handleNativeAuthUrl(
     setNativeAuthProcessing(true);
     try {
       if (parsed.error) throw authFailure("unexpected", parsed.error);
+
+      // Falha fechada: sem `state` conferido, a resposta não é aceita. Isto é
+      // o que impede que outro app registrado no mesmo esquema — ou um
+      // retorno que nunca partiu daqui — force uma sessão no Moto Anjo.
+      const veredito = validarEstadoDeRetorno(
+        callbackUrl.searchParams.get("state"),
+        consumirPendenciaDeEstado(),
+        Date.now(),
+      );
+      if (!veredito.ok) {
+        registrarEventoDeAuth("state.invalid", veredito.falha);
+        throw authFailure("unexpected", "Verificação de segurança do login falhou.");
+      }
+      registrarEventoDeAuth("state.valid");
+
       if (!parsed.code) throw authFailure("unexpected", "Retorno do Google sem código.");
       const verifier = takeVerifier();
       if (!verifier)
@@ -184,9 +240,11 @@ export async function handleNativeAuthUrl(
       // O broker retorna uma sessão à página HTTPS. Ela é convertida ali em
       // um código opaco, único e vinculado a este verifier PKCE. Somente esta
       // troca HTTPS devolve a sessão; tokens nunca passam pelo deep link.
+      registrarEventoDeAuth("exchange.begin");
       const exchanged = await exchangeNativeCode({
         data: { code: parsed.code, code_verifier: verifier },
       });
+      registrarEventoDeAuth("exchange.success");
       const { data, error } = await supabase.auth.setSession(exchanged);
       console.info(`[NativeAuth] exchangeCodeForSession ${error ? "error" : "success"}`);
       if (error || !data.session)
@@ -213,6 +271,7 @@ export async function handleNativeAuthUrl(
       return true;
     } catch (error) {
       console.error("[NativeAuth] exchangeCodeForSession error");
+      registrarEventoDeAuth("exchange.fail", error instanceof Error ? error.name : "unknown");
       pendingAttempt?.reject(error);
       pendingAttempt = null;
       throw error;
@@ -259,14 +318,25 @@ export async function signInWithGoogleNative(): Promise<void> {
   const { Browser } = await import("@capacitor/browser");
   await bootstrapNativeAuth();
 
+  registrarEventoDeAuth("oauth.begin");
   const origin = window.location.origin;
-  const state = randomState();
+  const nonce = randomState();
   const { verifier, challenge } = await createPkcePair();
   saveVerifier(verifier);
-  const redirectUri = `${origin}/auth/callback?native=1&cc=${encodeURIComponent(challenge)}`;
+  salvarPendenciaDeEstado(nonce);
+
+  // Contrato do broker: `provider`, `redirect_uri` e `state` — nada mais.
+  // O `redirect_uri` volta a ser um caminho limpo, sem parâmetros próprios —
+  // formato que o SDK oficial usa e o único que temos motivo para crer
+  // que passa pela lista de permissões do broker. O `code_challenge` viaja
+  // dentro do `state`, que o broker devolve intacto — e que agora também é
+  // conferido na volta.
+  const state = montarEstadoNativo(nonce, challenge);
+  const redirectUri = `${origin}/auth/callback`;
   const authUrl =
     `${origin}/~oauth/initiate?provider=google` +
-    `&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
+    `&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`;
+  registrarEventoDeAuth("broker.url.created");
 
   await new Promise<void>((resolve, reject) => {
     let settled = false;
@@ -289,6 +359,7 @@ export async function signInWithGoogleNative(): Promise<void> {
       resolve: () => finish(resolve),
       reject: (error) => finish(() => reject(error)),
     };
+    registrarEventoDeAuth("browser.open");
     void Browser.open({ url: authUrl, presentationStyle: "popover" }).catch((error) =>
       finish(() => reject(authFailure("unexpected", String(error)))),
     );

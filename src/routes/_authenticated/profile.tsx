@@ -78,7 +78,7 @@ function ProfilePage() {
           </p>
           <div className="grid grid-cols-3 gap-3">
             <Shortcut to="/sos" icon={Siren} label="SOS" />
-            <Shortcut to="/trip" icon={Navigation} label="Iniciar viagem" />
+            <Shortcut to="/dashboard" icon={Navigation} label="Iniciar viagem" />
             <Shortcut to="/ride" icon={Gauge} label="Velocímetro" />
             <Shortcut to="/sharing" icon={Share2} label="Compartilhar" />
             <Shortcut to="/alerts" icon={AlertTriangle} label="Alertas próximos" />

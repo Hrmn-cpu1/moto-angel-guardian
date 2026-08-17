@@ -1,3 +1,12 @@
+import {
+  acrescentar,
+  lerSessao,
+  novaSessao,
+  resumirTrilha,
+  sessaoAnteriorInacabada,
+  type SessaoDeTrilha,
+} from "./trip-trail.ts";
+
 export const TRIP_CRASH_CODE = "MA-TRIP-001";
 
 /**
@@ -12,6 +21,9 @@ export const TRIP_CRASH_CODE = "MA-TRIP-001";
  * paralela: usa `reportTripDiagnostic`, que já existe.
  */
 export const EVENTOS_MA_TRIP = [
+  "app.boot",
+  "app.resume",
+  "session.previous.unfinished",
   "home.ready",
   "destination.selected",
   "trip.prepare",
@@ -21,6 +33,7 @@ export const EVENTOS_MA_TRIP = [
   "trip.native.start.fail",
   "trip.native.status.active",
   "trip.native.status.failed",
+  "trip.heartbeat",
   "gps.web.watch.start",
   "gps.web.watch.stop",
   "gps.native.position",
@@ -48,8 +61,66 @@ export interface RegistroDeEvento {
   t: number;
 }
 
-const MAX_EVENTOS = 24;
-let trilha: RegistroDeEvento[] = [];
+/**
+ * Persistência da trilha (RC7).
+ *
+ * A versão anterior guardava a trilha só em memória — ou seja, ela morria
+ * exatamente no evento que queríamos investigar: a morte da WebView. Agora
+ * cada evento é espelhado em `localStorage`, com versão, TTL e poda. No boot
+ * seguinte conseguimos afirmar, com dado, se a sessão anterior terminou de
+ * forma anormal.
+ */
+export const CHAVE_TRILHA_MA_TRIP = "moto-anjo:ma-trip:v1";
+
+let sessao: SessaoDeTrilha | null = null;
+let sessaoAnterior: SessaoDeTrilha | null = null;
+let anteriorInacabada = false;
+
+function armazenamentoLocal(): Storage | null {
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return null;
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function garantirSessao(): SessaoDeTrilha {
+  if (sessao) return sessao;
+  const agora = Date.now();
+  const store = armazenamentoLocal();
+  const sessionId = `t${agora.toString(36)}${Math.floor(agora % 997).toString(36)}`;
+  sessaoAnterior = lerSessao(store?.getItem(CHAVE_TRILHA_MA_TRIP) ?? null, agora);
+  anteriorInacabada = sessaoAnteriorInacabada(sessaoAnterior, sessionId);
+  sessao = novaSessao(sessionId, agora);
+  return sessao;
+}
+
+function persistir(): void {
+  try {
+    armazenamentoLocal()?.setItem(CHAVE_TRILHA_MA_TRIP, JSON.stringify(sessao));
+  } catch {
+    /* diagnóstico jamais pode virar uma segunda fonte de falha */
+  }
+}
+
+/** A sessão anterior morreu sem encerrar? Resposta com dado, sem palpite de causa. */
+export function sessaoAnteriorTerminouMal(): boolean {
+  garantirSessao();
+  return anteriorInacabada;
+}
+
+/** Trilha herdada da sessão anterior, em texto compacto. */
+export function resumoDaSessaoAnterior(): string {
+  garantirSessao();
+  return resumirTrilha(sessaoAnterior);
+}
+
+/** Encerramento limpo: sem isto o próximo boot trata a sessão como anormal. */
+export function marcarSessaoFinalizada(): void {
+  sessao = { ...garantirSessao(), finished: true, updatedAt: Date.now() };
+  persistir();
+}
 
 /** Campos livres jamais entram inteiros: recorte curto e sem URL/coordenada. */
 function detalheSeguro(valor: unknown): string | undefined {
@@ -68,16 +139,35 @@ export function registrarEventoDeViagem(
     ...(detalheSeguro(extra?.detalhe) ? { detalhe: detalheSeguro(extra?.detalhe) } : {}),
     ...(typeof extra?.duracaoMs === "number" ? { duracaoMs: Math.round(extra.duracaoMs) } : {}),
   };
-  trilha = [...trilha, registro].slice(-MAX_EVENTOS);
+  sessao = acrescentar(garantirSessao(), {
+    e: registro.evento,
+    t: registro.t,
+    ...(registro.detalhe ? { d: registro.detalhe } : {}),
+    ...(registro.duracaoMs != null ? { ms: registro.duracaoMs } : {}),
+    ...(state.tripActive ? { s: "ativa" } : {}),
+  });
+  persistir();
   return registro;
 }
 
 export function trilhaDeEventos(): RegistroDeEvento[] {
-  return [...trilha];
+  return garantirSessao().eventos.map((r) => ({
+    evento: r.e as EventoMaTrip,
+    t: r.t,
+    ...(r.d ? { detalhe: r.d } : {}),
+    ...(r.ms != null ? { duracaoMs: r.ms } : {}),
+  }));
 }
 
 export function limparTrilhaDeEventos(): void {
-  trilha = [];
+  sessao = null;
+  sessaoAnterior = null;
+  anteriorInacabada = false;
+  try {
+    armazenamentoLocal()?.removeItem(CHAVE_TRILHA_MA_TRIP);
+  } catch {
+    /* ignore */
+  }
 }
 
 type TripDiagnosticState = {
@@ -96,6 +186,8 @@ export type TripDiagnosticEntry = TripDiagnosticState & {
   timestamp: string;
   /** Últimos marcos do fluxo antes do erro, em texto compacto. */
   trail?: string;
+  /** Trilha da sessão anterior quando ela terminou de forma anormal. */
+  previousTrail?: string;
 };
 
 const STORAGE_KEY = "moto-anjo:trip-diagnostics";
@@ -137,10 +229,8 @@ function errorDetails(error: unknown): Pick<TripDiagnosticEntry, "name" | "messa
 }
 
 export function createTripDiagnosticEntry(source: string, error: unknown): TripDiagnosticEntry {
-  const trilhaTexto = trilha
-    .map((r) => `${r.evento}${r.detalhe ? `:${r.detalhe}` : ""}`)
-    .join(" > ")
-    .slice(0, 900);
+  const trilhaTexto = resumirTrilha(garantirSessao());
+  const heranca = anteriorInacabada ? resumirTrilha(sessaoAnterior, 400) : "";
   return {
     code: TRIP_CRASH_CODE,
     source,
@@ -149,6 +239,7 @@ export function createTripDiagnosticEntry(source: string, error: unknown): TripD
     pathname: typeof window === "undefined" ? "ssr" : window.location.pathname,
     timestamp: new Date().toISOString(),
     ...(trilhaTexto ? { trail: trilhaTexto } : {}),
+    ...(heranca ? { previousTrail: heranca } : {}),
   };
 }
 

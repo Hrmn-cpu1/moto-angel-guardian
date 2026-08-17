@@ -9,7 +9,12 @@ import {
   servicoDisponivel,
   type EstadoServicoViagem,
 } from "@/lib/trip-service";
-import { registrarEventoDeViagem, setTripDiagnosticState } from "@/lib/trip-diagnostics";
+import {
+  marcarSessaoFinalizada,
+  registrarEventoDeViagem,
+  sessaoAnteriorTerminouMal,
+  setTripDiagnosticState,
+} from "@/lib/trip-diagnostics";
 import { reconciliarViagem, type EstadoNativo } from "@/lib/protecao";
 import {
   VIAGEM_INICIAL,
@@ -68,6 +73,9 @@ function publicar(v: Viagem) {
     jaTentouRecuperar = false;
     registrarEventoDeViagem("trip.stop");
     void pararServicoDeViagem().catch(() => undefined);
+    // Fim limpo: sem esta marca, o próximo boot leria a trilha como sessão
+    // interrompida e o diagnóstico apontaria um crash que não houve.
+    marcarSessaoFinalizada();
   }
 
   for (const a of assinantes) a(v);
@@ -135,13 +143,39 @@ export function useTrip() {
       if (recuperada.estado !== "ocioso") publicar(recuperada);
       else void pararServicoDeViagem().catch(() => undefined); // sem viagem, nenhum serviço órfão
     }
+    // Marco de boot + veredito honesto sobre a sessão anterior. É isto que
+    // transforma "o app fechou sozinho" em dado verificável no próximo teste.
+    registrarEventoDeViagem("app.boot");
+    if (sessaoAnteriorTerminouMal()) registrarEventoDeViagem("session.previous.unfinished");
     setViagem(viagemAtual);
     // Voltar para a tela não pode herdar um estado velho: quem sabe se o
     // serviço está de pé é o Android.
     void reconciliarComServico().catch(() => undefined);
+    /**
+     * Pulso da viagem ativa.
+     *
+     * Sem ele, uma viagem que morre em silêncio deixa como último registro o
+     * evento de início — e não dá para distinguir "parou de gravar" de "nada
+     * aconteceu". Com o pulso, o intervalo entre o último batimento e o boot
+     * seguinte mostra QUANDO o processo caiu.
+     */
+    const pulso = window.setInterval(() => {
+      if (viagemAtual.estado === "ativa") registrarEventoDeViagem("trip.heartbeat");
+    }, 15_000);
+
+    const aoVoltar = () => {
+      if (document.visibilityState === "visible") {
+        registrarEventoDeViagem("app.resume");
+        void reconciliarComServico().catch(() => undefined);
+      }
+    };
+    document.addEventListener("visibilitychange", aoVoltar);
+
     return () => {
       assinantes.delete(setViagem);
       desassinarServico();
+      window.clearInterval(pulso);
+      document.removeEventListener("visibilitychange", aoVoltar);
     };
   }, []);
 

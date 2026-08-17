@@ -2,6 +2,17 @@ import { useCallback, useEffect, useId } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+/**
+ * Referências estáveis (RC7).
+ *
+ * `?? []` cria um array NOVO a cada render. Como esses valores descem para o
+ * mapa, cada render invalidava os `useMemo` da Home e o mapa reconciliava
+ * marcadores sem que nada tivesse mudado — churn de objetos na WebView, que é
+ * exatamente o padrão associado ao travamento em aparelho. Um array vazio
+ * compartilhado e `useMemo` mantêm a identidade quando o conteúdo não mudou.
+ */
+const VAZIO: never[] = [];
+
 export interface OnlineRider {
   user_id: string;
   name: string;
@@ -66,7 +77,7 @@ export function useOnlineRiders(pos: { lat: number; lng: number } | null, radius
   }, [invalidate, instanceId]);
 
   return {
-    riders: query.data ?? [],
+    riders: query.data ?? (VAZIO as OnlineRider[]),
     loading: query.isLoading,
     error: query.error as Error | null,
     refresh: invalidate,

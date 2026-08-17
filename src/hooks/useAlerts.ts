@@ -3,6 +3,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { registrarPresenca } from "@/lib/presence";
 
+/**
+ * Referências estáveis (RC7).
+ *
+ * `?? []` cria um array NOVO a cada render. Como esses valores descem para o
+ * mapa, cada render invalidava os `useMemo` da Home e o mapa reconciliava
+ * marcadores sem que nada tivesse mudado — churn de objetos na WebView, que é
+ * exatamente o padrão associado ao travamento em aparelho. Um array vazio
+ * compartilhado e `useMemo` mantêm a identidade quando o conteúdo não mudou.
+ */
+const VAZIO: never[] = [];
+
 /** Tipos que o motociclista pode publicar pela tela de alertas. */
 export type AlertType = "perigo" | "acidente" | "bloqueio" | "roubo";
 
@@ -137,7 +148,7 @@ export function useAlerts(pos: { lat: number; lng: number } | null, radiusKm = 2
   });
 
   return {
-    alerts: query.data ?? [],
+    alerts: query.data ?? (VAZIO as NearbyAlert[]),
     loading: query.isLoading,
     error: query.error as Error | null,
     create,
