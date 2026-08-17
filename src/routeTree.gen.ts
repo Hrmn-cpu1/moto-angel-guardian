@@ -14,6 +14,7 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as OauthDebugRouteImport } from './routes/oauth-debug'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as MapDebugRouteImport } from './routes/map-debug'
 import { Route as LoginRouteImport } from './routes/login'
@@ -65,6 +66,11 @@ const RegisterRoute = RegisterRouteImport.update({
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OauthDebugRoute = OauthDebugRouteImport.update({
+  id: '/oauth-debug',
+  path: '/oauth-debug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const McpRoute = McpRouteImport.update({
@@ -213,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/map-debug': typeof MapDebugRoute
   '/mcp': typeof McpRoute
+  '/oauth-debug': typeof OauthDebugRoute
   '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -246,6 +253,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/map-debug': typeof MapDebugRoute
   '/mcp': typeof McpRoute
+  '/oauth-debug': typeof OauthDebugRoute
   '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -281,6 +289,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/map-debug': typeof MapDebugRoute
   '/mcp': typeof McpRoute
+  '/oauth-debug': typeof OauthDebugRoute
   '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -316,6 +325,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/map-debug'
     | '/mcp'
+    | '/oauth-debug'
     | '/privacy'
     | '/register'
     | '/reset-password'
@@ -349,6 +359,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/map-debug'
     | '/mcp'
+    | '/oauth-debug'
     | '/privacy'
     | '/register'
     | '/reset-password'
@@ -383,6 +394,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/map-debug'
     | '/mcp'
+    | '/oauth-debug'
     | '/privacy'
     | '/register'
     | '/reset-password'
@@ -418,6 +430,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MapDebugRoute: typeof MapDebugRoute
   McpRoute: typeof McpRoute
+  OauthDebugRoute: typeof OauthDebugRoute
   PrivacyRoute: typeof PrivacyRoute
   RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -466,6 +479,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/oauth-debug': {
+      id: '/oauth-debug'
+      path: '/oauth-debug'
+      fullPath: '/oauth-debug'
+      preLoaderRoute: typeof OauthDebugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mcp': {
@@ -705,6 +725,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MapDebugRoute: MapDebugRoute,
   McpRoute: McpRoute,
+  OauthDebugRoute: OauthDebugRoute,
   PrivacyRoute: PrivacyRoute,
   RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
