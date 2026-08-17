@@ -2,6 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { BrandMark } from "@/components/BrandMark";
 import { NATIVE_CALLBACK_URL, parseAuthCallback } from "@/lib/native-auth";
+import { registrarEventoDeAuth } from "@/lib/auth-diagnostics";
+import { lerEstadoNativo } from "@/lib/oauth-state";
 import { stashNativeSession } from "@/lib/native-auth.functions";
 
 /**
@@ -37,14 +39,24 @@ function AuthCallback() {
 
   useEffect(() => {
     const url = INITIAL_URL || window.location.href;
-    const isNativeReturn = /[?&]native=1(&|$|#)/.test(url);
+    registrarEventoDeAuth("callback.web.enter");
+    const params = new URL(url).searchParams;
+    const state = params.get("state") ?? "";
+    const estadoNativo = lerEstadoNativo(state);
+    // O caminho novo reconhece o retorno nativo pelo próprio `state`; o
+    // `native=1&cc=` fica como compatibilidade para um APK antigo que ainda
+    // esteja instalado em algum aparelho de teste.
+    const isNativeReturn = estadoNativo != null || /[?&]native=1(&|$|#)/.test(url);
     const parsed = parseAuthCallback(url);
 
     if (isNativeReturn) {
+      registrarEventoDeAuth("callback.native.detected");
       setMessage("Voltando para o Moto Anjo...");
-      const challenge = new URL(url).searchParams.get("cc") ?? "";
-      const back = (params: Record<string, string>) =>
-        window.location.replace(`${NATIVE_CALLBACK_URL}?${new URLSearchParams(params).toString()}`);
+      const challenge = estadoNativo?.challenge ?? params.get("cc") ?? "";
+      const back = (extra: Record<string, string>) =>
+        window.location.replace(
+          `${NATIVE_CALLBACK_URL}?${new URLSearchParams({ ...extra, ...(state ? { state } : {}) }).toString()}`,
+        );
       if (parsed.error) {
         back({ error: parsed.error });
         return;
@@ -53,6 +65,7 @@ function AuthCallback() {
         back({ error: "Retorno do Google sem sessão." });
         return;
       }
+      registrarEventoDeAuth("stash.begin");
       void stashNativeSession({
         data: {
           access_token: parsed.access_token,
@@ -60,7 +73,10 @@ function AuthCallback() {
           code_challenge: challenge,
         },
       })
-        .then((res: { code: string }) => back({ code: res.code }))
+        .then((res: { code: string }) => {
+          registrarEventoDeAuth("stash.success");
+          back({ code: res.code });
+        })
         .catch((e: unknown) => back({ error: e instanceof Error ? e.message : "Falha no login." }));
       return;
     }
