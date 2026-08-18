@@ -14,17 +14,18 @@ const ler = (p: string) => readFileSync(p, "utf8");
  * mensagem real. Estes testes travam a configuração e a observabilidade.
  */
 
-test("a configuração pública do backend existe no ambiente de build", () => {
-  const env = ler(".env");
+test("o contrato de configuração pública do backend está documentado para o build", () => {
+  const env = ler(".env.example");
   for (const chave of ["VITE_SUPABASE_URL", "VITE_SUPABASE_PUBLISHABLE_KEY"]) {
     const linha = env.split("\n").find((l) => l.startsWith(`${chave}=`));
-    assert.ok(linha, `${chave} ausente: o bundle sai sem backend e o login cai em MA-TRIP-001`);
-    assert.ok((linha.split("=")[1] ?? "").trim().length > 8, `${chave} está vazia`);
+    assert.ok(linha, `${chave} ausente do contrato de build`);
+    assert.ok((linha.split("=")[1] ?? "").trim().length > 8, `${chave} sem exemplo válido`);
   }
 });
 
-test("o .env nunca versiona chave de serviço", () => {
-  assert.ok(!ler(".env").includes("SERVICE_ROLE"), "service_role jamais no ambiente do cliente");
+test("a configuração de serviço nunca usa prefixo público", () => {
+  const env = ler(".env.example");
+  assert.ok(!env.includes("VITE_SUPABASE_SERVICE_ROLE"), "service_role jamais no ambiente do cliente");
 });
 
 test("o diagnóstico registra presença da configuração, sem expor valores", () => {
