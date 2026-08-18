@@ -240,9 +240,12 @@ export function createTripDiagnosticEntry(source: string, error: unknown): TripD
   const trilhaTexto = resumirTrilha(garantirSessao());
   const heranca = anteriorInacabada ? resumirTrilha(sessaoAnterior, 400) : "";
   // Somente booleanos: chave/URL jamais entram no diagnóstico.
+  // Fora do bundle Vite (testes/SSR) `import.meta.env` pode não existir: o
+  // diagnóstico jamais pode virar uma segunda fonte de falha.
+  const ambiente = (import.meta as { env?: Record<string, string | undefined> }).env ?? {};
   const config = {
-    supabaseUrl: Boolean(import.meta.env.VITE_SUPABASE_URL),
-    supabaseKey: Boolean(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY),
+    supabaseUrl: Boolean(ambiente.VITE_SUPABASE_URL),
+    supabaseKey: Boolean(ambiente.VITE_SUPABASE_PUBLISHABLE_KEY),
   };
   const trilhaAuth = (() => {
     try {
