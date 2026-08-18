@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 
 type PublicBuildConfig = {
   supabaseUrlPresent: boolean;
@@ -10,25 +11,28 @@ type PublicBuildConfig = {
 
 function readPublicBuildConfig(): PublicBuildConfig {
   const env = import.meta.env;
-  const scripts =
-    typeof document === "undefined"
-      ? []
-      : Array.from(document.scripts)
-          .map((script) => script.src)
-          .filter(Boolean);
-  const asset = scripts.find((src) => src.includes("/assets/"));
 
   return {
     supabaseUrlPresent: Boolean(env.VITE_SUPABASE_URL),
     supabaseKeyPresent: Boolean(env.VITE_SUPABASE_PUBLISHABLE_KEY),
     projectIdPresent: Boolean(env.VITE_SUPABASE_PROJECT_ID),
-    buildId: asset?.split("/").pop() ?? "unavailable",
+    buildId: "unavailable",
     commitSha: env.VITE_COMMIT_SHA ?? env.VITE_GIT_COMMIT_SHA ?? null,
   };
 }
 
 function ConfigDebugPage() {
-  const config = readPublicBuildConfig();
+  const [config, setConfig] = useState(readPublicBuildConfig);
+
+  useEffect(() => {
+    const asset = Array.from(document.scripts)
+      .map((script) => script.src)
+      .find((src) => src.includes("/assets/"));
+    setConfig((current) => ({
+      ...current,
+      buildId: asset?.split("/").pop() ?? "unavailable",
+    }));
+  }, []);
 
   return (
     <main className="min-h-[100dvh] bg-background px-5 py-8 text-foreground">
