@@ -31,24 +31,31 @@ function Splash() {
   useEffect(() => {
     let cancelled = false;
     const t = window.setTimeout(async () => {
-      await bootstrapNativeAuth();
-      if (getNativeAuthSnapshot().processing) return;
-      const { data } = await supabase.auth.getSession();
-      if (cancelled) return;
-      // Honor a saved intent from Google OAuth redirect.
-      let next: string | null = null;
+      // Qualquer falha aqui (config ausente, ponte nativa, storage bloqueado)
+      // precisa terminar em uma tela real: Splash infinito não é estado válido.
       try {
-        next = sessionStorage.getItem("moto_anjo_next");
-        if (next) sessionStorage.removeItem("moto_anjo_next");
-      } catch {
-        /* ignore */
+        await bootstrapNativeAuth();
+        if (getNativeAuthSnapshot().processing) return;
+        const { data } = await supabase.auth.getSession();
+        if (cancelled) return;
+        // Honor a saved intent from Google OAuth redirect.
+        let next: string | null = null;
+        try {
+          next = sessionStorage.getItem("moto_anjo_next");
+          if (next) sessionStorage.removeItem("moto_anjo_next");
+        } catch {
+          /* ignore */
+        }
+        if (data.session?.user) {
+          // "//evil.com" também começa com "/": valida antes de navegar.
+          navigate({ to: destinoInternoSeguro(next) });
+          return;
+        }
+      } catch (erro) {
+        console.error("[splash] bootstrap falhou, seguindo sem sessão", erro);
       }
-      if (data.session?.user) {
-        // "//evil.com" também começa com "/": valida antes de navegar.
-        navigate({ to: destinoInternoSeguro(next) });
-      } else {
-        navigate({ to: isIntroHidden() ? "/welcome" : "/intro" });
-      }
+      if (cancelled) return;
+      navigate({ to: isIntroHidden() ? "/welcome" : "/intro" });
     }, 2600);
     return () => {
       cancelled = true;
