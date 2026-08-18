@@ -20,6 +20,7 @@ import { Route as MapDebugRouteImport } from './routes/map-debug'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IntroRouteImport } from './routes/intro'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as ConfigDebugRouteImport } from './routes/config-debug'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
@@ -96,6 +97,11 @@ const IntroRoute = IntroRouteImport.update({
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfigDebugRoute = ConfigDebugRouteImport.update({
+  id: '/config-debug',
+  path: '/config-debug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -214,6 +220,7 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/config-debug': typeof ConfigDebugRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/intro': typeof IntroRoute
   '/login': typeof LoginRoute
@@ -248,6 +255,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/config-debug': typeof ConfigDebugRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/intro': typeof IntroRoute
   '/login': typeof LoginRoute
@@ -284,6 +292,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/config-debug': typeof ConfigDebugRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/intro': typeof IntroRoute
   '/login': typeof LoginRoute
@@ -320,6 +329,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/config-debug'
     | '/forgot-password'
     | '/intro'
     | '/login'
@@ -354,6 +364,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/config-debug'
     | '/forgot-password'
     | '/intro'
     | '/login'
@@ -389,6 +400,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/config-debug'
     | '/forgot-password'
     | '/intro'
     | '/login'
@@ -425,6 +437,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  ConfigDebugRoute: typeof ConfigDebugRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   IntroRoute: typeof IntroRoute
   LoginRoute: typeof LoginRoute
@@ -521,6 +534,13 @@ declare module '@tanstack/react-router' {
       path: '/forgot-password'
       fullPath: '/forgot-password'
       preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/config-debug': {
+      id: '/config-debug'
+      path: '/config-debug'
+      fullPath: '/config-debug'
+      preLoaderRoute: typeof ConfigDebugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -720,6 +740,7 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  ConfigDebugRoute: ConfigDebugRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   IntroRoute: IntroRoute,
   LoginRoute: LoginRoute,
