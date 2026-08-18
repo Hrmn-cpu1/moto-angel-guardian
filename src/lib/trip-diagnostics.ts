@@ -6,6 +6,8 @@ import {
   sessaoAnteriorInacabada,
   type SessaoDeTrilha,
 } from "./trip-trail.ts";
+import { resumoDaTrilhaDeAuth } from "./auth-diagnostics";
+import { isNativeApp } from "./native";
 
 export const TRIP_CRASH_CODE = "MA-TRIP-001";
 
