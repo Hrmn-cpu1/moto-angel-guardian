@@ -14,6 +14,12 @@ export const tripDiagnosticSchema = z.object({
   trail: z.string().max(900).optional(),
   /** Trilha herdada de uma sessão anterior que terminou de forma anormal. */
   previousTrail: z.string().max(400).optional(),
+  /** Só booleanos: presença da configuração pública exigida pelo cliente. */
+  config: z.object({ supabaseUrl: z.boolean(), supabaseKey: z.boolean() }).optional(),
+  /** Executando dentro do APK. */
+  native: z.boolean().optional(),
+  /** Marcos MA-AUTH: identifica erro originado no caminho de login. */
+  authTrail: z.string().max(900).optional(),
   timestamp: z.string().datetime(),
 });
 
