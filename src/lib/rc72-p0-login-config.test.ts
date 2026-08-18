@@ -25,7 +25,10 @@ test("o contrato de configuração pública do backend está documentado para o 
 
 test("a configuração de serviço nunca usa prefixo público", () => {
   const env = ler(".env.example");
-  assert.ok(!env.includes("VITE_SUPABASE_SERVICE_ROLE"), "service_role jamais no ambiente do cliente");
+  assert.ok(
+    !env.includes("VITE_SUPABASE_SERVICE_ROLE"),
+    "service_role jamais no ambiente do cliente",
+  );
 });
 
 test("o diagnóstico registra presença da configuração, sem expor valores", () => {
