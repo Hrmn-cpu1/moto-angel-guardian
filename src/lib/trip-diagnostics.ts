@@ -190,6 +190,12 @@ export type TripDiagnosticEntry = TripDiagnosticState & {
   trail?: string;
   /** Trilha da sessão anterior quando ela terminou de forma anormal. */
   previousTrail?: string;
+  /** Presença (nunca o valor) da configuração pública exigida pelo cliente. */
+  config?: { supabaseUrl: boolean; supabaseKey: boolean };
+  /** Executando dentro do APK? Separa crash de WebView de crash de navegador. */
+  native?: boolean;
+  /** Últimos marcos MA-AUTH: mostra se o erro veio do caminho de login. */
+  authTrail?: string;
 };
 
 const STORAGE_KEY = "moto-anjo:trip-diagnostics";
@@ -233,6 +239,18 @@ function errorDetails(error: unknown): Pick<TripDiagnosticEntry, "name" | "messa
 export function createTripDiagnosticEntry(source: string, error: unknown): TripDiagnosticEntry {
   const trilhaTexto = resumirTrilha(garantirSessao());
   const heranca = anteriorInacabada ? resumirTrilha(sessaoAnterior, 400) : "";
+  // Somente booleanos: chave/URL jamais entram no diagnóstico.
+  const config = {
+    supabaseUrl: Boolean(import.meta.env.VITE_SUPABASE_URL),
+    supabaseKey: Boolean(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY),
+  };
+  const trilhaAuth = (() => {
+    try {
+      return resumoDaTrilhaDeAuth();
+    } catch {
+      return "";
+    }
+  })();
   return {
     code: TRIP_CRASH_CODE,
     source,
@@ -240,6 +258,9 @@ export function createTripDiagnosticEntry(source: string, error: unknown): TripD
     ...state,
     pathname: typeof window === "undefined" ? "ssr" : window.location.pathname,
     timestamp: new Date().toISOString(),
+    config,
+    native: isNativeApp(),
+    ...(trilhaAuth ? { authTrail: trilhaAuth } : {}),
     ...(trilhaTexto ? { trail: trilhaTexto } : {}),
     ...(heranca ? { previousTrail: heranca } : {}),
   };
