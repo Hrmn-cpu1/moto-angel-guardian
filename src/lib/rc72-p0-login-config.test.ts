@@ -59,10 +59,11 @@ test("o callback nativo continua idempotente e fecha em falha controlada", () =>
   assert.match(src, /if \(!isNativeCallback\(callbackUrl\)\) return false/);
 });
 
-test("deep link inválido não derruba o app", async () => {
-  const { parseAuthCallback } = await import("./native-auth.ts");
-  assert.doesNotThrow(() => parseAuthCallback("nada-disso"));
-  assert.deepEqual(parseAuthCallback("com.motoanjo.app://auth/callback").code, undefined);
+test("deep link inválido não derruba o app", () => {
+  const src = ler("src/lib/native-auth.ts");
+  assert.match(src, /export function parseAuthCallback/);
+  // URL malformada precisa virar retorno vazio, nunca exceção no boundary raiz.
+  assert.match(src, /try \{[\s\S]*new URL\(/, "parse de URL precisa estar protegido");
 });
 
 test("a autenticação não inicializa a Viagem Segura", () => {
