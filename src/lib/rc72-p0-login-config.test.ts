@@ -16,7 +16,11 @@ const ler = (p: string) => readFileSync(p, "utf8");
 
 test("o contrato de configuração pública do backend está documentado para o build", () => {
   const env = ler(".env.example");
-  for (const chave of ["VITE_SUPABASE_URL", "VITE_SUPABASE_PUBLISHABLE_KEY"]) {
+  for (const chave of [
+    "VITE_SUPABASE_URL",
+    "VITE_SUPABASE_PUBLISHABLE_KEY",
+    "VITE_SUPABASE_PROJECT_ID",
+  ]) {
     const linha = env.split("\n").find((l) => l.startsWith(`${chave}=`));
     assert.ok(linha, `${chave} ausente do contrato de build`);
     assert.ok((linha.split("=")[1] ?? "").trim().length > 8, `${chave} sem exemplo válido`);
@@ -73,4 +77,23 @@ test("deep link inválido não derruba o app", () => {
 test("a autenticação não inicializa a Viagem Segura", () => {
   const src = ler("src/lib/native-auth.ts");
   assert.ok(!/trip-service|useTrip|iniciarViagem/i.test(src), "login não pode tocar na viagem");
+});
+
+test("configuração ausente falha dentro do fluxo de auth, sem rejeição global", () => {
+  const auth = ler("src/hooks/useAuth.ts");
+  assert.match(auth, /function assertPublicAuthConfig\(\): void/);
+  for (const chave of [
+    "VITE_SUPABASE_URL",
+    "VITE_SUPABASE_PUBLISHABLE_KEY",
+    "VITE_SUPABASE_PROJECT_ID",
+  ]) {
+    assert.ok(auth.includes(chave), `preflight não valida ${chave}`);
+  }
+  assert.match(
+    auth,
+    /try \{[\s\S]*assertPublicAuthConfig\(\);[\s\S]*setState\(\{ user: null, loading: false \}\);/,
+  );
+  const login = ler("src/routes/login.tsx");
+  assert.match(login, /try \{[\s\S]*loginWithGoogle\(next\)[\s\S]*catch \(err\)/);
+  assert.match(login, /setError\(err instanceof Error \? err\.message/);
 });

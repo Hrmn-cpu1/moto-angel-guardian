@@ -64,6 +64,17 @@ let state: AuthState = SERVER_STATE;
 const listeners = new Set<() => void>();
 let started = false;
 
+function assertPublicAuthConfig(): void {
+  const env = import.meta.env;
+  if (
+    !env.VITE_SUPABASE_URL ||
+    !env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    !env.VITE_SUPABASE_PROJECT_ID
+  ) {
+    throw authFailure("config");
+  }
+}
+
 function setState(patch: Partial<AuthState>) {
   state = { ...state, ...patch };
   listeners.forEach((l) => l());
@@ -81,12 +92,26 @@ function startAuthStore() {
   started = true;
 
   void (async () => {
-    const { data } = await supabase.auth.getSession();
-    const sessionUser = data.session?.user;
-    const u = sessionUser ? await loadProfile(sessionUser.id, sessionUser.email ?? "") : null;
-    setState({ user: u, loading: false });
+    try {
+      assertPublicAuthConfig();
+      const { data } = await supabase.auth.getSession();
+      const sessionUser = data.session?.user;
+      const u = sessionUser ? await loadProfile(sessionUser.id, sessionUser.email ?? "") : null;
+      setState({ user: u, loading: false });
+    } catch (error) {
+      console.error(
+        "[Auth] inicialização indisponível",
+        error instanceof Error ? error.name : "unknown",
+      );
+      setState({ user: null, loading: false });
+    }
   })();
 
+  try {
+    assertPublicAuthConfig();
+  } catch {
+    return;
+  }
   supabase.auth.onAuthStateChange((event, session) => {
     if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
     if (session?.user) {
@@ -116,6 +141,7 @@ export function useAuth() {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
+    assertPublicAuthConfig();
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
@@ -129,6 +155,7 @@ export function useAuth() {
 
   const register = useCallback(
     async (payload: Omit<AppUser, "id" | "createdAt"> & { password: string }) => {
+      assertPublicAuthConfig();
       const { password, ...rest } = payload;
       const { data, error } = await supabase.auth.signUp({
         email: rest.email.trim(),
@@ -173,6 +200,7 @@ export function useAuth() {
   );
 
   const loginWithGoogle = useCallback(async (nextPath?: string) => {
+    assertPublicAuthConfig();
     const redirectBase = window.location.origin;
     // Preserve where the user was heading, if provided.
     const destino = nextInternoOuIndefinido(nextPath);
@@ -237,6 +265,7 @@ export function useAuth() {
 }
 
 export async function resendConfirmationEmail(email: string): Promise<void> {
+  assertPublicAuthConfig();
   const { error } = await supabase.auth.resend({
     type: "signup",
     email: email.trim(),
