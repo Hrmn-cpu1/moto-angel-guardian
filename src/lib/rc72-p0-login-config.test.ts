@@ -89,7 +89,10 @@ test("configuração ausente falha dentro do fluxo de auth, sem rejeição globa
   ]) {
     assert.ok(auth.includes(chave), `preflight não valida ${chave}`);
   }
-  assert.match(auth, /try \{[\s\S]*assertPublicAuthConfig\(\);[\s\S]*setState\(\{ user: null, loading: false \}\);/);
+  assert.match(
+    auth,
+    /try \{[\s\S]*assertPublicAuthConfig\(\);[\s\S]*setState\(\{ user: null, loading: false \}\);/,
+  );
   const login = ler("src/routes/login.tsx");
   assert.match(login, /try \{[\s\S]*loginWithGoogle\(next\)[\s\S]*catch \(err\)/);
   assert.match(login, /setError\(err instanceof Error \? err\.message/);
