@@ -282,10 +282,16 @@ export default function RealMap({
   /* Coleções reconciliadas por ID (P0 RC5+): id -> marcador + chave de
    * conteúdo. Sem "apaga tudo e recria tudo". */
   const poiMarkersRef = useRef<
-    Map<string, { marker: google.maps.Marker; chave: string; listener?: google.maps.MapsEventListener }>
+    Map<
+      string,
+      { marker: google.maps.Marker; chave: string; listener?: google.maps.MapsEventListener }
+    >
   >(new Map());
   const alertMarkersRef = useRef<
-    Map<string, { marker: google.maps.Marker; chave: string; listener?: google.maps.MapsEventListener }>
+    Map<
+      string,
+      { marker: google.maps.Marker; chave: string; listener?: google.maps.MapsEventListener }
+    >
   >(new Map());
   const riderOverlaysRef = useRef<Map<string, RiderOverlay>>(new Map());
   const partnerOverlaysRef = useRef<Map<string, PartnerOverlay>>(new Map());
@@ -331,12 +337,10 @@ export default function RealMap({
   // the Android/Capacitor WebView); fall back to the Lovable-managed key.
   const ownKey = import.meta.env.VITE_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
   const managedKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as
-    | string
-    | undefined;
+    string | undefined;
   const apiKey = (ownKey && ownKey.trim()) || managedKey;
   const channel = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID as
-    | string
-    | undefined;
+    string | undefined;
 
   const fallbackCenter = useMemo(() => center ?? DEFAULT_CENTER, []);
   const initialZoom = useRef(zoom).current;
