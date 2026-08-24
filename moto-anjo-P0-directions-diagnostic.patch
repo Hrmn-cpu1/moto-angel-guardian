@@ -1,0 +1,113 @@
+--- a/src/lib/directions-status.ts
++++ b/src/lib/directions-status.ts
+@@ -33,6 +33,8 @@
+ 
+ export interface DiagnosticoDeRota {
+   falha: FalhaDeRota;
++  /** Status bruto normalizado do SDK, seguro para diagnóstico de campo. */
++  status: string | null;
+   /** Frase curta para o motociclista. Sem jargão do Google. */
+   mensagem: string;
+   /** Oferecer "tentar novamente"? Só quando repetir pode mudar o resultado. */
+@@ -84,10 +86,12 @@
+ export const ESPERA_COTA_S = 30;
+ 
+ export function diagnosticarRota(erro: unknown): DiagnosticoDeRota {
+-  switch (statusDaFalha(erro)) {
++  const status = statusDaFalha(erro);
++  switch (status) {
+     case "REQUEST_DENIED":
+       return {
+         falha: "negado",
++        status,
+         // Não expõe chave, projeto nem detalhe de configuração — e não pede
+         // ao motociclista que resolva algo que não está no aparelho dele.
+         mensagem: "Rota indisponível neste app. Seu destino continua salvo.",
+@@ -98,6 +102,7 @@
+     case "NOT_FOUND":
+       return {
+         falha: "sem_rota",
++        status,
+         mensagem: "Não há rota de moto até esse ponto. Escolha outro destino.",
+         podeTentarDeNovo: false,
+         esperaS: 0,
+@@ -105,6 +110,7 @@
+     case "OVER_QUERY_LIMIT":
+       return {
+         falha: "cota",
++        status,
+         mensagem: "Muitas rotas em pouco tempo. Aguarde alguns segundos.",
+         podeTentarDeNovo: true,
+         esperaS: ESPERA_COTA_S,
+@@ -114,6 +120,7 @@
+     case "MAX_ROUTE_LENGTH_EXCEEDED":
+       return {
+         falha: "invalido",
++        status,
+         mensagem: "Não consegui montar essa rota. Escolha o destino de novo.",
+         podeTentarDeNovo: false,
+         esperaS: 0,
+@@ -123,6 +130,7 @@
+       // Aqui "temporariamente" é verdade e repetir é legítimo.
+       return {
+         falha: "temporario",
++        status,
+         mensagem: "Rota temporariamente indisponível. Seu destino continua salvo.",
+         podeTentarDeNovo: true,
+         esperaS: 0,
+--- a/src/components/RealMap.tsx
++++ b/src/components/RealMap.tsx
+@@ -1102,11 +1102,21 @@
+         </div>
+       ) : null}
+       {state === "ready" && rotaIndisponivel && destination && (
+-        <div className="absolute inset-x-4 top-3 z-10 flex items-center justify-between gap-3 rounded-2xl border border-gold/30 bg-black/80 px-4 py-2.5">
+-          <p className="text-[11px] leading-snug text-muted-foreground">
+-            {diagnostico?.mensagem ??
+-              "Rota temporariamente indisponível. Seu destino continua salvo."}
+-          </p>
++        <div className="absolute inset-x-4 top-[calc(var(--ma-top)+112px)] z-40 flex items-center justify-between gap-3 rounded-2xl border border-gold/30 bg-black/90 px-4 py-2.5 backdrop-blur-md">
++          <div className="min-w-0 flex-1">
++            <p className="text-[11px] leading-snug text-muted-foreground">
++              {diagnostico?.mensagem ??
++                "Rota temporariamente indisponível. Seu destino continua salvo."}
++            </p>
++            {diagnostico?.status && (
++              <p
++                className="mt-1 text-[9px] font-semibold uppercase tracking-widest text-gold/80"
++                data-route-status={diagnostico.status}
++              >
++                Diagnóstico da rota: {diagnostico.status}
++              </p>
++            )}
++          </div>
+           {/* O botão só aparece quando repetir pode mudar o resultado. Oferecer
+               "tentar novamente" para REQUEST_DENIED é empurrar o motociclista
+               contra uma parede — e gastar cota a cada toque. */}
+--- a/src/lib/rc5-hardening.test.ts
++++ b/src/lib/rc5-hardening.test.ts
+@@ -122,6 +122,7 @@
+ test("DIR.1: REQUEST_DENIED não oferece 'tentar novamente'", () => {
+   const d = diagnosticarRota({ code: "REQUEST_DENIED" });
+   assert.equal(d.falha, "negado");
++  assert.equal(d.status, "REQUEST_DENIED");
+   assert.equal(d.podeTentarDeNovo, false, "repetir nunca corrige configuração de chave");
+   assert.ok(!/temporar/i.test(d.mensagem), "chamar de temporário é mentira");
+ });
+@@ -196,7 +197,15 @@
+   assert.match(mapa, /diagnostico\?\.podeTentarDeNovo \?\? true/);
+ });
+ 
+-test("DIR.8: a coordenada padrão é só enquadramento de câmera, nunca posição", () => {
++test("DIR.8: falha de rota fica visível e expõe somente o status sanitizado", () => {
++  const mapa = semComentarios(ler("src/components/RealMap.tsx"));
++  assert.match(mapa, /top-\[calc\(var\(--ma-top\)\+112px\)\]/);
++  assert.match(mapa, /z-40/);
++  assert.match(mapa, /data-route-status=\{diagnostico\.status\}/);
++  assert.match(mapa, /Diagnóstico da rota: \{diagnostico\.status\}/);
++});
++
++test("DIR.9: a coordenada padrão é só enquadramento de câmera, nunca posição", () => {
+   const mapa = semComentarios(ler("src/components/RealMap.tsx"));
+   /* DEFAULT_CENTER existe porque o mapa precisa apontar para algum lugar antes
+    * do primeiro fix de GPS. Isso é aceitável. O que NÃO pode é essa
