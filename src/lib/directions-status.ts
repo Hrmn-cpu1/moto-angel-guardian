@@ -33,6 +33,8 @@ export type FalhaDeRota =
 
 export interface DiagnosticoDeRota {
   falha: FalhaDeRota;
+  /** Status bruto normalizado do SDK, seguro para diagnóstico de campo. */
+  status: string | null;
   /** Frase curta para o motociclista. Sem jargão do Google. */
   mensagem: string;
   /** Oferecer "tentar novamente"? Só quando repetir pode mudar o resultado. */
@@ -84,10 +86,12 @@ function normalizar(v: string): string {
 export const ESPERA_COTA_S = 30;
 
 export function diagnosticarRota(erro: unknown): DiagnosticoDeRota {
-  switch (statusDaFalha(erro)) {
+  const status = statusDaFalha(erro);
+  switch (status) {
     case "REQUEST_DENIED":
       return {
         falha: "negado",
+        status,
         // Não expõe chave, projeto nem detalhe de configuração — e não pede
         // ao motociclista que resolva algo que não está no aparelho dele.
         mensagem: "Rota indisponível neste app. Seu destino continua salvo.",
@@ -98,6 +102,7 @@ export function diagnosticarRota(erro: unknown): DiagnosticoDeRota {
     case "NOT_FOUND":
       return {
         falha: "sem_rota",
+        status,
         mensagem: "Não há rota de moto até esse ponto. Escolha outro destino.",
         podeTentarDeNovo: false,
         esperaS: 0,
@@ -105,6 +110,7 @@ export function diagnosticarRota(erro: unknown): DiagnosticoDeRota {
     case "OVER_QUERY_LIMIT":
       return {
         falha: "cota",
+        status,
         mensagem: "Muitas rotas em pouco tempo. Aguarde alguns segundos.",
         podeTentarDeNovo: true,
         esperaS: ESPERA_COTA_S,
@@ -114,6 +120,7 @@ export function diagnosticarRota(erro: unknown): DiagnosticoDeRota {
     case "MAX_ROUTE_LENGTH_EXCEEDED":
       return {
         falha: "invalido",
+        status,
         mensagem: "Não consegui montar essa rota. Escolha o destino de novo.",
         podeTentarDeNovo: false,
         esperaS: 0,
@@ -123,6 +130,7 @@ export function diagnosticarRota(erro: unknown): DiagnosticoDeRota {
       // Aqui "temporariamente" é verdade e repetir é legítimo.
       return {
         falha: "temporario",
+        status,
         mensagem: "Rota temporariamente indisponível. Seu destino continua salvo.",
         podeTentarDeNovo: true,
         esperaS: 0,

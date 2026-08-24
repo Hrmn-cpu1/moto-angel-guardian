@@ -1102,11 +1102,21 @@ export default function RealMap({
         </div>
       ) : null}
       {state === "ready" && rotaIndisponivel && destination && (
-        <div className="absolute inset-x-4 top-3 z-10 flex items-center justify-between gap-3 rounded-2xl border border-gold/30 bg-black/80 px-4 py-2.5">
-          <p className="text-[11px] leading-snug text-muted-foreground">
-            {diagnostico?.mensagem ??
-              "Rota temporariamente indisponível. Seu destino continua salvo."}
-          </p>
+        <div className="absolute inset-x-4 top-[calc(var(--ma-top)+112px)] z-40 flex items-center justify-between gap-3 rounded-2xl border border-gold/30 bg-black/90 px-4 py-2.5 backdrop-blur-md">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] leading-snug text-muted-foreground">
+              {diagnostico?.mensagem ??
+                "Rota temporariamente indisponível. Seu destino continua salvo."}
+            </p>
+            {diagnostico?.status && (
+              <p
+                className="mt-1 text-[9px] font-semibold uppercase tracking-widest text-gold/80"
+                data-route-status={diagnostico.status}
+              >
+                Diagnóstico da rota: {diagnostico.status}
+              </p>
+            )}
+          </div>
           {/* O botão só aparece quando repetir pode mudar o resultado. Oferecer
               "tentar novamente" para REQUEST_DENIED é empurrar o motociclista
               contra uma parede — e gastar cota a cada toque. */}

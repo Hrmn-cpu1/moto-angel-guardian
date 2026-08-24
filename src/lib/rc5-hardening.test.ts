@@ -122,6 +122,7 @@ test("MIG.1: nenhuma migration repete o conteúdo de outra", () => {
 test("DIR.1: REQUEST_DENIED não oferece 'tentar novamente'", () => {
   const d = diagnosticarRota({ code: "REQUEST_DENIED" });
   assert.equal(d.falha, "negado");
+  assert.equal(d.status, "REQUEST_DENIED");
   assert.equal(d.podeTentarDeNovo, false, "repetir nunca corrige configuração de chave");
   assert.ok(!/temporar/i.test(d.mensagem), "chamar de temporário é mentira");
 });
@@ -196,7 +197,15 @@ test("DIR.7: o mapa usa o diagnóstico e nunca inventa rota", () => {
   assert.match(mapa, /diagnostico\?\.podeTentarDeNovo \?\? true/);
 });
 
-test("DIR.8: a coordenada padrão é só enquadramento de câmera, nunca posição", () => {
+test("DIR.8: falha de rota fica visível e expõe somente o status sanitizado", () => {
+  const mapa = semComentarios(ler("src/components/RealMap.tsx"));
+  assert.match(mapa, /top-\[calc\(var\(--ma-top\)\+112px\)\]/);
+  assert.match(mapa, /z-40/);
+  assert.match(mapa, /data-route-status=\{diagnostico\.status\}/);
+  assert.match(mapa, /Diagnóstico da rota: \{diagnostico\.status\}/);
+});
+
+test("DIR.9: a coordenada padrão é só enquadramento de câmera, nunca posição", () => {
   const mapa = semComentarios(ler("src/components/RealMap.tsx"));
   /* DEFAULT_CENTER existe porque o mapa precisa apontar para algum lugar antes
    * do primeiro fix de GPS. Isso é aceitável. O que NÃO pode é essa
