@@ -484,8 +484,8 @@ export default function RealMap({
     const g = (window as unknown as { google: typeof google }).google;
 
     const limpar = () => {
-      routeRendererRef.current?.setMap(null);
-      routeRendererRef.current = null;
+      routePolylineRef.current?.setMap(null);
+      routePolylineRef.current = null;
     };
 
     if (!destKey || !center) {
@@ -496,11 +496,8 @@ export default function RealMap({
       return;
     }
 
-    const destinoGoogle: google.maps.Place | google.maps.LatLngLiteral | string =
-      destination?.lat != null && destination?.lng != null
-        ? { lat: destination.lat, lng: destination.lng }
-        : (destination?.address ?? "");
-    if (!destinoGoogle) {
+    const temCoordenada = destination?.lat != null && destination?.lng != null;
+    if (!temCoordenada && !destination?.address) {
       limpar();
       onRouteRef.current?.(null);
       return;
@@ -510,91 +507,81 @@ export default function RealMap({
     const requestId = ++routeRequestRef.current;
     registrarEventoDeViagem("directions.begin");
     const iniciadoEm = Date.now();
-    let request: Promise<google.maps.DirectionsResult>;
-    try {
-      const service = new g.maps.DirectionsService();
-      request = service.route({
-        origin: { lat: center.lat, lng: center.lng },
-        destination: destinoGoogle,
-        travelMode: g.maps.TravelMode.DRIVING,
-      });
-    } catch (error) {
-      console.error(error);
-      limpar();
-      setRotaIndisponivel(true);
-      const d = diagnosticarRota(error);
-      registrarEventoDeViagem("directions.fail", { detalhe: d.falha });
-      setDiagnostico(d);
-      onRouteRef.current?.(null);
-      return;
-    }
 
-    request
-      .then((res) => {
+    /* A rota vem do SERVIDOR (Routes API pelo gateway).
+     *
+     * Antes era `new google.maps.DirectionsService()` aqui no navegador: a
+     * chave de navegador não autoriza Directions e TODA tentativa voltava
+     * REQUEST_DENIED — destino escolhido, viagem ativa, mapa sem linha. */
+    calcularRotaNoServidor({
+      data: {
+        origem: { lat: center.lat, lng: center.lng },
+        destino: temCoordenada
+          ? { lat: destination!.lat!, lng: destination!.lng! }
+          : { endereco: destination!.address! },
+      },
+    })
+      .then((resposta) => {
         if (cancelled || requestId !== routeRequestRef.current) return;
-        registrarEventoDeViagem("directions.success", { duracaoMs: Date.now() - iniciadoEm });
-        setRotaIndisponivel(false);
-        setDiagnostico(null);
-        if (!routeRendererRef.current) {
-          routeRendererRef.current = new g.maps.DirectionsRenderer({
-            suppressMarkers: true,
-            preserveViewport: true,
-            polylineOptions: {
-              strokeColor: "#F3D675",
-              strokeOpacity: 0.95,
-              strokeWeight: 6,
-              zIndex: 5,
-            },
+        const rota = resposta.ok ? resposta.rota : null;
+        if (!rota) {
+          limpar();
+          setRotaIndisponivel(true);
+          const d = diagnosticarRota({ code: resposta.status ?? "UNKNOWN_ERROR" });
+          registrarEventoDeViagem("directions.fail", {
+            detalhe: d.falha,
+            duracaoMs: Date.now() - iniciadoEm,
           });
-        }
-        routeRendererRef.current.setMap(map);
-        routeRendererRef.current.setDirections(res);
-        const perna = res.routes[0]?.legs[0];
-        if (!perna) {
+          setDiagnostico(d);
           onRouteRef.current?.(null);
           return;
         }
 
-        /* Enquadramento (RC3.2 #10).
-         *
-         * Uma única vez por destino: mostrar o usuário e o trecho seguinte da
-         * rota. Não é feito a cada recálculo, senão a câmera brigaria com o
-         * modo "seguir" a cada quarteirão. */
+        registrarEventoDeViagem("directions.success", { duracaoMs: Date.now() - iniciadoEm });
+        setRotaIndisponivel(false);
+        setDiagnostico(null);
+
+        if (!routePolylineRef.current) {
+          routePolylineRef.current = new g.maps.Polyline({
+            strokeColor: "#F3D675",
+            strokeOpacity: 0.95,
+            strokeWeight: 6,
+            zIndex: 5,
+          });
+        }
+        routePolylineRef.current.setPath(rota.pontos);
+        routePolylineRef.current.setMap(map);
+
+        /* Enquadramento (RC3.2 #10): uma vez por destino — usuário + trecho
+         * seguinte. Não a cada recálculo, senão a câmera briga com o "seguir". */
         if (enquadradoParaRef.current !== destKey) {
           enquadradoParaRef.current = destKey;
-          const passos = perna.steps ?? [];
-          const quantos = passosDoEnquadramento(passos.map((s) => s.distance?.value ?? 0));
-          if (quantos > 0) {
+          const quantos = passosDoEnquadramento(rota.passos.map((p) => p.distanciaM));
+          const fins = fimDosPassos(rota.passos, quantos);
+          if (fins.length > 0) {
             const limites = new g.maps.LatLngBounds();
             const atual = centerRef.current ?? center;
             limites.extend({ lat: atual.lat, lng: atual.lng });
-            passos.slice(0, quantos).forEach((s) => {
-              if (s.end_location) limites.extend(s.end_location);
-            });
+            fins.forEach((p) => limites.extend(p));
             map.fitBounds(limites, { top: 150, right: 60, bottom: 240, left: 60 });
           }
         }
 
-        const passo = perna.steps?.[0];
+        const passo = rota.passos[0];
         onRouteRef.current?.({
-          distanciaKm: (perna.distance?.value ?? 0) / 1000,
-          duracaoMin: Math.round((perna.duration?.value ?? 0) / 60),
-          proximaInstrucao: passo?.instructions
-            ? passo.instructions
-                .replace(/<[^>]*>/g, " ")
-                .replace(/\s+/g, " ")
-                .trim()
-            : null,
-          proximaDistanciaM: passo?.distance?.value ?? null,
-          proximaManobra: (passo as unknown as { maneuver?: string } | undefined)?.maneuver ?? null,
-          destinoTexto: perna.end_address ?? null,
+          distanciaKm: rota.distanciaM / 1000,
+          duracaoMin: Math.round(rota.duracaoS / 60),
+          proximaInstrucao: passo?.instrucao ?? null,
+          proximaDistanciaM: passo?.distanciaM ?? null,
+          proximaManobra: passo?.manobra ?? null,
+          destinoTexto: rota.destinoTexto ?? destination?.address ?? null,
         });
       })
       .catch((error) => {
         // Sem rota calculável não se inventa distância: a Home mostra só o
         // destino escolhido. A falha do serviço externo fica isolada no mapa:
         // nunca deve subir até o boundary raiz e derrubar cockpit/SOS.
-        console.error("Falha ao calcular rota do Google Maps", error);
+        console.error("Falha ao calcular rota do Moto Anjo", error);
         if (!cancelled && requestId === routeRequestRef.current) {
           limpar();
           setRotaIndisponivel(true);
@@ -611,7 +598,8 @@ export default function RealMap({
     return () => {
       cancelled = true;
     };
-  }, [destKey, originKey, state, tentativaRota]);
+  }, [destKey, originKey, state, tentativaRota, calcularRotaNoServidor]);
+
 
   useEffect(
     () => () => {
