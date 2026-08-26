@@ -74,7 +74,9 @@ export const calcularRota = createServerFn({ method: "POST" })
           "X-Goog-FieldMask": CAMPOS_ROTA,
         },
         body: JSON.stringify({
-          origin: { location: { latLng: { latitude: data.origem.lat, longitude: data.origem.lng } } },
+          origin: {
+            location: { latLng: { latitude: data.origem.lat, longitude: data.origem.lng } },
+          },
           destination: destino,
           travelMode: "DRIVE",
           routingPreference: "TRAFFIC_AWARE",

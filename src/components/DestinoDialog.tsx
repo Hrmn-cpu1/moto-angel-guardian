@@ -42,7 +42,9 @@ export function DestinoDialog({
    * Coordenada, link de mapa ou `geo:` já são destino resolvido — buscar
    * gastaria cota do Places para devolver o que a pessoa já digitou. */
   const consulta = texto.trim();
-  const pareceEndereco = consulta.length >= 3 && !/^[a-z][a-z0-9+.-]*:/i.test(consulta) &&
+  const pareceEndereco =
+    consulta.length >= 3 &&
+    !/^[a-z][a-z0-9+.-]*:/i.test(consulta) &&
     !/^-?\d{1,3}[.,]\d+\s*[,;]\s*-?\d{1,3}[.,]\d+$/.test(consulta);
 
   useEffect(() => {
