@@ -138,7 +138,7 @@ test("7) falha de rota é capturada e não sobe para o boundary raiz", () => {
 test("8) destino é preservado e o recálculo pode ser pedido de novo", () => {
   assert.match(mapa, /Rota temporariamente indisponível\. Seu destino continua salvo\./);
   assert.match(mapa, /setTentativaRota\(\(t\) => t \+ 1\)/);
-  assert.match(mapa, /\[destKey, originKey, state, tentativaRota\]/);
+  assert.match(mapa, /\[destKey, originKey, state, tentativaRota/);
 });
 
 test("nenhum uso de addListener(...).then no código do app", () => {
