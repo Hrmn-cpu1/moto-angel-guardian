@@ -68,9 +68,11 @@ test("o mapa continua medindo área antes de nascer e não fica em loading etern
 
 test("distância e ETA vêm do Google, nunca de estimativa local", () => {
   const mapa = ler("components/RealMap.tsx");
-  assert.match(mapa, /perna\.distance\?\.value/);
-  assert.match(mapa, /perna\.duration\?\.value/);
-  assert.match(mapa, /proximaDistanciaM: passo\?\.distance\?\.value \?\? null/);
+  // A rota vem da Routes API pelo servidor (a chave de navegador não autoriza
+  // Directions), mas continua sendo medida REAL do Google — nunca estimativa.
+  assert.match(mapa, /rota\.distanciaM \/ 1000/);
+  assert.match(mapa, /Math\.round\(rota\.duracaoS \/ 60\)/);
+  assert.match(mapa, /proximaDistanciaM: passo\?\.distanciaM \?\? null/);
   const barra = ler("components/DestinationBar.tsx");
   assert.match(barra, /rota \?/);
 });

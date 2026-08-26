@@ -2,7 +2,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { abrirNavegacaoExterna } from "@/lib/external-navigation";
+import { useServerFn } from "@tanstack/react-start";
 import { passosDoEnquadramento } from "@/lib/navigation-cue";
+import { fimDosPassos } from "@/lib/rota";
+import { calcularRota } from "@/lib/rota.functions";
 import { diagnosticarRota, type DiagnosticoDeRota } from "@/lib/directions-status";
 import { pontosDeRiscoVisiveis } from "@/lib/map-layers";
 import { chaveDePonto, planejarReconciliacao } from "@/lib/marker-sync";
@@ -297,10 +300,13 @@ export default function RealMap({
   const partnerOverlaysRef = useRef<Map<string, PartnerOverlay>>(new Map());
   const heatCirclesRef = useRef<google.maps.Circle[]>([]);
   const trafficRef = useRef<google.maps.TrafficLayer | null>(null);
-  const routeRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
+  const routePolylineRef = useRef<google.maps.Polyline | null>(null);
   const routeRequestRef = useRef(0);
   /** Destino já enquadrado — impede a câmera de brigar com o modo "seguir". */
   const enquadradoParaRef = useRef<string | null>(null);
+  /* A rota é calculada no SERVIDOR: a chave de navegador não autoriza
+   * Directions (REQUEST_DENIED provado em campo). */
+  const calcularRotaNoServidor = useServerFn(calcularRota);
   const onRouteRef = useRef(onRoute);
   onRouteRef.current = onRoute;
   const [state, setState] = useState<LoaderState>("idle");
@@ -337,10 +343,12 @@ export default function RealMap({
   // the Android/Capacitor WebView); fall back to the Lovable-managed key.
   const ownKey = import.meta.env.VITE_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
   const managedKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as
-    string | undefined;
+    | string
+    | undefined;
   const apiKey = (ownKey && ownKey.trim()) || managedKey;
   const channel = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID as
-    string | undefined;
+    | string
+    | undefined;
 
   const fallbackCenter = useMemo(() => center ?? DEFAULT_CENTER, []);
   const initialZoom = useRef(zoom).current;
@@ -600,11 +608,10 @@ export default function RealMap({
     };
   }, [destKey, originKey, state, tentativaRota, calcularRotaNoServidor]);
 
-
   useEffect(
     () => () => {
-      routeRendererRef.current?.setMap(null);
-      routeRendererRef.current = null;
+      routePolylineRef.current?.setMap(null);
+      routePolylineRef.current = null;
     },
     [],
   );

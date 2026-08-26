@@ -183,9 +183,10 @@ test("DIR.6: nenhuma mensagem vaza jargão do Google para o motociclista", () =>
 test("DIR.7: o mapa usa o diagnóstico e nunca inventa rota", () => {
   const mapa = semComentarios(ler("src/components/RealMap.tsx"));
   assert.match(mapa, /diagnosticarRota\(error\)/);
-  // Nos DOIS caminhos de falha: exception síncrona e promise rejeitada.
+  // Nos DOIS caminhos de falha: resposta de rota negada pelo servidor e
+  // promise rejeitada (rede/servidor fora).
   assert.equal(
-    (mapa.match(/diagnosticarRota\(error\)/g) ?? []).length,
+    (mapa.match(/diagnosticarRota\(/g) ?? []).length,
     2,
     "falta classificar um dos caminhos de falha",
   );
