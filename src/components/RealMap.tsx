@@ -321,6 +321,9 @@ export default function RealMap({
   const routeRequestRef = useRef(0);
   /** Destino já enquadrado — impede a câmera de brigar com o modo "seguir". */
   const enquadradoParaRef = useRef<string | null>(null);
+  /** Último centro aplicado à câmera — evita tremor com o GPS parado. */
+  const ultimoCentroRef = useRef<{ lat: number; lng: number } | null>(null);
+
   /* A rota é calculada no SERVIDOR: a chave de navegador não autoriza
    * Directions (REQUEST_DENIED provado em campo). */
   const calcularRotaNoServidor = useServerFn(calcularRota);
