@@ -45,8 +45,11 @@ test("telemetria é uma faixa compacta, sem régua nem número gigante", () => {
 test("sem dado, a telemetria mostra traço em vez de zero", () => {
   const strip = ler("components/TelemetryStrip.tsx");
   assert.match(strip, /velocidade == null \? "—"/);
-  assert.match(strip, /graus == null \? "—"/);
+  // V3: a inclinação saiu da faixa visível e virou contexto de leitor de tela;
+  // a regra continua a mesma — sem sensor, nada de número fabricado.
+  assert.match(strip, /graus == null \? "inclinação indisponível"/);
 });
+
 
 /* ---------- Copiloto ---------- */
 
