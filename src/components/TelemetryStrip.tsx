@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Gauge, Compass, MoveHorizontal, Volume2, VolumeX, Square } from "lucide-react";
+import { Gauge, Compass, Route, Clock, Volume2, VolumeX, Square } from "lucide-react";
 import { camada } from "@/lib/layers";
 import type { Cardeal, Inclinacao } from "@/lib/ride-telemetry";
 
