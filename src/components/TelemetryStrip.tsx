@@ -4,12 +4,12 @@ import { camada } from "@/lib/layers";
 import type { Cardeal, Inclinacao } from "@/lib/ride-telemetry";
 
 /**
- * Telemetria compacta (RC3.1).
+ * Telemetria compacta (V2.1).
  *
- * O painel anterior era um cartão vertical alto que engolia o mapa. Aqui
- * velocidade, rumo e inclinação vivem numa única faixa de ~90 px: três
- * números grandes, três rótulos minúsculos e nada mais. Sem régua de
- * inclinação, sem repetir o destino (ele já está no topo).
+ * Três números que importam pilotando — velocidade, distância restante e
+ * chegada — com rótulos INTEIROS: nada de "VELOC..." ou "RESTAN...". A grade
+ * é fluida (`minmax(0,1fr)`) e cada célula tem `min-w-0`, então em telas
+ * Android estreitas o texto encolhe de tamanho antes de ser cortado.
  *
  * Regra preservada: sem dado confiável, aparece "—". Nunca um número
  * fabricado para a faixa parecer completa.
@@ -44,41 +44,41 @@ export function TelemetryStrip({
   return (
     <div
       data-testid="telemetria-compacta"
-      className={`${camada("painelInferior")} flex h-[58px] items-center gap-2 rounded-2xl border border-white/10 bg-black/80 px-3 backdrop-blur-md ${className ?? ""}`}
+      className={`${camada("painelInferior")} flex items-center gap-2 rounded-2xl border border-white/10 bg-black/85 px-3 py-2 backdrop-blur-md ${className ?? ""}`}
     >
-      <Item
-        icone={<Gauge size={11} />}
-        valor={velocidade == null ? "—" : String(velocidade)}
-        unidade="km/h"
-        rotulo="Velocidade"
-        destaque
-      />
-      <span className="h-7 w-px shrink-0 bg-white/10" />
-      <Item
-        icone={<Route size={11} />}
-        valor={restanteKm == null ? "—" : restanteKm.toFixed(1).replace(".", ",")}
-        unidade="km"
-        rotulo="Restante"
-      />
-      <span className="h-7 w-px shrink-0 bg-white/10" />
-      <Item
-        icone={<Clock size={11} />}
-        valor={etaMin == null ? "—" : String(etaMin)}
-        unidade="min"
-        rotulo="ETA"
-      />
-      <span className="hidden h-7 w-px shrink-0 bg-white/10 min-[380px]:block" />
-      <div className="hidden min-[380px]:contents">
-        <Item icone={<Compass size={11} />} valor={rumo ?? "—"} rotulo="Direção" />
+      <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)_minmax(0,1fr)] items-end gap-2">
+        <Item
+          icone={<Gauge size={10} />}
+          valor={velocidade == null ? "—" : String(velocidade)}
+          unidade="km/h"
+          rotulo="Velocidade"
+          destaque
+        />
+        <Item
+          icone={<Route size={10} />}
+          valor={restanteKm == null ? "—" : restanteKm.toFixed(1).replace(".", ",")}
+          unidade="km"
+          rotulo="Distância"
+        />
+        <Item
+          icone={<Clock size={10} />}
+          valor={etaMin == null ? "—" : String(etaMin)}
+          unidade="min"
+          rotulo="Chegada"
+        />
+      </div>
+
+      {/* Direção é contexto, não decisão: fica menor e some em telas estreitas. */}
+      <div className="hidden shrink-0 items-center gap-1 border-l border-white/10 pl-2 text-[10px] font-semibold text-muted-foreground min-[400px]:flex">
+        <Compass size={10} className="text-gold" />
+        <span className="tabular-nums">{rumo ?? "—"}</span>
       </div>
       <span className="sr-only">
-        {inclinacao.graus == null ? "—" : `${inclinacao.graus}°`} de inclinação
+        {inclinacao.graus == null ? "—" : `${inclinacao.graus}°`} de inclinação ·{" "}
+        {modo === "pilotando" ? "Em movimento" : "Parado"}
       </span>
 
-      <div className="ml-auto flex shrink-0 items-center gap-1.5">
-        <span className="hidden text-[9px] uppercase tracking-widest text-muted-foreground">
-          {modo === "pilotando" ? "Em movimento" : "Parado"}
-        </span>
+      <div className="flex shrink-0 items-center gap-1.5">
         {vozSuportada && (
           <button
             onClick={onAlternarVoz}
@@ -92,12 +92,13 @@ export function TelemetryStrip({
             {vozLigada ? <Volume2 size={12} /> : <VolumeX size={12} />}
           </button>
         )}
+        {/* Ícone quadrado sozinho era ambíguo: agora diz o que faz. */}
         <button
           onClick={onFinalizar}
           aria-label="Finalizar viagem"
-          className="rounded-full border border-white/15 p-1.5 text-muted-foreground"
+          className="flex items-center gap-1.5 rounded-full border border-emergency/40 bg-emergency/10 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-emergency"
         >
-          <Square size={12} />
+          <Square size={11} /> <span className="hidden min-[340px]:inline">Finalizar</span>
         </button>
       </div>
     </div>
@@ -118,22 +119,22 @@ function Item({
   destaque?: boolean;
 }) {
   return (
-    <div className="min-w-0 flex-1">
+    <div className="min-w-0">
+      <p className="flex min-w-0 items-center gap-1 text-[8px] font-semibold uppercase leading-none tracking-[0.06em] text-muted-foreground">
+        <span className="shrink-0 text-gold">{icone}</span>
+        <span className="min-w-0">{rotulo}</span>
+      </p>
       <p
-        className={`flex items-baseline gap-1 leading-none tabular-nums ${
-          destaque ? "text-[20px] font-bold text-foreground" : "text-base font-bold text-foreground"
+        className={`mt-1 flex min-w-0 items-baseline gap-1 leading-none tabular-nums ${
+          destaque ? "text-[22px] font-black text-foreground" : "text-[17px] font-bold text-foreground"
         }`}
       >
         <span className="truncate">{valor}</span>
         {unidade && (
-          <span className="text-[9px] font-semibold uppercase text-muted-foreground">
+          <span className="shrink-0 text-[9px] font-semibold uppercase text-muted-foreground">
             {unidade}
           </span>
         )}
-      </p>
-      <p className="mt-0.5 flex items-center gap-1 text-[8px] uppercase tracking-widest text-muted-foreground">
-        <span className="shrink-0 text-gold">{icone}</span>
-        <span className="truncate">{rotulo}</span>
       </p>
     </div>
   );
