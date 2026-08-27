@@ -302,9 +302,16 @@ function Dashboard() {
   }
 
   return (
-    <AppShell fullBleed>
-      <div className="relative h-[100dvh] w-full overflow-hidden bg-background">
+    /* COCKPIT V2: durante a viagem a navegação inferior some e a âncora de
+       baixo encolhe (`ma-cockpit`), para o mapa ser a tela inteira. */
+    <AppShell fullBleed hideNav={viagemAtiva}>
+      <div
+        className={`relative h-[100dvh] w-full overflow-hidden bg-background ${
+          viagemAtiva ? "ma-cockpit" : ""
+        }`}
+      >
         <ClientOnly
+
           fallback={
             <div className="absolute inset-0 flex items-center justify-center text-xs uppercase tracking-widest text-gold">
               Preparando mapa...
