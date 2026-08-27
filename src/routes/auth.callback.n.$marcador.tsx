@@ -14,6 +14,8 @@ const META_CALLBACK = [
   { name: "robots", content: "noindex" },
   { property: "og:title", content: "Entrando — Moto Anjo" },
   { property: "og:description", content: "Concluindo o login no Moto Anjo." },
+  { property: "og:type", content: "website" },
+  { name: "twitter:card", content: "summary" },
 ];
 
 export const Route = createFileRoute("/auth/callback/n/$marcador")({
