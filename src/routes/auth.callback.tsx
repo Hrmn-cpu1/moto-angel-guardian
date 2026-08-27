@@ -93,9 +93,10 @@ function AuthCallback() {
           flags: { code: "code" in extra, error: "error" in extra, state: Boolean(state) },
         });
         beacon("deepLink.begin");
-        window.location.replace(
-          `${NATIVE_CALLBACK_URL}?${new URLSearchParams({ ...extra, ...(state ? { state } : {}) }).toString()}`,
-        );
+        const alvo = `${NATIVE_CALLBACK_URL}?${new URLSearchParams({ ...extra, ...(state ? { state } : {}) }).toString()}`;
+        setVoltaManual(alvo);
+        window.location.replace(alvo);
+
         registrarEventoDeAuth("deepLink.replace.called");
       };
       if (parsed.error) {
