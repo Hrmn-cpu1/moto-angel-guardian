@@ -341,7 +341,11 @@ export async function signInWithGoogleNative(): Promise<void> {
   // dentro do `state`, que o broker devolve intacto — e que agora também é
   // conferido na volta.
   const state = montarEstadoNativo(nonce, challenge);
-  const redirectUri = `${origin}/auth/callback`;
+  // O marcador vai também no CAMINHO do redirect_uri: é o único sinal que não
+  // depende do broker devolver o `state` intacto. Sem ele, a página de
+  // callback tratava o retorno como navegador e a sessão nascia dentro do
+  // Custom Tab — o app continuava deslogado.
+  const redirectUri = caminhoDeCallbackNativo(origin, nonce, challenge);
   const authUrl =
     `${origin}/~oauth/initiate?provider=google` +
     `&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`;
