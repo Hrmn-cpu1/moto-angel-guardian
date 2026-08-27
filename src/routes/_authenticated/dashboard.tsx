@@ -344,6 +344,8 @@ function Dashboard() {
                 center={centro}
                 accuracy={position?.accuracy ?? null}
                 follow={follow}
+                navegando={modoCockpit}
+
                 zoom={16}
                 rounded={false}
                 showTraffic={showTraffic}
