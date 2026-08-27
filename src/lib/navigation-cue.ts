@@ -103,4 +103,3 @@ export function instrucaoDaManobra(
   if (t.includes("em frente") || t.includes("siga")) return "Siga em frente";
   return "Continue";
 }
-

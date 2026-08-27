@@ -46,21 +46,13 @@ export function TelemetryStrip({
     >
       <div className="flex items-center gap-2">
         <div className="grid min-w-0 flex-1 grid-cols-3 items-end gap-1">
-          <Item
-            valor={velocidade == null ? "—" : String(velocidade)}
-            rotulo="km/h"
-            destaque
-          />
+          <Item valor={velocidade == null ? "—" : String(velocidade)} rotulo="km/h" destaque />
           <Item
             valor={restanteKm == null ? "—" : `${restanteKm.toFixed(1).replace(".", ",")}`}
             rotulo="restante"
             sufixo="km"
           />
-          <Item
-            valor={etaMin == null ? "—" : String(etaMin)}
-            rotulo="chegada"
-            sufixo="min"
-          />
+          <Item valor={etaMin == null ? "—" : String(etaMin)} rotulo="chegada" sufixo="min" />
         </div>
 
         <div className="flex shrink-0 items-center gap-2 border-l border-white/10 pl-2">
@@ -91,7 +83,9 @@ export function TelemetryStrip({
           leitores de tela — nada é inventado nem escondido do usuário. */}
       <span className="sr-only">
         Direção {rumo ?? "indisponível"} ·{" "}
-        {inclinacao.graus == null ? "inclinação indisponível" : `${inclinacao.graus}° de inclinação`}{" "}
+        {inclinacao.graus == null
+          ? "inclinação indisponível"
+          : `${inclinacao.graus}° de inclinação`}{" "}
         · {modo === "pilotando" ? "Em movimento" : "Parado"}
       </span>
     </div>

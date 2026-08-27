@@ -50,7 +50,6 @@ test("sem dado, a telemetria mostra traço em vez de zero", () => {
   assert.match(strip, /graus == null \? "inclinação indisponível"/);
 });
 
-
 /* ---------- Copiloto ---------- */
 
 test("copiloto é uma barra compacta de altura fixa", () => {

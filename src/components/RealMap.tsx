@@ -4,11 +4,7 @@ import { cn } from "@/lib/utils";
 import { abrirNavegacaoExterna } from "@/lib/external-navigation";
 import { useServerFn } from "@tanstack/react-start";
 import { passosDoEnquadramento } from "@/lib/navigation-cue";
-import {
-  centroAcimaDoUsuario,
-  deslocamentoDaCamera,
-  precisaMoverCamera,
-} from "@/lib/nav-camera";
+import { centroAcimaDoUsuario, deslocamentoDaCamera, precisaMoverCamera } from "@/lib/nav-camera";
 
 import { fimDosPassos } from "@/lib/rota";
 import { calcularRota } from "@/lib/rota.functions";
@@ -273,7 +269,6 @@ export default function RealMap({
   accuracy = null,
   follow = true,
   navegando = false,
-
 
   pois = [],
   onPoiSelect,
@@ -777,7 +772,6 @@ export default function RealMap({
       }
     }
   }, [center, state, accuracy, follow, navegando]);
-
 
   /* POIs — reconciliação incremental por ID.
    *

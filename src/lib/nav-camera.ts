@@ -28,10 +28,7 @@ const TAMANHO_DO_LADRILHO = 256;
 function latParaY(lat: number): number {
   const rad = (Math.min(85, Math.max(-85, lat)) * Math.PI) / 180;
   const seno = Math.sin(rad);
-  return (
-    (TAMANHO_DO_LADRILHO / 2) *
-    (1 - Math.log((1 + seno) / (1 - seno)) / (2 * Math.PI))
-  );
+  return (TAMANHO_DO_LADRILHO / 2) * (1 - Math.log((1 + seno) / (1 - seno)) / (2 * Math.PI));
 }
 
 function yParaLat(y: number): number {
