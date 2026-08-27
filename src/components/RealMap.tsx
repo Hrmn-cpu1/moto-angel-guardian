@@ -218,6 +218,12 @@ interface Props {
   center?: { lat: number; lng: number } | null;
   accuracy?: number | null;
   follow?: boolean;
+  /**
+   * Viagem ativa: a câmera passa a ser de navegação — o motociclista fica no
+   * terço inferior e a estrada à frente ocupa o resto da tela.
+   */
+  navegando?: boolean;
+
   pois?: POI[];
   onPoiSelect?: (poi: POI) => void;
   alerts?: MapAlert[];
