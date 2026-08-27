@@ -61,7 +61,7 @@ test("a tela de callback prefere o marcador do caminho ao state do broker", () =
   assert.ok(tela.includes("doMarcador ?? doState"));
   assert.ok(tela.includes("isNativeRoute || estadoNativo"));
   assert.ok(
-    tela.indexOf("if (isNativeReturn)") < tela.indexOf("navigate({ to: \"/dashboard\" })"),
+    tela.indexOf("if (isNativeReturn)") < tela.indexOf('navigate({ to: "/dashboard" })'),
     "a rota nativa deve retornar antes da navegação web",
   );
 });

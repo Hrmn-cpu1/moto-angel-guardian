@@ -57,8 +57,7 @@ export function AuthCallbackScreen({ marcadorDaRota }: { marcadorDaRota?: string
     // que o marcador esteja inválido, ela jamais pode cair na branch web e
     // transformar o Custom Tab na aplicação autenticada.
     const isNativeRoute = marcadorDaRota !== undefined;
-    const isNativeReturn =
-      isNativeRoute || estadoNativo != null || /[?&]native=1(&|$|#)/.test(url);
+    const isNativeReturn = isNativeRoute || estadoNativo != null || /[?&]native=1(&|$|#)/.test(url);
     const parsed = parseAuthCallback(url);
     const beacon = (stage: "callback.web.enter" | "callback.native.detected" | "deepLink.begin") =>
       enviarBeaconDeCallback({
