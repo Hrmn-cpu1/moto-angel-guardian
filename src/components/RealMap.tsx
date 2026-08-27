@@ -749,8 +749,26 @@ export default function RealMap({
       accuracyCircleRef.current.setCenter(center);
       if (accuracy != null) accuracyCircleRef.current.setRadius(accuracy);
     }
-    if (follow) map.panTo(center);
-  }, [center, state, accuracy, follow]);
+    /* Câmera (V3).
+     *
+     * Fora da viagem, seguir é centralizar. Em navegação o centro do mapa vai
+     * para NORTE do motociclista, de modo que ele apareça no terço inferior e
+     * sobre tela para a estrada à frente. O cálculo é puro (`nav-camera.ts`) e
+     * imperativo: nenhum estado do React é tocado por tick de GPS, e a câmera
+     * só se move quando a posição realmente mudou. */
+    if (follow) {
+      const zoomAtual = map.getZoom() ?? 16;
+      const altura = containerRef.current?.clientHeight ?? 0;
+      const alvo = navegando
+        ? centroAcimaDoUsuario(center, zoomAtual, deslocamentoDaCamera(altura))
+        : center;
+      if (precisaMoverCamera(ultimoCentroRef.current, alvo)) {
+        ultimoCentroRef.current = alvo;
+        map.panTo(alvo);
+      }
+    }
+  }, [center, state, accuracy, follow, navegando]);
+
 
   /* POIs — reconciliação incremental por ID.
    *
