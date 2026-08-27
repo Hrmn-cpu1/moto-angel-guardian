@@ -1,18 +1,16 @@
-import type { ReactNode } from "react";
-import { Gauge, Compass, Route, Clock, Volume2, VolumeX, Square } from "lucide-react";
+import { Volume2, VolumeX, Square } from "lucide-react";
 import { camada } from "@/lib/layers";
 import type { Cardeal, Inclinacao } from "@/lib/ride-telemetry";
 
 /**
- * Telemetria compacta (V2.1).
+ * Cockpit inferior (V3).
  *
- * Três números que importam pilotando — velocidade, distância restante e
- * chegada — com rótulos INTEIROS: nada de "VELOC..." ou "RESTAN...". A grade
- * é fluida (`minmax(0,1fr)`) e cada célula tem `min-w-0`, então em telas
- * Android estreitas o texto encolhe de tamanho antes de ser cortado.
+ * Três números e nada mais: VELOCIDADE · RESTANTE · CHEGADA. Cada um tem o
+ * valor grande em cima e a unidade/rótulo curto embaixo, em caixa alta, sem
+ * ícone e sem qualquer palavra que precise ser cortada. A direção cardeal saiu
+ * da faixa: quem pilota já vê para onde vai no mapa e na manobra.
  *
- * Regra preservada: sem dado confiável, aparece "—". Nunca um número
- * fabricado para a faixa parecer completa.
+ * Regra preservada: sem dado confiável aparece "—". Nunca um número fabricado.
  */
 export function TelemetryStrip({
   velocidade,
@@ -44,99 +42,81 @@ export function TelemetryStrip({
   return (
     <div
       data-testid="telemetria-compacta"
-      className={`${camada("painelInferior")} flex items-center gap-2 rounded-2xl border border-white/10 bg-black/85 px-3 py-2 backdrop-blur-md ${className ?? ""}`}
+      className={`${camada("painelInferior")} rounded-2xl border-t-2 border-gold/70 bg-[#0A0A0A]/95 px-3 py-2.5 shadow-[0_-8px_30px_rgba(0,0,0,0.6)] ${className ?? ""}`}
     >
-      <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)_minmax(0,1fr)] items-end gap-2">
-        <Item
-          icone={<Gauge size={10} />}
-          valor={velocidade == null ? "—" : String(velocidade)}
-          unidade="km/h"
-          rotulo="Velocidade"
-          destaque
-        />
-        <Item
-          icone={<Route size={10} />}
-          valor={restanteKm == null ? "—" : restanteKm.toFixed(1).replace(".", ",")}
-          unidade="km"
-          rotulo="Distância"
-        />
-        <Item
-          icone={<Clock size={10} />}
-          valor={etaMin == null ? "—" : String(etaMin)}
-          unidade="min"
-          rotulo="Chegada"
-        />
+      <div className="flex items-center gap-2">
+        <div className="grid min-w-0 flex-1 grid-cols-3 items-end gap-1">
+          <Item valor={velocidade == null ? "—" : String(velocidade)} rotulo="km/h" destaque />
+          <Item
+            valor={restanteKm == null ? "—" : `${restanteKm.toFixed(1).replace(".", ",")}`}
+            rotulo="restante"
+            sufixo="km"
+          />
+          <Item valor={etaMin == null ? "—" : String(etaMin)} rotulo="chegada" sufixo="min" />
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2 border-l border-white/10 pl-2">
+          {vozSuportada && (
+            <button
+              onClick={onAlternarVoz}
+              role="switch"
+              aria-checked={vozLigada}
+              aria-label="Avisos por voz"
+              className={`grid h-9 w-9 place-items-center rounded-full border ${
+                vozLigada ? "border-gold/60 text-gold" : "border-white/15 text-muted-foreground"
+              }`}
+            >
+              {vozLigada ? <Volume2 size={15} /> : <VolumeX size={15} />}
+            </button>
+          )}
+          <button
+            onClick={onFinalizar}
+            aria-label="Finalizar viagem"
+            className="flex h-9 items-center gap-1.5 rounded-full border border-emergency/50 bg-emergency/10 px-3 text-[11px] font-bold uppercase tracking-wide text-emergency"
+          >
+            <Square size={12} /> <span className="hidden min-[340px]:inline">Finalizar</span>
+          </button>
+        </div>
       </div>
 
-      {/* Direção é contexto, não decisão: fica menor e some em telas estreitas. */}
-      <div className="hidden shrink-0 items-center gap-1 border-l border-white/10 pl-2 text-[10px] font-semibold text-muted-foreground min-[400px]:flex">
-        <Compass size={10} className="text-gold" />
-        <span className="tabular-nums">{rumo ?? "—"}</span>
-      </div>
+      {/* Contexto que não merece pixel na faixa, mas segue disponível para
+          leitores de tela — nada é inventado nem escondido do usuário. */}
       <span className="sr-only">
-        {inclinacao.graus == null ? "—" : `${inclinacao.graus}°`} de inclinação ·{" "}
+        Direção {rumo ?? "indisponível"} ·{" "}
+        {inclinacao.graus == null ? "inclinação indisponível" : `${inclinacao.graus}°`} ·{" "}
         {modo === "pilotando" ? "Em movimento" : "Parado"}
       </span>
-
-      <div className="flex shrink-0 items-center gap-1.5">
-        {vozSuportada && (
-          <button
-            onClick={onAlternarVoz}
-            role="switch"
-            aria-checked={vozLigada}
-            aria-label="Avisos por voz"
-            className={`rounded-full border p-1.5 ${
-              vozLigada ? "border-gold/50 text-gold" : "border-white/15 text-muted-foreground"
-            }`}
-          >
-            {vozLigada ? <Volume2 size={12} /> : <VolumeX size={12} />}
-          </button>
-        )}
-        {/* Ícone quadrado sozinho era ambíguo: agora diz o que faz. */}
-        <button
-          onClick={onFinalizar}
-          aria-label="Finalizar viagem"
-          className="flex items-center gap-1.5 rounded-full border border-emergency/40 bg-emergency/10 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-emergency"
-        >
-          <Square size={11} /> <span className="hidden min-[340px]:inline">Finalizar</span>
-        </button>
-      </div>
     </div>
   );
 }
 
 function Item({
-  icone,
   valor,
-  unidade,
   rotulo,
+  sufixo,
   destaque,
 }: {
-  icone: ReactNode;
   valor: string;
-  unidade?: string;
   rotulo: string;
+  sufixo?: string;
   destaque?: boolean;
 }) {
   return (
     <div className="min-w-0">
-      <p className="flex min-w-0 items-center gap-1 text-[8px] font-semibold uppercase leading-none tracking-[0.06em] text-muted-foreground">
-        <span className="shrink-0 text-gold">{icone}</span>
-        <span className="min-w-0">{rotulo}</span>
-      </p>
       <p
-        className={`mt-1 flex min-w-0 items-baseline gap-1 leading-none tabular-nums ${
-          destaque
-            ? "text-[22px] font-black text-foreground"
-            : "text-[17px] font-bold text-foreground"
+        className={`flex min-w-0 items-baseline gap-1 leading-none tabular-nums ${
+          destaque ? "text-[30px] font-black text-gold" : "text-[24px] font-bold text-foreground"
         }`}
       >
         <span className="truncate">{valor}</span>
-        {unidade && (
-          <span className="shrink-0 text-[9px] font-semibold uppercase text-muted-foreground">
-            {unidade}
+        {sufixo && (
+          <span className="shrink-0 text-[11px] font-bold uppercase text-muted-foreground">
+            {sufixo}
           </span>
         )}
+      </p>
+      <p className="mt-1 truncate text-[9px] font-bold uppercase leading-none tracking-[0.14em] text-muted-foreground">
+        {rotulo}
       </p>
     </div>
   );

@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 import { abrirNavegacaoExterna } from "@/lib/external-navigation";
 import { useServerFn } from "@tanstack/react-start";
 import { passosDoEnquadramento } from "@/lib/navigation-cue";
+import { centroAcimaDoUsuario, deslocamentoDaCamera, precisaMoverCamera } from "@/lib/nav-camera";
+
 import { fimDosPassos } from "@/lib/rota";
 import { calcularRota } from "@/lib/rota.functions";
 import { diagnosticarRota, type DiagnosticoDeRota } from "@/lib/directions-status";
@@ -218,6 +220,12 @@ interface Props {
   center?: { lat: number; lng: number } | null;
   accuracy?: number | null;
   follow?: boolean;
+  /**
+   * Viagem ativa: a câmera passa a ser de navegação — o motociclista fica no
+   * terço inferior e a estrada à frente ocupa o resto da tela.
+   */
+  navegando?: boolean;
+
   pois?: POI[];
   onPoiSelect?: (poi: POI) => void;
   alerts?: MapAlert[];
@@ -260,6 +268,8 @@ export default function RealMap({
   center,
   accuracy = null,
   follow = true,
+  navegando = false,
+
   pois = [],
   onPoiSelect,
   alerts = [],
@@ -306,6 +316,9 @@ export default function RealMap({
   const routeRequestRef = useRef(0);
   /** Destino já enquadrado — impede a câmera de brigar com o modo "seguir". */
   const enquadradoParaRef = useRef<string | null>(null);
+  /** Último centro aplicado à câmera — evita tremor com o GPS parado. */
+  const ultimoCentroRef = useRef<{ lat: number; lng: number } | null>(null);
+
   /* A rota é calculada no SERVIDOR: a chave de navegador não autoriza
    * Directions (REQUEST_DENIED provado em campo). */
   const calcularRotaNoServidor = useServerFn(calcularRota);
@@ -740,8 +753,25 @@ export default function RealMap({
       accuracyCircleRef.current.setCenter(center);
       if (accuracy != null) accuracyCircleRef.current.setRadius(accuracy);
     }
-    if (follow) map.panTo(center);
-  }, [center, state, accuracy, follow]);
+    /* Câmera (V3).
+     *
+     * Fora da viagem, seguir é centralizar. Em navegação o centro do mapa vai
+     * para NORTE do motociclista, de modo que ele apareça no terço inferior e
+     * sobre tela para a estrada à frente. O cálculo é puro (`nav-camera.ts`) e
+     * imperativo: nenhum estado do React é tocado por tick de GPS, e a câmera
+     * só se move quando a posição realmente mudou. */
+    if (follow) {
+      const zoomAtual = map.getZoom() ?? 16;
+      const altura = containerRef.current?.clientHeight ?? 0;
+      const alvo = navegando
+        ? centroAcimaDoUsuario(center, zoomAtual, deslocamentoDaCamera(altura))
+        : center;
+      if (precisaMoverCamera(ultimoCentroRef.current, alvo)) {
+        ultimoCentroRef.current = alvo;
+        map.panTo(alvo);
+      }
+    }
+  }, [center, state, accuracy, follow, navegando]);
 
   /* POIs — reconciliação incremental por ID.
    *
