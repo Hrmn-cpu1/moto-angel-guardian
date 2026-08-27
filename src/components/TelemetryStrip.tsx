@@ -75,7 +75,6 @@ export function TelemetryStrip({
         {inclinacao.graus == null ? "—" : `${inclinacao.graus}°`} de inclinação
       </span>
 
-
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
         <span className="hidden text-[9px] uppercase tracking-widest text-muted-foreground">
           {modo === "pilotando" ? "Em movimento" : "Parado"}

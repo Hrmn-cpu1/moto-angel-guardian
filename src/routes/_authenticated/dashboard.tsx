@@ -133,7 +133,13 @@ function Dashboard() {
   }, [temServico, viagem.estado]);
 
   const segundoPlanoNaBarra = useMemo(
-    () => (temServico ? { ok: servico.ativo && servico.notificacaoVisivel, descricao: descricaoDoServico(servico) } : null),
+    () =>
+      temServico
+        ? {
+            ok: servico.ativo && servico.notificacaoVisivel,
+            descricao: descricaoDoServico(servico),
+          }
+        : null,
     [temServico, servico],
   );
 
@@ -311,7 +317,6 @@ function Dashboard() {
         }`}
       >
         <ClientOnly
-
           fallback={
             <div className="absolute inset-0 flex items-center justify-center text-xs uppercase tracking-widest text-gold">
               Preparando mapa...
@@ -391,7 +396,6 @@ function Dashboard() {
             viagemAtiva ? "top-[calc(var(--ma-top)+124px)]" : "top-[calc(var(--ma-top)+138px)]"
           } z-30 flex flex-col gap-2`}
         >
-
           <LayerToggle
             active={camadas.comunidade}
             onClick={() => alternar("comunidade")}
@@ -513,7 +517,6 @@ function Dashboard() {
             proximoEvento={aviso}
             restanteKm={rota?.distanciaKm ?? null}
             etaMin={rota?.duracaoMin ?? null}
-
             vozLigada={vozLigada}
             vozSuportada={vozSuportada}
             onAlternarVoz={alternarVoz}

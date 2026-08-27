@@ -239,7 +239,6 @@
   --ma-nav: 0.75rem;
 }
 
-
 @utility ma-input {
   min-height: var(--ma-control);
   font-size: 0.875rem;
