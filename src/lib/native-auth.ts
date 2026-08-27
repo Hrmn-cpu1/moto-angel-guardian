@@ -28,6 +28,7 @@ import { authFailure } from "./auth-errors";
 import { exchangeNativeCode } from "./native-auth.functions";
 import { iniciarTentativaDeAuth, registrarEventoDeAuth } from "./auth-diagnostics";
 import {
+  caminhoDeCallbackNativo,
   montarEstadoNativo,
   validarEstadoDeRetorno,
   type PendenciaDeEstado,

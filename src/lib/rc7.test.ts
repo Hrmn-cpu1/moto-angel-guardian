@@ -28,8 +28,9 @@ const ler = (p: string) => readFileSync(join(raiz, p), "utf8");
 const NATIVE_AUTH = ler("src/lib/native-auth.ts");
 
 test("redirect_uri nativo é caminho limpo, sem query", () => {
-  assert.ok(NATIVE_AUTH.includes("const redirectUri = `${origin}/auth/callback`;"));
+  assert.ok(NATIVE_AUTH.includes("caminhoDeCallbackNativo(origin, nonce, challenge)"));
   assert.ok(!NATIVE_AUTH.includes("native=1&cc="), "query no redirect_uri foi removida");
+  assert.ok(!caminhoDeCallbackNativo("https://x.app", "n".repeat(32), CHALLENGE).includes("?"));
 });
 
 test("a URL do broker manda só provider, redirect_uri e state", () => {
