@@ -127,6 +127,9 @@ interface CockpitProps {
   inclinacao: Inclinacao;
   modo: "parado" | "pilotando";
   proximoEvento: EventoNoMapa | null;
+  /** Rota real do Google: distância restante e ETA. `null` sem rota. */
+  restanteKm?: number | null;
+  etaMin?: number | null;
   vozLigada: boolean;
   vozSuportada: boolean;
   onAlternarVoz: () => void;
@@ -138,7 +141,8 @@ export function CockpitDeViagem({
   rumo,
   inclinacao,
   modo,
-  proximoEvento,
+  restanteKm = null,
+  etaMin = null,
   vozLigada,
   vozSuportada,
   onAlternarVoz,
@@ -146,39 +150,15 @@ export function CockpitDeViagem({
 }: CockpitProps) {
   return (
     <>
-      {/* Cartão do próximo evento: um por vez, nunca uma pilha. */}
-      {proximoEvento && (
-        <div
-          className={`absolute inset-x-3 top-[128px] ${camada(
-            "cartoesDoMapa",
-          )} flex items-center gap-3 rounded-2xl border px-3 py-2 backdrop-blur`}
-          style={{
-            borderColor: `${APARENCIA[proximoEvento.categoria].cor}66`,
-            background: "rgba(0,0,0,0.78)",
-          }}
-        >
-          <span
-            className="h-2.5 w-2.5 shrink-0 rounded-sm"
-            style={{
-              background: APARENCIA[proximoEvento.categoria].cor,
-              transform: "rotate(45deg)",
-            }}
-          />
-          <span className="flex-1 truncate text-[11px] font-bold uppercase tracking-widest text-foreground">
-            {APARENCIA[proximoEvento.categoria].rotulo}
-          </span>
-          <span className="text-xs font-bold text-gold">
-            {distanciaCurta(proximoEvento.distanciaKm)}
-          </span>
-        </div>
-      )}
-
-      {/* Telemetria compacta: uma faixa, ~90 px, nunca um cartão vertical. */}
+      {/* Telemetria compacta: uma faixa, ~58 px. O próximo evento agora vive
+          no Copiloto adaptativo (V2), sem um segundo cartão sobre o mapa. */}
       <TelemetryStrip
         velocidade={velocidade}
         rumo={rumo}
         inclinacao={inclinacao}
         modo={modo}
+        restanteKm={restanteKm}
+        etaMin={etaMin}
         vozLigada={vozLigada}
         vozSuportada={vozSuportada}
         onAlternarVoz={onAlternarVoz}
@@ -188,6 +168,7 @@ export function CockpitDeViagem({
     </>
   );
 }
+
 
 /* ================================================================== *
  * Estado A — chamada para começar
