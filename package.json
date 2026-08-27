@@ -11,7 +11,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test src/lib/phone.test.ts src/lib/coords.test.ts src/lib/sos.server.test.ts src/lib/sos-client.test.ts src/lib/sos-unificacao.test.ts src/lib/sos-sql-ambiguidade.test.ts src/lib/external-navigation.test.ts src/lib/location-permission.test.ts src/lib/rc2-estrutural.test.ts src/lib/map-layers.test.ts src/lib/presence.test.ts src/lib/crash-detection.test.ts src/lib/rc3.test.ts src/lib/rc4-android.test.ts src/lib/rc5-hardening.test.ts src/lib/rc31.test.ts src/lib/rc32.test.ts src/lib/hotfix-p0-viagem.test.ts src/lib/protecao.test.ts src/lib/rc6-seguranca.test.ts src/lib/rc7.test.ts src/lib/rc71-oauth-forensic.test.ts src/lib/rc72-p0-login-config.test.ts src/lib/rota.test.ts src/lib/rc73-oauth-custom-tab.test.ts"
+    "test": "node --experimental-strip-types --test src/lib/phone.test.ts src/lib/coords.test.ts src/lib/sos.server.test.ts src/lib/sos-client.test.ts src/lib/sos-unificacao.test.ts src/lib/sos-sql-ambiguidade.test.ts src/lib/external-navigation.test.ts src/lib/location-permission.test.ts src/lib/rc2-estrutural.test.ts src/lib/map-layers.test.ts src/lib/presence.test.ts src/lib/crash-detection.test.ts src/lib/rc3.test.ts src/lib/rc4-android.test.ts src/lib/rc5-hardening.test.ts src/lib/rc31.test.ts src/lib/rc32.test.ts src/lib/hotfix-p0-viagem.test.ts src/lib/protecao.test.ts src/lib/rc6-seguranca.test.ts src/lib/rc7.test.ts src/lib/rc71-oauth-forensic.test.ts src/lib/rc72-p0-login-config.test.ts src/lib/rota.test.ts src/lib/rc73-oauth-custom-tab.test.ts src/lib/rc8-cockpit-v3.test.ts"
   },
   "dependencies": {
     "@capacitor/android": "^7",
