@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  caminhoDeCallbackNativo,
   lerEstadoNativo,
   montarEstadoNativo,
   validarEstadoDeRetorno,
@@ -88,9 +89,9 @@ test("o deep link é recusado quando o state não confere", () => {
 });
 
 test("o state segue no deep link de volta para o app", () => {
-  const CALLBACK = ler("src/routes/auth.callback.tsx");
-  assert.ok(CALLBACK.includes("...(state ? { state } : {})"));
-  assert.ok(CALLBACK.includes("lerEstadoNativo(state)"));
+  const CALLBACK = ler("src/components/AuthCallbackScreen.tsx");
+  assert.ok(CALLBACK.includes("...(stateDeVolta ? { state: stateDeVolta } : {})"));
+  assert.ok(CALLBACK.includes("lerEstadoNativo(stateRecebido)"));
 });
 
 /* ================================================================== *
