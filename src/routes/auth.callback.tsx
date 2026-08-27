@@ -44,7 +44,6 @@ function AuthCallback() {
   // destino para oferecer um toque explícito, que o Chrome sempre honra.
   const [voltaManual, setVoltaManual] = useState<string | null>(null);
 
-
   useEffect(() => {
     const url = INITIAL_URL || window.location.href;
     const parsedUrl = new URL(url);
@@ -176,4 +175,3 @@ function AuthCallback() {
     </main>
   );
 }
-
