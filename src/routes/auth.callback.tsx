@@ -38,6 +38,12 @@ export const Route = createFileRoute("/auth/callback")({
 function AuthCallback() {
   const navigate = useNavigate();
   const [message, setMessage] = useState("Concluindo seu login...");
+  // Chrome bloqueia navegação para esquema de aplicativo sem gesto do usuário.
+  // Quando isso acontece o Custom Tab fica parado nesta página (barra com X,
+  // domínio e três pontos) — e é assim que o retorno "some". Guardamos o
+  // destino para oferecer um toque explícito, que o Chrome sempre honra.
+  const [voltaManual, setVoltaManual] = useState<string | null>(null);
+
 
   useEffect(() => {
     const url = INITIAL_URL || window.location.href;
