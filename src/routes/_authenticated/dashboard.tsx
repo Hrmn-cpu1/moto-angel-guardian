@@ -356,34 +356,42 @@ function Dashboard() {
           </div>
         )}
 
-        <HomeTopBar
-          gpsOnline={watching && !!position}
-          copilotOnline={!!position}
-          tripActive={viagemAtiva}
-          segundoPlano={segundoPlanoNaBarra}
-          temServico={temServico}
-        />
+        {/* Cabeçalho e faixa de destino: só fora da viagem. Durante a
+            navegação esses ~110px pertencem à próxima manobra. */}
+        {!viagemAtiva && (
+          <>
+            <HomeTopBar
+              gpsOnline={watching && !!position}
+              copilotOnline={!!position}
+              tripActive={viagemAtiva}
+              segundoPlano={segundoPlanoNaBarra}
+              temServico={temServico}
+            />
 
-        <DestinationBar
-          viagem={viagem}
-          rota={rota}
-          onAbrirDestino={() => setFolha((f) => abrirFolha(f, "destino"))}
-        />
+            <DestinationBar
+              viagem={viagem}
+              rota={rota}
+              onAbrirDestino={() => setFolha((f) => abrirFolha(f, "destino"))}
+            />
+          </>
+        )}
 
-        {/* Próxima manobra: prioridade máxima durante a viagem. */}
+        {/* Próxima manobra: informação dominante do cockpit. */}
         {viagemAtiva && (
           <NextManeuver
             rota={rota}
-            className="absolute inset-x-3 top-[calc(var(--ma-top)+112px)]"
+            destino={destinoDaNotificacao || null}
+            className="absolute inset-x-3 top-[var(--ma-top)]"
           />
         )}
 
         {/* Controles do mapa: anjos, camadas, combustível e centralizar. */}
         <div
           className={`absolute right-3 ${
-            viagemAtiva ? "top-[calc(var(--ma-top)+186px)]" : "top-[calc(var(--ma-top)+138px)]"
+            viagemAtiva ? "top-[calc(var(--ma-top)+124px)]" : "top-[calc(var(--ma-top)+138px)]"
           } z-30 flex flex-col gap-2`}
         >
+
           <LayerToggle
             active={camadas.comunidade}
             onClick={() => alternar("comunidade")}
