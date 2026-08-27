@@ -8,12 +8,24 @@ const ler = (p: string) => readFileSync(p, "utf8");
 
 class MemoryStorage {
   private m = new Map<string, string>();
-  getItem(k: string) { return this.m.get(k) ?? null; }
-  setItem(k: string, v: string) { this.m.set(k, v); }
-  removeItem(k: string) { this.m.delete(k); }
-  clear() { this.m.clear(); }
-  key() { return null; }
-  get length() { return this.m.size; }
+  getItem(k: string) {
+    return this.m.get(k) ?? null;
+  }
+  setItem(k: string, v: string) {
+    this.m.set(k, v);
+  }
+  removeItem(k: string) {
+    this.m.delete(k);
+  }
+  clear() {
+    this.m.clear();
+  }
+  key() {
+    return null;
+  }
+  get length() {
+    return this.m.size;
+  }
 }
 
 (globalThis as Record<string, unknown>).window = {
@@ -68,7 +80,7 @@ test("o export traz attempt_id, etapas e nenhum segredo", () => {
 /* ---------- instrumentação exigida no fluxo ---------- */
 
 test("o callback registra entrada, presença de parâmetros e a volta por deep link", () => {
-  const cb = ler("src/routes/auth.callback.tsx");
+  const cb = ler("src/components/AuthCallbackScreen.tsx");
   for (const evento of [
     "callback.web.enter",
     "callback.web.query.presence",
@@ -118,5 +130,8 @@ test("existe tela para recuperar a trilha sem Android Studio", () => {
   const tela = ler("src/routes/oauth-debug.tsx");
   assert.ok(tela.includes("diagnosticoDeAuthExportavel"));
   assert.ok(tela.includes("clipboard"));
-  assert.ok(ler("src/routes/login.tsx").includes("/oauth-debug"), "login sem acesso ao diagnóstico");
+  assert.ok(
+    ler("src/routes/login.tsx").includes("/oauth-debug"),
+    "login sem acesso ao diagnóstico",
+  );
 });

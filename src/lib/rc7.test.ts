@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  caminhoDeCallbackNativo,
   lerEstadoNativo,
   montarEstadoNativo,
   validarEstadoDeRetorno,
@@ -28,8 +29,9 @@ const ler = (p: string) => readFileSync(join(raiz, p), "utf8");
 const NATIVE_AUTH = ler("src/lib/native-auth.ts");
 
 test("redirect_uri nativo é caminho limpo, sem query", () => {
-  assert.ok(NATIVE_AUTH.includes("const redirectUri = `${origin}/auth/callback`;"));
+  assert.ok(NATIVE_AUTH.includes("caminhoDeCallbackNativo(origin, nonce, challenge)"));
   assert.ok(!NATIVE_AUTH.includes("native=1&cc="), "query no redirect_uri foi removida");
+  assert.ok(!caminhoDeCallbackNativo("https://x.app", "n".repeat(32), CHALLENGE).includes("?"));
 });
 
 test("a URL do broker manda só provider, redirect_uri e state", () => {
@@ -38,7 +40,9 @@ test("a URL do broker manda só provider, redirect_uri e state", () => {
   for (const proibido of ["cc=", "native=", "response_mode"]) {
     assert.ok(!url.includes(proibido), `parâmetro fora do contrato: ${proibido}`);
   }
-  assert.ok(url.includes("provider=google") && url.includes("redirect_uri=") && url.includes("state="));
+  assert.ok(
+    url.includes("provider=google") && url.includes("redirect_uri=") && url.includes("state="),
+  );
 });
 
 /* ================================================================== *
@@ -69,7 +73,11 @@ test("validação de state falha fechada nos quatro casos", () => {
     falha: "sem_pendencia",
   });
   assert.deepEqual(
-    validarEstadoDeRetorno(montarEstadoNativo(nonce, CHALLENGE), pend, 1_000 + VALIDADE_ESTADO_MS + 1),
+    validarEstadoDeRetorno(
+      montarEstadoNativo(nonce, CHALLENGE),
+      pend,
+      1_000 + VALIDADE_ESTADO_MS + 1,
+    ),
     { ok: false, falha: "expirado" },
   );
   assert.deepEqual(
@@ -87,9 +95,9 @@ test("o deep link é recusado quando o state não confere", () => {
 });
 
 test("o state segue no deep link de volta para o app", () => {
-  const CALLBACK = ler("src/routes/auth.callback.tsx");
-  assert.ok(CALLBACK.includes("...(state ? { state } : {})"));
-  assert.ok(CALLBACK.includes("lerEstadoNativo(state)"));
+  const CALLBACK = ler("src/components/AuthCallbackScreen.tsx");
+  assert.ok(CALLBACK.includes("...(stateDeVolta ? { state: stateDeVolta } : {})"));
+  assert.ok(CALLBACK.includes("lerEstadoNativo(stateRecebido)"));
 });
 
 /* ================================================================== *
@@ -145,7 +153,7 @@ test("a trilha do MA-TRIP sobrevive à morte da WebView", () => {
 
 test("a rota /trip não tem mais implementação paralela", () => {
   const TRIP = ler("src/routes/_authenticated/trip.tsx");
-  assert.ok(TRIP.includes("redirect({ to: \"/dashboard\""));
+  assert.ok(TRIP.includes('redirect({ to: "/dashboard"'));
   for (const proibido of ["useRideTelemetry", "useGeolocation", "setPhase"]) {
     assert.ok(!TRIP.includes(proibido), `estado paralelo remanescente: ${proibido}`);
   }
