@@ -179,11 +179,3 @@ export function AuthCallbackScreen({ marcadorDaRota }: { marcadorDaRota?: string
     </main>
   );
 }
-
-export const META_CALLBACK = [
-  { title: "Entrando — Moto Anjo" },
-  { name: "description", content: "Concluindo o login no Moto Anjo." },
-  { name: "robots", content: "noindex" },
-  { property: "og:title", content: "Entrando — Moto Anjo" },
-  { property: "og:description", content: "Concluindo o login no Moto Anjo." },
-];
