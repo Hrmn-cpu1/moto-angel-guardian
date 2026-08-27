@@ -53,7 +53,12 @@ export function AuthCallbackScreen({ marcadorDaRota }: { marcadorDaRota?: string
     const estadoNativo = doMarcador ?? doState;
     // Reconhecimento em três degraus, do mais confiável ao legado:
     // caminho -> state -> `native=1&cc=` (APK antigo ainda instalado).
-    const isNativeReturn = estadoNativo != null || /[?&]native=1(&|$|#)/.test(url);
+    // A própria rota /auth/callback/n/* é uma fronteira de segurança: mesmo
+    // que o marcador esteja inválido, ela jamais pode cair na branch web e
+    // transformar o Custom Tab na aplicação autenticada.
+    const isNativeRoute = marcadorDaRota !== undefined;
+    const isNativeReturn =
+      isNativeRoute || estadoNativo != null || /[?&]native=1(&|$|#)/.test(url);
     const parsed = parseAuthCallback(url);
     const beacon = (stage: "callback.web.enter" | "callback.native.detected" | "deepLink.begin") =>
       enviarBeaconDeCallback({
@@ -71,6 +76,7 @@ export function AuthCallbackScreen({ marcadorDaRota }: { marcadorDaRota?: string
     beacon("callback.web.enter");
 
     if (isNativeReturn) {
+      console.info("CALLBACK_NATIVE_ROUTE");
       registrarEventoDeAuth("callback.native.detected", doMarcador ? "path" : "state");
       beacon("callback.native.detected");
       setMessage("Voltando para o Moto Anjo...");
@@ -92,6 +98,7 @@ export function AuthCallbackScreen({ marcadorDaRota }: { marcadorDaRota?: string
             state: Boolean(stateDeVolta),
           },
         });
+        console.info("DEEPLINK_ATTEMPT");
         beacon("deepLink.begin");
         const alvo = `${NATIVE_CALLBACK_URL}?${new URLSearchParams({
           ...extra,
@@ -110,6 +117,7 @@ export function AuthCallbackScreen({ marcadorDaRota }: { marcadorDaRota?: string
         back({ error: "Retorno do Google sem sessão." });
         return;
       }
+      console.info("STASH_BEGIN");
       registrarEventoDeAuth("stash.begin");
       void stashNativeSession({
         data: {
@@ -119,10 +127,12 @@ export function AuthCallbackScreen({ marcadorDaRota }: { marcadorDaRota?: string
         },
       })
         .then((res: { code: string }) => {
+          console.info("STASH_SUCCESS");
           registrarEventoDeAuth("stash.success");
           back({ code: res.code });
         })
         .catch((e: unknown) => {
+          console.info("STASH_FAIL");
           registrarEventoDeAuth("stash.fail", e instanceof Error ? e.name : "unknown");
           back({ error: e instanceof Error ? e.message : "Falha no login." });
         });

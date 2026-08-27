@@ -40,6 +40,7 @@ import { Route as AuthenticatedAlertsRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
+import { Route as AuthCallbackIndexRouteImport } from './routes/auth.callback.index'
 import { Route as ApiPublicAuthBeaconRouteImport } from './routes/api/public/auth-beacon'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
@@ -202,6 +203,11 @@ const Char91DotmcpChar93ListToolsRoute =
     path: '/.mcp/list-tools',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AuthCallbackIndexRoute = AuthCallbackIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthCallbackRoute,
+} as any)
 const ApiPublicAuthBeaconRoute = ApiPublicAuthBeaconRouteImport.update({
   id: '/api/public/auth-beacon',
   path: '/api/public/auth-beacon',
@@ -258,6 +264,7 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/auth-beacon': typeof ApiPublicAuthBeaconRoute
+  '/auth/callback/': typeof AuthCallbackIndexRoute
   '/auth/callback/n/$marcador': typeof AuthCallbackNMarcadorRoute
 }
 export interface FileRoutesByTo {
@@ -290,10 +297,10 @@ export interface FileRoutesByTo {
   '/sharing': typeof AuthenticatedSharingRoute
   '/sos': typeof AuthenticatedSosRoute
   '/trip': typeof AuthenticatedTripRoute
-  '/auth/callback': typeof AuthCallbackRouteWithChildren
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/auth-beacon': typeof ApiPublicAuthBeaconRoute
+  '/auth/callback': typeof AuthCallbackIndexRoute
   '/auth/callback/n/$marcador': typeof AuthCallbackNMarcadorRoute
 }
 export interface FileRoutesById {
@@ -332,6 +339,7 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/auth-beacon': typeof ApiPublicAuthBeaconRoute
+  '/auth/callback/': typeof AuthCallbackIndexRoute
   '/auth/callback/n/$marcador': typeof AuthCallbackNMarcadorRoute
 }
 export interface FileRouteTypes {
@@ -370,6 +378,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/auth-beacon'
+    | '/auth/callback/'
     | '/auth/callback/n/$marcador'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -402,10 +411,10 @@ export interface FileRouteTypes {
     | '/sharing'
     | '/sos'
     | '/trip'
-    | '/auth/callback'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/auth-beacon'
+    | '/auth/callback'
     | '/auth/callback/n/$marcador'
   id:
     | '__root__'
@@ -443,6 +452,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/auth-beacon'
+    | '/auth/callback/'
     | '/auth/callback/n/$marcador'
   fileRoutesById: FileRoutesById
 }
@@ -688,6 +698,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/callback/': {
+      id: '/auth/callback/'
+      path: '/'
+      fullPath: '/auth/callback/'
+      preLoaderRoute: typeof AuthCallbackIndexRouteImport
+      parentRoute: typeof AuthCallbackRoute
+    }
     '/api/public/auth-beacon': {
       id: '/api/public/auth-beacon'
       path: '/api/public/auth-beacon'
@@ -757,10 +774,12 @@ const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
 interface AuthCallbackRouteChildren {
+  AuthCallbackIndexRoute: typeof AuthCallbackIndexRoute
   AuthCallbackNMarcadorRoute: typeof AuthCallbackNMarcadorRoute
 }
 
 const AuthCallbackRouteChildren: AuthCallbackRouteChildren = {
+  AuthCallbackIndexRoute: AuthCallbackIndexRoute,
   AuthCallbackNMarcadorRoute: AuthCallbackNMarcadorRoute,
 }
 

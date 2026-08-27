@@ -46,7 +46,11 @@ test("state reconstruído a partir do caminho ainda valida contra a pendência",
 });
 
 test("existe rota de callback nativo com o marcador no caminho", () => {
+  const layout = ler("src/routes/auth.callback.tsx");
+  const indice = ler("src/routes/auth.callback.index.tsx");
   const rota = ler("src/routes/auth.callback.n.$marcador.tsx");
+  assert.ok(layout.includes("Outlet"), "rota pai precisa liberar a montagem da rota nativa");
+  assert.ok(indice.includes('createFileRoute("/auth/callback/")'));
   assert.ok(rota.includes('createFileRoute("/auth/callback/n/$marcador")'));
   assert.ok(rota.includes("marcadorDaRota={marcador}"));
 });
@@ -55,6 +59,38 @@ test("a tela de callback prefere o marcador do caminho ao state do broker", () =
   const tela = ler("src/components/AuthCallbackScreen.tsx");
   assert.ok(tela.includes("lerMarcadorNativo(marcadorDaRota)"));
   assert.ok(tela.includes("doMarcador ?? doState"));
+  assert.ok(tela.includes("isNativeRoute || estadoNativo"));
+  assert.ok(
+    tela.indexOf("if (isNativeReturn)") < tela.indexOf("navigate({ to: \"/dashboard\" })"),
+    "a rota nativa deve retornar antes da navegação web",
+  );
+});
+
+test("instrumentação identifica todas as fronteiras do OAuth nativo", () => {
+  const tela = ler("src/components/AuthCallbackScreen.tsx");
+  const nativo = ler("src/lib/native-auth.ts");
+  for (const marco of [
+    "CALLBACK_NATIVE_ROUTE",
+    "STASH_BEGIN",
+    "STASH_SUCCESS",
+    "STASH_FAIL",
+    "DEEPLINK_ATTEMPT",
+  ]) {
+    assert.ok(tela.includes(marco), `callback sem marco ${marco}`);
+  }
+  for (const marco of [
+    "OAUTH_NATIVE_OPEN",
+    "APP_URL_OPEN_RECEIVED",
+    "LAUNCH_URL_RECEIVED",
+    "EXCHANGE_BEGIN",
+    "EXCHANGE_SUCCESS",
+    "EXCHANGE_FAIL",
+    "SESSION_CONFIRMED",
+    "BROWSER_CLOSE",
+    "DASHBOARD_NATIVE",
+  ]) {
+    assert.ok(nativo.includes(marco), `WebView sem marco ${marco}`);
+  }
 });
 
 test("o app aplica a sessão e fecha o Custom Tab após a troca", () => {
