@@ -68,7 +68,7 @@ test("o export traz attempt_id, etapas e nenhum segredo", () => {
 /* ---------- instrumentação exigida no fluxo ---------- */
 
 test("o callback registra entrada, presença de parâmetros e a volta por deep link", () => {
-  const cb = ler("src/routes/auth.callback.tsx");
+  const cb = ler("src/components/AuthCallbackScreen.tsx");
   for (const evento of [
     "callback.web.enter",
     "callback.web.query.presence",
