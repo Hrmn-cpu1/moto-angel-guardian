@@ -425,30 +425,15 @@ function Dashboard() {
           />
         )}
 
-        {/* Controles do mapa: anjos, camadas, combustível e centralizar. */}
+        {/* Controles do mapa.
+            Em viagem só ficam os dois que servem para navegar: recentralizar
+            e camadas (a folha de camadas continua dando acesso a TUDO —
+            anjos, apoio, riscos, trânsito). Nenhum handler mudou. */}
         <div
           className={`absolute right-3 ${
             modoCockpit ? "top-[calc(var(--ma-top)+124px)]" : "top-[calc(var(--ma-top)+138px)]"
           } z-30 flex flex-col gap-2`}
         >
-          <LayerToggle
-            active={camadas.comunidade}
-            onClick={() => alternar("comunidade")}
-            label="Outros motoqueiros"
-            icon={<Users size={14} />}
-          />
-          <LayerToggle
-            active={folha === "camadas"}
-            onClick={() => setFolha((f) => abrirFolha(f, "camadas"))}
-            label="Camadas do mapa"
-            icon={<Layers size={14} />}
-          />
-          <LayerToggle
-            active={showSupport}
-            onClick={() => setShowSupport((v) => !v)}
-            label="Pontos de apoio"
-            icon={<Fuel size={14} />}
-          />
           <LayerToggle
             active={follow}
             onClick={() => {
@@ -457,7 +442,31 @@ function Dashboard() {
             }}
             label="Centralizar"
             icon={<Crosshair size={14} />}
+            destaque
           />
+          <LayerToggle
+            active={folha === "camadas"}
+            onClick={() => setFolha((f) => abrirFolha(f, "camadas"))}
+            label="Camadas do mapa"
+            icon={<Layers size={14} />}
+            discreto={modoCockpit}
+          />
+          {!modoCockpit && (
+            <>
+              <LayerToggle
+                active={camadas.comunidade}
+                onClick={() => alternar("comunidade")}
+                label="Outros motoqueiros"
+                icon={<Users size={14} />}
+              />
+              <LayerToggle
+                active={showSupport}
+                onClick={() => setShowSupport((v) => !v)}
+                label="Pontos de apoio"
+                icon={<Fuel size={14} />}
+              />
+            </>
+          )}
         </div>
 
         {/* Estado da camada de anjos: sem inventar ninguém no mapa.
@@ -601,11 +610,17 @@ function LayerToggle({
   onClick,
   label,
   icon,
+  destaque = false,
+  discreto = false,
 }: {
   active: boolean;
   onClick: () => void;
   label: string;
   icon: ReactNode;
+  /** Controle essencial da navegação: continua cheio mesmo em viagem. */
+  destaque?: boolean;
+  /** Controle secundário: mesma área de toque, menos peso visual. */
+  discreto?: boolean;
 }) {
   return (
     <button
@@ -616,7 +631,7 @@ function LayerToggle({
         active
           ? "border-gold bg-gold/20 text-gold"
           : "border-white/10 bg-black/70 text-muted-foreground"
-      }`}
+      } ${destaque ? "border-gold/70" : ""} ${discreto ? "opacity-60" : ""}`}
     >
       {icon}
     </button>
