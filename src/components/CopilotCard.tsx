@@ -46,11 +46,11 @@ export function CopilotCard({
   return (
     <div
       data-testid="copiloto-compacto"
-      className={`${camada("cartoesDoMapa")} mx-auto flex h-9 w-fit max-w-full items-center gap-2 rounded-full border border-white/10 bg-black/70 px-3 backdrop-blur-md ${className ?? ""}`}
+      className={`${camada("cartoesDoMapa")} mx-auto flex h-7 w-fit max-w-full items-center gap-1.5 rounded-full border border-white/10 bg-black/60 px-2.5 opacity-80 backdrop-blur-md ${className ?? ""}`}
       aria-live="polite"
     >
-      <ShieldCheck size={13} className="shrink-0 text-gold" />
-      <span className="min-w-0 truncate text-[11px] text-muted-foreground">
+      <ShieldCheck size={11} className="shrink-0 text-gold" />
+      <span className="min-w-0 truncate text-[10px] text-muted-foreground">
         {viagemAtiva ? "Rota tranquila" : "Pronto para a viagem"}
       </span>
     </div>

@@ -50,11 +50,33 @@ export function distanciaDaManobra(metros: number | null | undefined): string | 
  * "Vire à esquerda na R. da Consolação" vira "R. da Consolação". A seta já
  * diz o movimento; repetir isso em texto rouba tempo de leitura.
  */
-export function viaDaInstrucao(instrucao: string | null | undefined): string | null {
+export function viaDaInstrucao(instrucao: string | null | undefined, limite = 42): string | null {
   if (!instrucao) return null;
   const limpa = instrucao.replace(/\s+/g, " ").trim();
   if (!limpa) return null;
   const corte = limpa.match(/\b(?:na|no|em|para|até|sentido)\s+(.+)$/i);
   const via = (corte?.[1] ?? limpa).trim();
-  return via.length > 42 ? `${via.slice(0, 41).trimEnd()}…` : via;
+  return via.length > limite ? `${via.slice(0, limite - 1).trimEnd()}…` : via;
+}
+
+/**
+ * Verbo da manobra em português, derivado APENAS do código real do Google.
+ * Sem passo real não há frase — a interface simplesmente não mostra a linha.
+ */
+export function acaoDaManobra(manobra: string | null | undefined): string | null {
+  if (!manobra) return null;
+  const m = manobra.toLowerCase();
+  if (m.includes("uturn")) return "Faça o retorno";
+  if (m.includes("roundabout")) return "Entre na rotatória";
+  if (m.includes("fork") && m.includes("left")) return "Mantenha-se à esquerda";
+  if (m.includes("fork") && m.includes("right")) return "Mantenha-se à direita";
+  if (m.includes("merge")) return "Incorpore-se";
+  if (m.includes("ramp") && m.includes("left")) return "Pegue a saída à esquerda";
+  if (m.includes("ramp") && m.includes("right")) return "Pegue a saída à direita";
+  if (m.includes("slight") && m.includes("left")) return "Curva leve à esquerda";
+  if (m.includes("slight") && m.includes("right")) return "Curva leve à direita";
+  if (m.includes("left")) return "Vire à esquerda";
+  if (m.includes("right")) return "Vire à direita";
+  if (m.includes("straight")) return "Siga em frente";
+  return null;
 }
