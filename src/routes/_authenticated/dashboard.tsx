@@ -133,7 +133,13 @@ function Dashboard() {
   }, [temServico, viagem.estado]);
 
   const segundoPlanoNaBarra = useMemo(
-    () => (temServico ? { ok: servico.ativo && servico.notificacaoVisivel, descricao: descricaoDoServico(servico) } : null),
+    () =>
+      temServico
+        ? {
+            ok: servico.ativo && servico.notificacaoVisivel,
+            descricao: descricaoDoServico(servico),
+          }
+        : null,
     [temServico, servico],
   );
 
@@ -302,8 +308,14 @@ function Dashboard() {
   }
 
   return (
-    <AppShell fullBleed>
-      <div className="relative h-[100dvh] w-full overflow-hidden bg-background">
+    /* COCKPIT V2: durante a viagem a navegação inferior some e a âncora de
+       baixo encolhe (`ma-cockpit`), para o mapa ser a tela inteira. */
+    <AppShell fullBleed hideNav={viagemAtiva}>
+      <div
+        className={`relative h-[100dvh] w-full overflow-hidden bg-background ${
+          viagemAtiva ? "ma-cockpit" : ""
+        }`}
+      >
         <ClientOnly
           fallback={
             <div className="absolute inset-0 flex items-center justify-center text-xs uppercase tracking-widest text-gold">
@@ -349,32 +361,39 @@ function Dashboard() {
           </div>
         )}
 
-        <HomeTopBar
-          gpsOnline={watching && !!position}
-          copilotOnline={!!position}
-          tripActive={viagemAtiva}
-          segundoPlano={segundoPlanoNaBarra}
-          temServico={temServico}
-        />
+        {/* Cabeçalho e faixa de destino: só fora da viagem. Durante a
+            navegação esses ~110px pertencem à próxima manobra. */}
+        {!viagemAtiva && (
+          <>
+            <HomeTopBar
+              gpsOnline={watching && !!position}
+              copilotOnline={!!position}
+              tripActive={viagemAtiva}
+              segundoPlano={segundoPlanoNaBarra}
+              temServico={temServico}
+            />
 
-        <DestinationBar
-          viagem={viagem}
-          rota={rota}
-          onAbrirDestino={() => setFolha((f) => abrirFolha(f, "destino"))}
-        />
+            <DestinationBar
+              viagem={viagem}
+              rota={rota}
+              onAbrirDestino={() => setFolha((f) => abrirFolha(f, "destino"))}
+            />
+          </>
+        )}
 
-        {/* Próxima manobra: prioridade máxima durante a viagem. */}
+        {/* Próxima manobra: informação dominante do cockpit. */}
         {viagemAtiva && (
           <NextManeuver
             rota={rota}
-            className="absolute inset-x-3 top-[calc(var(--ma-top)+112px)]"
+            destino={destinoDaNotificacao || null}
+            className="absolute inset-x-3 top-[var(--ma-top)]"
           />
         )}
 
         {/* Controles do mapa: anjos, camadas, combustível e centralizar. */}
         <div
           className={`absolute right-3 ${
-            viagemAtiva ? "top-[calc(var(--ma-top)+186px)]" : "top-[calc(var(--ma-top)+138px)]"
+            viagemAtiva ? "top-[calc(var(--ma-top)+124px)]" : "top-[calc(var(--ma-top)+138px)]"
           } z-30 flex flex-col gap-2`}
         >
           <LayerToggle
@@ -496,6 +515,8 @@ function Dashboard() {
             inclinacao={inclinacao}
             modo={modo}
             proximoEvento={aviso}
+            restanteKm={rota?.distanciaKm ?? null}
+            etaMin={rota?.duracaoMin ?? null}
             vozLigada={vozLigada}
             vozSuportada={vozSuportada}
             onAlternarVoz={alternarVoz}
