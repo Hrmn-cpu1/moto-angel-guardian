@@ -194,6 +194,7 @@ export async function handleNativeAuthUrl(
   if (!isNativeCallback(callbackUrl)) return false;
 
   console.info("[NativeAuth] native callback received");
+  console.info(source === "appUrlOpen" ? "APP_URL_OPEN_RECEIVED" : "LAUNCH_URL_RECEIVED");
   console.info(`[NativeAuth] origem: ${source}`);
   registrarEventoDeAuth(source === "appUrlOpen" ? "appUrlOpen.received" : "launchUrl.received");
 
@@ -242,10 +243,12 @@ export async function handleNativeAuthUrl(
       // um código opaco, único e vinculado a este verifier PKCE. Somente esta
       // troca HTTPS devolve a sessão; tokens nunca passam pelo deep link.
       registrarEventoDeAuth("exchange.begin");
+      console.info("EXCHANGE_BEGIN");
       const exchanged = await exchangeNativeCode({
         data: { code: parsed.code, code_verifier: verifier },
       });
       registrarEventoDeAuth("exchange.success");
+      console.info("EXCHANGE_SUCCESS");
       const { data, error } = await supabase.auth.setSession(exchanged);
       console.info(`[NativeAuth] exchangeCodeForSession ${error ? "error" : "success"}`);
       if (error || !data.session)
@@ -261,18 +264,22 @@ export async function handleNativeAuthUrl(
       if (!signedInObserved || !sameSession) {
         throw authFailure("unexpected", "A sessão não pôde ser confirmada no aplicativo.");
       }
+      console.info("SESSION_CONFIRMED");
 
       processedCallbacks.add(callbackKey);
       pendingAttempt?.resolve();
       pendingAttempt = null;
       const { Browser } = await import("@capacitor/browser");
       await Browser.close().catch(() => undefined);
+      console.info("BROWSER_CLOSE");
       console.info("[NativeAuth] rota final: /dashboard");
       registrarEventoDeAuth("dashboard.reached");
+      console.info("DASHBOARD_NATIVE");
       window.location.replace("/dashboard");
       return true;
     } catch (error) {
       console.error("[NativeAuth] exchangeCodeForSession error");
+      console.error("EXCHANGE_FAIL");
       registrarEventoDeAuth("exchange.fail", error instanceof Error ? error.name : "unknown");
       pendingAttempt?.reject(error);
       pendingAttempt = null;
@@ -329,6 +336,7 @@ export async function signInWithGoogleNative(): Promise<void> {
   await bootstrapNativeAuth();
 
   registrarEventoDeAuth("oauth.begin");
+  console.info("OAUTH_NATIVE_OPEN");
   const origin = window.location.origin;
   const nonce = randomState();
   const { verifier, challenge } = await createPkcePair();
