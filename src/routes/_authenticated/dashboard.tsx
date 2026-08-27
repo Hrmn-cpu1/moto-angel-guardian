@@ -511,6 +511,9 @@ function Dashboard() {
             inclinacao={inclinacao}
             modo={modo}
             proximoEvento={aviso}
+            restanteKm={rota?.distanciaKm ?? null}
+            etaMin={rota?.duracaoMin ?? null}
+
             vozLigada={vozLigada}
             vozSuportada={vozSuportada}
             onAlternarVoz={alternarVoz}
