@@ -126,7 +126,9 @@ function Item({
       </p>
       <p
         className={`mt-1 flex min-w-0 items-baseline gap-1 leading-none tabular-nums ${
-          destaque ? "text-[22px] font-black text-foreground" : "text-[17px] font-bold text-foreground"
+          destaque
+            ? "text-[22px] font-black text-foreground"
+            : "text-[17px] font-bold text-foreground"
         }`}
       >
         <span className="truncate">{valor}</span>

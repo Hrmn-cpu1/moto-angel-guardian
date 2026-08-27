@@ -50,10 +50,7 @@ export function distanciaDaManobra(metros: number | null | undefined): string | 
  * "Vire à esquerda na R. da Consolação" vira "R. da Consolação". A seta já
  * diz o movimento; repetir isso em texto rouba tempo de leitura.
  */
-export function viaDaInstrucao(
-  instrucao: string | null | undefined,
-  limite = 42,
-): string | null {
+export function viaDaInstrucao(instrucao: string | null | undefined, limite = 42): string | null {
   if (!instrucao) return null;
   const limpa = instrucao.replace(/\s+/g, " ").trim();
   if (!limpa) return null;
