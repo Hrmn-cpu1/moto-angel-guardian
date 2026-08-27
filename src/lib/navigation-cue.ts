@@ -80,3 +80,27 @@ export function acaoDaManobra(manobra: string | null | undefined): string | null
   if (m.includes("straight")) return "Siga em frente";
   return null;
 }
+
+/**
+ * Ação a exibir no cockpit, com fallback SEGURO (V3).
+ *
+ * Ordem: código de manobra do Google → verbo já presente no texto da própria
+ * instrução → "Continue". O fallback nunca inventa lado: quando não sabemos
+ * se é esquerda ou direita, dizemos apenas para continuar, e a rua abaixo
+ * mais o traçado dourado no mapa completam a informação.
+ */
+export function instrucaoDaManobra(
+  manobra: string | null | undefined,
+  instrucao?: string | null,
+): string {
+  const doCodigo = acaoDaManobra(manobra);
+  if (doCodigo) return doCodigo;
+  const t = (instrucao ?? "").toLowerCase();
+  if (t.includes("retorno")) return "Faça o retorno";
+  if (t.includes("rotatória") || t.includes("rotatoria")) return "Entre na rotatória";
+  if (t.includes("esquerda")) return "Vire à esquerda";
+  if (t.includes("direita")) return "Vire à direita";
+  if (t.includes("em frente") || t.includes("siga")) return "Siga em frente";
+  return "Continue";
+}
+
