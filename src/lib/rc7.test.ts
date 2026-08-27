@@ -40,7 +40,9 @@ test("a URL do broker manda só provider, redirect_uri e state", () => {
   for (const proibido of ["cc=", "native=", "response_mode"]) {
     assert.ok(!url.includes(proibido), `parâmetro fora do contrato: ${proibido}`);
   }
-  assert.ok(url.includes("provider=google") && url.includes("redirect_uri=") && url.includes("state="));
+  assert.ok(
+    url.includes("provider=google") && url.includes("redirect_uri=") && url.includes("state="),
+  );
 });
 
 /* ================================================================== *
@@ -71,7 +73,11 @@ test("validação de state falha fechada nos quatro casos", () => {
     falha: "sem_pendencia",
   });
   assert.deepEqual(
-    validarEstadoDeRetorno(montarEstadoNativo(nonce, CHALLENGE), pend, 1_000 + VALIDADE_ESTADO_MS + 1),
+    validarEstadoDeRetorno(
+      montarEstadoNativo(nonce, CHALLENGE),
+      pend,
+      1_000 + VALIDADE_ESTADO_MS + 1,
+    ),
     { ok: false, falha: "expirado" },
   );
   assert.deepEqual(
@@ -147,7 +153,7 @@ test("a trilha do MA-TRIP sobrevive à morte da WebView", () => {
 
 test("a rota /trip não tem mais implementação paralela", () => {
   const TRIP = ler("src/routes/_authenticated/trip.tsx");
-  assert.ok(TRIP.includes("redirect({ to: \"/dashboard\""));
+  assert.ok(TRIP.includes('redirect({ to: "/dashboard"'));
   for (const proibido of ["useRideTelemetry", "useGeolocation", "setPhase"]) {
     assert.ok(!TRIP.includes(proibido), `estado paralelo remanescente: ${proibido}`);
   }

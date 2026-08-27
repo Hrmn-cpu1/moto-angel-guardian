@@ -56,11 +56,7 @@ export function montarEstadoNativo(nonce: string, challenge: string): string {
  */
 export const SEGMENTO_CALLBACK_NATIVO = "n";
 
-export function caminhoDeCallbackNativo(
-  origin: string,
-  nonce: string,
-  challenge: string,
-): string {
+export function caminhoDeCallbackNativo(origin: string, nonce: string, challenge: string): string {
   return `${origin}/auth/callback/${SEGMENTO_CALLBACK_NATIVO}/${montarEstadoNativo(nonce, challenge)}`;
 }
 
