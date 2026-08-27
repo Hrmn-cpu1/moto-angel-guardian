@@ -151,10 +151,29 @@ function AuthCallback() {
     };
   }, [navigate]);
 
+  // O botão só aparece se, passado o tempo do redirecionamento automático, a
+  // página ainda estiver viva — ou seja, o Chrome bloqueou o deep link.
+  const [mostrarVolta, setMostrarVolta] = useState(false);
+  useEffect(() => {
+    if (!voltaManual) return;
+    const t = window.setTimeout(() => setMostrarVolta(true), 1200);
+    return () => window.clearTimeout(t);
+  }, [voltaManual]);
+
   return (
     <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-background px-4 text-center">
       <BrandMark size={72} />
       <p className="text-sm text-muted-foreground">{message}</p>
+      {mostrarVolta && voltaManual ? (
+        <a
+          href={voltaManual}
+          className="rounded-full border border-gold/40 bg-gold/10 px-5 py-2 text-sm font-semibold text-gold"
+          onClick={() => registrarEventoDeAuth("deepLink.replace.called", "manual")}
+        >
+          Voltar ao Moto Anjo
+        </a>
+      ) : null}
     </main>
   );
 }
+
