@@ -553,14 +553,24 @@ export default function RealMap({
         setRotaIndisponivel(false);
         setDiagnostico(null);
 
+        if (!routeCasingRef.current) {
+          routeCasingRef.current = new g.maps.Polyline({
+            strokeColor: "#0A0A0A",
+            strokeOpacity: 0.9,
+            strokeWeight: 13,
+            zIndex: 4,
+          });
+        }
         if (!routePolylineRef.current) {
           routePolylineRef.current = new g.maps.Polyline({
             strokeColor: "#F3D675",
-            strokeOpacity: 0.95,
-            strokeWeight: 6,
+            strokeOpacity: 1,
+            strokeWeight: 8,
             zIndex: 5,
           });
         }
+        routeCasingRef.current.setPath(rota.pontos);
+        routeCasingRef.current.setMap(map);
         routePolylineRef.current.setPath(rota.pontos);
         routePolylineRef.current.setMap(map);
 
@@ -616,6 +626,8 @@ export default function RealMap({
     () => () => {
       routePolylineRef.current?.setMap(null);
       routePolylineRef.current = null;
+      routeCasingRef.current?.setMap(null);
+      routeCasingRef.current = null;
     },
     [],
   );
