@@ -946,5 +946,8 @@ test("HOME: os três estados da viagem são mutuamente exclusivos e completos", 
   const home = ler("src/routes/_authenticated/dashboard.tsx");
   assert.ok(/viagem\.estado === "ocioso" &&[\s\S]{0,80}ChamadaViagemSegura/.test(home));
   assert.ok(/viagem\.estado === "preparando" &&[\s\S]{0,80}PreparacaoDeViagem/.test(home));
-  assert.ok(/\{viagemAtiva &&[\s\S]{0,80}CockpitDeViagem/.test(home));
+  // Cockpit V2: a viagem ativa continua sendo a condição, agora combinada
+  // com o MODO de tela (sair do cockpit não encerra a viagem).
+  assert.ok(/const modoCockpit = viagemAtiva && cockpitAberto;/.test(home));
+  assert.ok(/\{modoCockpit &&[\s\S]{0,80}CockpitDeViagem/.test(home));
 });

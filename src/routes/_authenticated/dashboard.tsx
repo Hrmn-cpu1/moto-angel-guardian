@@ -1,7 +1,7 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { Crosshair, Fuel, Layers, Users } from "lucide-react";
+import { ArrowLeft, Crosshair, Fuel, Layers, Navigation, Users } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { HomeTopBar } from "@/components/HomeTopBar";
 import { SosFabControlado } from "@/components/SosFab";
@@ -93,6 +93,10 @@ function Dashboard() {
   // (RC3 seções 8 e 39).
   const { viagem, servico, definirDestino, iniciar, cancelar, finalizar } = useTrip();
   const viagemAtiva = viagem.estado === "ativa";
+  // Cockpit é um MODO de tela, não o app inteiro: sair dele não toca na
+  // viagem (nem no serviço nativo, nem na rota, nem no destino).
+  const [cockpitAberto, setCockpitAberto] = useState(true);
+  const modoCockpit = viagemAtiva && cockpitAberto;
   const { velocidade, rumo, inclinacao, modo } = useCockpitTelemetry(viagemAtiva);
   // O SOS ativo é lido do controlador que já existe, pela fase — não invento
   // API nova nele (RC3: não reimplementar SOS).
@@ -257,6 +261,11 @@ function Dashboard() {
     rota?.proximaDistanciaM,
   ]);
 
+  // Ao (re)entrar em viagem, a navegação volta a ser a tela dominante.
+  useEffect(() => {
+    if (viagemAtiva) setCockpitAberto(true);
+  }, [viagemAtiva]);
+
   useEffect(() => {
     if (!granted) return;
     void capture();
@@ -310,10 +319,10 @@ function Dashboard() {
   return (
     /* COCKPIT V2: durante a viagem a navegação inferior some e a âncora de
        baixo encolhe (`ma-cockpit`), para o mapa ser a tela inteira. */
-    <AppShell fullBleed hideNav={viagemAtiva}>
+    <AppShell fullBleed hideNav={modoCockpit}>
       <div
         className={`relative h-[100dvh] w-full overflow-hidden bg-background ${
-          viagemAtiva ? "ma-cockpit" : ""
+          modoCockpit ? "ma-cockpit" : ""
         }`}
       >
         <ClientOnly
@@ -363,7 +372,7 @@ function Dashboard() {
 
         {/* Cabeçalho e faixa de destino: só fora da viagem. Durante a
             navegação esses ~110px pertencem à próxima manobra. */}
-        {!viagemAtiva && (
+        {!modoCockpit && (
           <>
             <HomeTopBar
               gpsOnline={watching && !!position}
@@ -381,8 +390,34 @@ function Dashboard() {
           </>
         )}
 
+        {/* Saída do modo cockpit: só fecha a tela cheia. A viagem, a rota,
+            o destino e o serviço em segundo plano continuam. */}
+        {modoCockpit && (
+          <button
+            onClick={() => setCockpitAberto(false)}
+            aria-label="Voltar ao app"
+            className={`absolute left-3 top-[var(--ma-top)] ${camada(
+              "cartoesDoMapa",
+            )} flex items-center gap-1.5 rounded-full border border-gold/30 bg-black/80 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-gold backdrop-blur`}
+          >
+            <ArrowLeft size={13} /> Voltar ao app
+          </button>
+        )}
+
+        {/* Viagem ativa com cockpit fechado: atalho para retomar. */}
+        {viagemAtiva && !cockpitAberto && (
+          <button
+            onClick={() => setCockpitAberto(true)}
+            className={`absolute inset-x-3 bottom-[calc(var(--ma-bottom)+86px)] ${camada(
+              "painelInferior",
+            )} flex ma-cta-h items-center justify-center gap-2 rounded-2xl border border-gold/40 bg-black/85 text-sm font-bold uppercase tracking-widest text-gold backdrop-blur`}
+          >
+            <Navigation size={16} /> Viagem ativa — Retomar navegação
+          </button>
+        )}
+
         {/* Próxima manobra: informação dominante do cockpit. */}
-        {viagemAtiva && (
+        {modoCockpit && (
           <NextManeuver
             rota={rota}
             destino={destinoDaNotificacao || null}
@@ -393,7 +428,7 @@ function Dashboard() {
         {/* Controles do mapa: anjos, camadas, combustível e centralizar. */}
         <div
           className={`absolute right-3 ${
-            viagemAtiva ? "top-[calc(var(--ma-top)+124px)]" : "top-[calc(var(--ma-top)+138px)]"
+            modoCockpit ? "top-[calc(var(--ma-top)+124px)]" : "top-[calc(var(--ma-top)+138px)]"
           } z-30 flex flex-col gap-2`}
         >
           <LayerToggle
@@ -427,7 +462,7 @@ function Dashboard() {
 
         {/* Estado da camada de anjos: sem inventar ninguém no mapa.
             Durante a viagem some — quem pilota não precisa desse rótulo. */}
-        {!viagemAtiva && (
+        {!modoCockpit && (
           <div
             data-testid="estado-anjos"
             className={`absolute right-3 top-[calc(var(--ma-top)+100px)] ${camada(
@@ -507,7 +542,7 @@ function Dashboard() {
           />
         )}
 
-        {viagemAtiva && (
+        {modoCockpit && (
           <CockpitDeViagem
             viagem={viagem}
             velocidade={velocidade}
