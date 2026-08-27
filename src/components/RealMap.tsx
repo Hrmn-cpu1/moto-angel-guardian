@@ -301,6 +301,8 @@ export default function RealMap({
   const heatCirclesRef = useRef<google.maps.Circle[]>([]);
   const trafficRef = useRef<google.maps.TrafficLayer | null>(null);
   const routePolylineRef = useRef<google.maps.Polyline | null>(null);
+  /** Contorno escuro sob a rota: contraste sobre mapa dark. Só estilo. */
+  const routeCasingRef = useRef<google.maps.Polyline | null>(null);
   const routeRequestRef = useRef(0);
   /** Destino já enquadrado — impede a câmera de brigar com o modo "seguir". */
   const enquadradoParaRef = useRef<string | null>(null);
@@ -494,6 +496,8 @@ export default function RealMap({
     const limpar = () => {
       routePolylineRef.current?.setMap(null);
       routePolylineRef.current = null;
+      routeCasingRef.current?.setMap(null);
+      routeCasingRef.current = null;
     };
 
     if (!destKey || !center) {
