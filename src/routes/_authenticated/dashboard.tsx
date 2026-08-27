@@ -599,7 +599,14 @@ function Dashboard() {
         {/* Sem prop de posição: o SOS captura o GPS na hora do acionamento.
             O acionador flutuante some enquanto uma folha ou o teclado ocupam
             a mesma faixa — o painel de SOS ativo continua sempre visível. */}
-        <SosFabControlado sos={sos} oculto={!sosFlutuanteVisivel(folha, tecladoAberto)} />
+        {/* Em viagem ele encolhe um pouco (64px, sem pulso) para não cobrir
+            rota e telemetria — continua vermelho, ao alcance do polegar e com
+            o mesmo hold de 3 s. Nada do comportamento mudou. */}
+        <SosFabControlado
+          sos={sos}
+          oculto={!sosFlutuanteVisivel(folha, tecladoAberto)}
+          className={modoCockpit ? "h-16 w-16 animate-none opacity-95" : undefined}
+        />
       </div>
     </AppShell>
   );
