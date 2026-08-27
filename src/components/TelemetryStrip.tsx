@@ -19,6 +19,8 @@ export function TelemetryStrip({
   rumo,
   inclinacao,
   modo,
+  restanteKm = null,
+  etaMin = null,
   vozLigada,
   vozSuportada,
   onAlternarVoz,
@@ -29,6 +31,10 @@ export function TelemetryStrip({
   rumo: Cardeal | null;
   inclinacao: Inclinacao;
   modo: "parado" | "pilotando";
+  /** Distância restante da rota real. `null` sem rota — nada é estimado. */
+  restanteKm?: number | null;
+  /** Tempo restante da rota real, em minutos. */
+  etaMin?: number | null;
   vozLigada: boolean;
   vozSuportada: boolean;
   onAlternarVoz: () => void;
@@ -38,7 +44,7 @@ export function TelemetryStrip({
   return (
     <div
       data-testid="telemetria-compacta"
-      className={`${camada("painelInferior")} flex h-[58px] items-center gap-2 rounded-2xl border border-gold/25 bg-black/80 px-3 backdrop-blur-md ${className ?? ""}`}
+      className={`${camada("painelInferior")} flex h-[58px] items-center gap-2 rounded-2xl border border-white/10 bg-black/80 px-3 backdrop-blur-md ${className ?? ""}`}
     >
       <Item
         icone={<Gauge size={11} />}
@@ -48,13 +54,27 @@ export function TelemetryStrip({
         destaque
       />
       <span className="h-7 w-px shrink-0 bg-white/10" />
-      <Item icone={<Compass size={11} />} valor={rumo ?? "—"} rotulo="Direção" />
+      <Item
+        icone={<Route size={11} />}
+        valor={restanteKm == null ? "—" : restanteKm.toFixed(1).replace(".", ",")}
+        unidade="km"
+        rotulo="Restante"
+      />
       <span className="h-7 w-px shrink-0 bg-white/10" />
       <Item
-        icone={<MoveHorizontal size={11} />}
-        valor={inclinacao.graus == null ? "—" : `${inclinacao.graus}°`}
-        rotulo={inclinacao.confianca === "baixa" ? "Inclin. (aparelho)" : "Inclinação"}
+        icone={<Clock size={11} />}
+        valor={etaMin == null ? "—" : String(etaMin)}
+        unidade="min"
+        rotulo="ETA"
       />
+      <span className="hidden h-7 w-px shrink-0 bg-white/10 min-[380px]:block" />
+      <div className="hidden min-[380px]:contents">
+        <Item icone={<Compass size={11} />} valor={rumo ?? "—"} rotulo="Direção" />
+      </div>
+      <span className="sr-only">
+        {inclinacao.graus == null ? "—" : `${inclinacao.graus}°`} de inclinação
+      </span>
+
 
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
         <span className="hidden text-[9px] uppercase tracking-widest text-muted-foreground">
