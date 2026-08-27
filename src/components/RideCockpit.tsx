@@ -1,6 +1,6 @@
 import { ShieldCheck, Gauge, X } from "lucide-react";
 import { camada } from "@/lib/layers";
-import { distanciaCurta, APARENCIA, type EventoNoMapa } from "@/lib/map-events";
+import type { EventoNoMapa } from "@/lib/map-events";
 import type { Cardeal, Inclinacao } from "@/lib/ride-telemetry";
 import { rotuloDoDestino, type Viagem } from "@/lib/trip";
 import { TelemetryStrip } from "@/components/TelemetryStrip";
