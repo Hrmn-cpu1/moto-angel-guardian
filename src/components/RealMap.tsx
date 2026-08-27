@@ -268,6 +268,7 @@ export default function RealMap({
   follow = true,
   navegando = false,
 
+
   pois = [],
   onPoiSelect,
   alerts = [],
