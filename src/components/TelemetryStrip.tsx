@@ -83,11 +83,10 @@ export function TelemetryStrip({
           leitores de tela — nada é inventado nem escondido do usuário. */}
       <span className="sr-only">
         Direção {rumo ?? "indisponível"} ·{" "}
-        {inclinacao.graus == null
-          ? "inclinação indisponível"
-          : `${inclinacao.graus}° de inclinação`}{" "}
-        · {modo === "pilotando" ? "Em movimento" : "Parado"}
+        {inclinacao.graus == null ? "inclinação indisponível" : `${inclinacao.graus}°`} ·{" "}
+        {modo === "pilotando" ? "Em movimento" : "Parado"}
       </span>
+
     </div>
   );
 }
