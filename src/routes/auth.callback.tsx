@@ -38,6 +38,11 @@ export const Route = createFileRoute("/auth/callback")({
 function AuthCallback() {
   const navigate = useNavigate();
   const [message, setMessage] = useState("Concluindo seu login...");
+  // Chrome bloqueia navegação para esquema de aplicativo sem gesto do usuário.
+  // Quando isso acontece o Custom Tab fica parado nesta página (barra com X,
+  // domínio e três pontos) — e é assim que o retorno "some". Guardamos o
+  // destino para oferecer um toque explícito, que o Chrome sempre honra.
+  const [voltaManual, setVoltaManual] = useState<string | null>(null);
 
   useEffect(() => {
     const url = INITIAL_URL || window.location.href;
@@ -87,9 +92,10 @@ function AuthCallback() {
           flags: { code: "code" in extra, error: "error" in extra, state: Boolean(state) },
         });
         beacon("deepLink.begin");
-        window.location.replace(
-          `${NATIVE_CALLBACK_URL}?${new URLSearchParams({ ...extra, ...(state ? { state } : {}) }).toString()}`,
-        );
+        const alvo = `${NATIVE_CALLBACK_URL}?${new URLSearchParams({ ...extra, ...(state ? { state } : {}) }).toString()}`;
+        setVoltaManual(alvo);
+        window.location.replace(alvo);
+
         registrarEventoDeAuth("deepLink.replace.called");
       };
       if (parsed.error) {
@@ -144,10 +150,28 @@ function AuthCallback() {
     };
   }, [navigate]);
 
+  // O botão só aparece se, passado o tempo do redirecionamento automático, a
+  // página ainda estiver viva — ou seja, o Chrome bloqueou o deep link.
+  const [mostrarVolta, setMostrarVolta] = useState(false);
+  useEffect(() => {
+    if (!voltaManual) return;
+    const t = window.setTimeout(() => setMostrarVolta(true), 1200);
+    return () => window.clearTimeout(t);
+  }, [voltaManual]);
+
   return (
     <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-background px-4 text-center">
       <BrandMark size={72} />
       <p className="text-sm text-muted-foreground">{message}</p>
+      {mostrarVolta && voltaManual ? (
+        <a
+          href={voltaManual}
+          className="rounded-full border border-gold/40 bg-gold/10 px-5 py-2 text-sm font-semibold text-gold"
+          onClick={() => registrarEventoDeAuth("deepLink.replace.called", "manual")}
+        >
+          Voltar ao Moto Anjo
+        </a>
+      ) : null}
     </main>
   );
 }
