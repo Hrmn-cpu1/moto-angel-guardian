@@ -86,7 +86,6 @@ export function TelemetryStrip({
         {inclinacao.graus == null ? "inclinação indisponível" : `${inclinacao.graus}°`} ·{" "}
         {modo === "pilotando" ? "Em movimento" : "Parado"}
       </span>
-
     </div>
   );
 }
