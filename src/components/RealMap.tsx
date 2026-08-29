@@ -245,12 +245,29 @@ interface Props {
   destination?: { lat?: number; lng?: number; address?: string } | null;
   /** Resultado real do Google. `null` quando não há rota calculável. */
   onRoute?: (rota: RouteInfo | null) => void;
+  /**
+   * Estado do cálculo da rota, para a interface poder dizer a verdade
+   * ("calculando" x "indisponível") em vez de ficar em silêncio.
+   */
+  onRouteStatus?: (estado: EstadoDaRota) => void;
+  /**
+   * Espaço, em pixels, ocupado por painéis na base da tela. O enquadramento
+   * da prévia usa isto para não esconder a rota atrás da bottom sheet.
+   */
+  paddingInferiorPx?: number;
+
   zoom?: number;
   /** Rounded corners (off for the full-screen home map). */
   rounded?: boolean;
   interactive?: boolean;
   className?: string;
 }
+
+/**
+ * Estados possíveis do cálculo da rota. São os únicos: nada é deduzido pela
+ * interface, tudo é emitido pelo ponto do código que realmente sabe.
+ */
+export type EstadoDaRota = "sem_destino" | "calculando" | "pronta" | "indisponivel";
 
 export interface RouteInfo {
   distanciaKm: number;
@@ -283,6 +300,9 @@ export default function RealMap({
   showHeatmap = false,
   destination = null,
   onRoute,
+  onRouteStatus,
+  paddingInferiorPx = 240,
+
   zoom = 15,
   rounded = true,
   interactive = true,
@@ -324,6 +344,15 @@ export default function RealMap({
   const calcularRotaNoServidor = useServerFn(calcularRota);
   const onRouteRef = useRef(onRoute);
   onRouteRef.current = onRoute;
+  const onRouteStatusRef = useRef(onRouteStatus);
+  onRouteStatusRef.current = onRouteStatus;
+  /** O padding da câmera muda por render; ler por ref evita refazer a rota. */
+  const paddingInferiorRef = useRef(paddingInferiorPx);
+  paddingInferiorRef.current = paddingInferiorPx;
+  /** Idem para o modo: entrar em navegação não pode refazer a Directions. */
+  const navegandoRef = useRef(navegando);
+  navegandoRef.current = navegando;
+
   const [state, setState] = useState<LoaderState>("idle");
   // null = ainda não medido; false = medido e sem área; true = pronto.
   // O mapa só é construído quando isto vira true. Ver o efeito de medição.
@@ -518,6 +547,7 @@ export default function RealMap({
       setRotaIndisponivel(false);
       setDiagnostico(null);
       onRouteRef.current?.(null);
+      onRouteStatusRef.current?.("sem_destino");
       return;
     }
 
@@ -525,11 +555,14 @@ export default function RealMap({
     if (!temCoordenada && !destination?.address) {
       limpar();
       onRouteRef.current?.(null);
+      onRouteStatusRef.current?.("sem_destino");
       return;
     }
 
+    onRouteStatusRef.current?.("calculando");
     let cancelled = false;
     const requestId = ++routeRequestRef.current;
+
     registrarEventoDeViagem("directions.begin");
     const iniciadoEm = Date.now();
 
@@ -559,6 +592,7 @@ export default function RealMap({
           });
           setDiagnostico(d);
           onRouteRef.current?.(null);
+          onRouteStatusRef.current?.("indisponivel");
           return;
         }
 
@@ -587,18 +621,32 @@ export default function RealMap({
         routePolylineRef.current.setPath(rota.pontos);
         routePolylineRef.current.setMap(map);
 
-        /* Enquadramento (RC3.2 #10): uma vez por destino — usuário + trecho
-         * seguinte. Não a cada recálculo, senão a câmera briga com o "seguir". */
+        /* Enquadramento (RC3.2 #10): uma vez por destino — a câmera não pode
+         * brigar com o "seguir" a cada recálculo.
+         *
+         * PRÉVIA (fora da navegação): origem + rota INTEIRA + destino, para a
+         * pessoa entender o caminho antes de começar.
+         * NAVEGANDO: só o usuário + o trecho seguinte (~1,5 km); enquadrar a
+         * rota inteira pilotando joga o zoom para longe e some com as ruas.
+         *
+         * O padding inferior vem de quem desenha os painéis: enquadrar sem ele
+         * esconde a rota atrás da bottom sheet. */
         if (enquadradoParaRef.current !== destKey) {
           enquadradoParaRef.current = destKey;
-          const quantos = passosDoEnquadramento(rota.passos.map((p) => p.distanciaM));
-          const fins = fimDosPassos(rota.passos, quantos);
-          if (fins.length > 0) {
+          const pontosDoEnquadramento = navegandoRef.current
+            ? fimDosPassos(rota.passos, passosDoEnquadramento(rota.passos.map((p) => p.distanciaM)))
+            : rota.pontos;
+          if (pontosDoEnquadramento.length > 0) {
             const limites = new g.maps.LatLngBounds();
             const atual = centerRef.current ?? center;
             limites.extend({ lat: atual.lat, lng: atual.lng });
-            fins.forEach((p) => limites.extend(p));
-            map.fitBounds(limites, { top: 150, right: 60, bottom: 240, left: 60 });
+            pontosDoEnquadramento.forEach((p) => limites.extend(p));
+            map.fitBounds(limites, {
+              top: 150,
+              right: 60,
+              bottom: Math.max(120, paddingInferiorRef.current),
+              left: 60,
+            });
           }
         }
 
@@ -611,6 +659,7 @@ export default function RealMap({
           proximaManobra: passo?.manobra ?? null,
           destinoTexto: rota.destinoTexto ?? destination?.address ?? null,
         });
+        onRouteStatusRef.current?.("pronta");
       })
       .catch((error) => {
         // Sem rota calculável não se inventa distância: a Home mostra só o
@@ -627,6 +676,7 @@ export default function RealMap({
           });
           setDiagnostico(d);
           onRouteRef.current?.(null);
+          onRouteStatusRef.current?.("indisponivel");
         }
       });
 
