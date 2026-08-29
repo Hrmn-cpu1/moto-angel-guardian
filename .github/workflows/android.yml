@@ -85,7 +85,13 @@ jobs:
             echo "commit base indisponível no checkout — nada a lintar"
             exit 0
           fi
-          ALTERADOS=$(git diff --name-only --diff-filter=ACMR "$BASE" HEAD -- '*.ts' '*.tsx' | tr '\n' ' ')
+          # src/integrations/supabase/types.ts é 100% gerado pela plataforma
+          # (sem script de geração no repo) e é reescrito sem formatação
+          # Prettier a cada regeneração, o que recriava este gate a cada push.
+          # Ele sai do conjunto bloqueante; o lint global informativo acima
+          # continua cobrindo o arquivo. Código-fonte normal segue bloqueando.
+          ALTERADOS=$(git diff --name-only --diff-filter=ACMR "$BASE" HEAD -- '*.ts' '*.tsx' \
+            | grep -v '^src/integrations/supabase/types\.ts$' | tr '\n' ' ' || true)
           if [ -z "$ALTERADOS" ]; then
             echo "nenhum arquivo TS/TSX alterado neste push"
             exit 0
