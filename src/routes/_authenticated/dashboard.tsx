@@ -43,7 +43,7 @@ import { usePartners } from "@/hooks/usePartners";
 import { useServerFn } from "@tanstack/react-start";
 import { searchPOIs, type POI } from "@/lib/pois.functions";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import type { RouteInfo } from "@/components/RealMap";
+import type { EstadoDaRota, RouteInfo } from "@/components/RealMap";
 import { MapErrorBoundary } from "@/components/MapErrorBoundary";
 
 const RealMap = lazy(() => import("@/components/RealMap"));
@@ -80,6 +80,8 @@ function Dashboard() {
   const [folha, setFolha] = useState<Folha>("nenhuma");
   const tecladoAberto = useTecladoVirtual();
   const [rota, setRota] = useState<RouteInfo | null>(null);
+  const [estadoDaRota, setEstadoDaRota] = useState<EstadoDaRota>("sem_destino");
+
   const [pois, setPois] = useState<POI[]>([]);
   const fetchPOIs = useServerFn(searchPOIs);
   const { alerts } = useAlerts(position);
@@ -117,6 +119,17 @@ function Dashboard() {
   // A rota vem do Google pelo mapa; guardá-la aqui é o que permite mostrar
   // distância e ETA reais na faixa de destino.
   const aoCalcularRota = useCallback((r: RouteInfo | null) => setRota(r), []);
+  // Estado HONESTO do cálculo: é o que impede a prévia de ficar muda entre
+  // "escolhi o destino" e "a rota apareceu".
+  const aoMudarEstadoDaRota = useCallback((e: EstadoDaRota) => setEstadoDaRota(e), []);
+
+  /**
+   * Linha do Copiloto durante a navegação. Só duas origens possíveis: o
+   * evento real mais próximo ou o silêncio. Nada é gerado sem dado.
+   */
+  const textoDoCopiloto = aviso
+    ? `${APARENCIA[aviso.categoria].rotulo} • ${distanciaCurta(aviso.distanciaKm)}`
+    : "Rota tranquila";
 
   /* ---------------------------------------------------------------- *
    * Proteção em segundo plano — o que o Android realmente disse.
@@ -353,6 +366,8 @@ function Dashboard() {
                 pois={poisNoMapa}
                 destination={destinoNoMapa}
                 onRoute={aoCalcularRota}
+                onRouteStatus={aoMudarEstadoDaRota}
+                paddingInferiorPx={viagem.estado === "preparando" ? 320 : 200}
                 alerts={alertasNoMapa}
                 riders={ridersNoMapa}
                 partners={parceirosNoMapa}
@@ -383,11 +398,16 @@ function Dashboard() {
               temServico={temServico}
             />
 
-            <DestinationBar
-              viagem={viagem}
-              rota={rota}
-              onAbrirDestino={() => setFolha((f) => abrirFolha(f, "destino"))}
-            />
+            {/* Na preparação a prévia já mostra destino, ETA e distância.
+                Manter a faixa aqui seria a MESMA informação duas vezes na
+                mesma tela. */}
+            {viagem.estado !== "preparando" && (
+              <DestinationBar
+                viagem={viagem}
+                rota={rota}
+                onAbrirDestino={() => setFolha((f) => abrirFolha(f, "destino"))}
+              />
+            )}
           </>
         )}
 
@@ -532,14 +552,22 @@ function Dashboard() {
         )}
 
         {/* O copiloto acompanha a Home inteira, com ou sem viagem — menos
-            durante a preparação, onde o painel ocupa a mesma faixa. */}
-        {folha === "nenhuma" && viagem.estado !== "preparando" && (
-          <CopilotCard
-            aviso={aviso}
-            viagemAtiva={viagemAtiva}
-            className="absolute inset-x-3 bottom-[calc(var(--ma-bottom)+156px)]"
-          />
-        )}
+            durante a preparação, onde o painel ocupa a mesma faixa.
+            Navegando, a linha do Copiloto vive DENTRO da telemetria; sobre o
+            mapa só sobra o alerta real, quando existe. */}
+        {folha === "nenhuma" &&
+          viagem.estado !== "preparando" &&
+          (!modoCockpit || aviso != null) && (
+            <CopilotCard
+              aviso={aviso}
+              viagemAtiva={viagemAtiva}
+              className={`absolute inset-x-3 ${
+                modoCockpit
+                  ? "bottom-[calc(var(--ma-bottom)+172px)]"
+                  : "bottom-[calc(var(--ma-bottom)+156px)]"
+              }`}
+            />
+          )}
 
         {viagem.estado === "preparando" && folha !== "destino" && (
           <PreparacaoDeViagem
@@ -547,6 +575,8 @@ function Dashboard() {
             gpsOk={!!position}
             contato={null}
             segundoPlano={segundoPlanoNaPreparacao}
+            rota={rota}
+            estadoDaRota={estadoDaRota}
             onIniciar={iniciar}
             onCancelar={cancelar}
           />
@@ -562,6 +592,8 @@ function Dashboard() {
             proximoEvento={aviso}
             restanteKm={rota?.distanciaKm ?? null}
             etaMin={rota?.duracaoMin ?? null}
+            copiloto={textoDoCopiloto}
+            copilotoCritico={aviso != null}
             vozLigada={vozLigada}
             vozSuportada={vozSuportada}
             onAlternarVoz={alternarVoz}

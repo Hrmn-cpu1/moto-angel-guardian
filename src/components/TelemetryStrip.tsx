@@ -19,6 +19,8 @@ export function TelemetryStrip({
   modo,
   restanteKm = null,
   etaMin = null,
+  copiloto = null,
+  copilotoCritico = false,
   vozLigada,
   vozSuportada,
   onAlternarVoz,
@@ -33,6 +35,12 @@ export function TelemetryStrip({
   restanteKm?: number | null;
   /** Tempo restante da rota real, em minutos. */
   etaMin?: number | null;
+  /**
+   * Linha do Copiloto de Segurança. `null` quando não há nada verdadeiro a
+   * dizer — a faixa simplesmente não mostra a linha.
+   */
+  copiloto?: string | null;
+  copilotoCritico?: boolean;
   vozLigada: boolean;
   vozSuportada: boolean;
   onAlternarVoz: () => void;
@@ -78,6 +86,25 @@ export function TelemetryStrip({
           </button>
         </div>
       </div>
+      {/* Copiloto: UMA linha, dentro da mesma faixa. Contexto de segurança —
+          nunca repete a instrução de navegação, nunca inventa perigo. */}
+      {copiloto && (
+        <p
+          data-testid="copiloto-na-faixa"
+          className={`mt-2 flex items-center gap-1.5 border-t border-white/8 pt-2 text-[11px] font-semibold leading-tight ${
+            copilotoCritico ? "text-emergency" : "text-muted-foreground"
+          }`}
+        >
+          <span
+            className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+              copilotoCritico ? "bg-emergency" : "bg-gold"
+            }`}
+          />
+          <span className="truncate">
+            <span className="text-gold">Copiloto</span> · {copiloto}
+          </span>
+        </p>
+      )}
 
       {/* Contexto que não merece pixel na faixa, mas segue disponível para
           leitores de tela — nada é inventado nem escondido do usuário. */}

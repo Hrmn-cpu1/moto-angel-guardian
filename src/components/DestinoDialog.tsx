@@ -106,21 +106,34 @@ export function DestinoDialog({
           </button>
         </div>
 
-        <input
-          value={texto}
-          onChange={(e) => setTexto(e.target.value)}
-          inputMode="text"
-          autoFocus
-          enterKeyHint="go"
-          onKeyDown={(e) => {
-            if (e.key !== "Enter") return;
-            // Enter com sugestão pronta usa a PRIMEIRA — ela tem coordenada.
-            if (lugares[0]) onEscolher(destinoDoLugar(lugares[0]));
-            else if (valido) onEscolher(texto);
-          }}
-          placeholder="Endereço, link do mapa ou -23.55, -46.63"
-          className="mt-2.5 ma-input w-full rounded-2xl border border-white/10 bg-black/50 px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-gold/50"
-        />
+        <div className="relative mt-2.5">
+          <input
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            inputMode="text"
+            autoFocus
+            enterKeyHint="go"
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return;
+              // Enter com sugestão pronta usa a PRIMEIRA — ela tem coordenada.
+              if (lugares[0]) onEscolher(destinoDoLugar(lugares[0]));
+              else if (valido) onEscolher(texto);
+            }}
+            placeholder="Endereço, link do mapa ou -23.55, -46.63"
+            className="ma-input w-full rounded-2xl border border-white/10 bg-black/50 px-3 pr-10 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-gold/50"
+          />
+          {/* Limpar sem apagar letra por letra com luva. */}
+          {texto.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setTexto("")}
+              aria-label="Limpar destino"
+              className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-muted-foreground"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
 
         {pareceEndereco && (
           <div
@@ -142,7 +155,7 @@ export function DestinoDialog({
                 key={lugar.id}
                 type="button"
                 onClick={() => onEscolher(destinoDoLugar(lugar))}
-                className="flex w-full items-start gap-2 border-b border-white/5 px-3 py-2.5 text-left last:border-b-0"
+                className="flex w-full items-start gap-2 border-b border-white/5 px-3 py-3 text-left last:border-b-0 active:bg-white/5"
               >
                 <Search size={13} className="mt-0.5 shrink-0 text-gold" />
                 <span className="min-w-0">

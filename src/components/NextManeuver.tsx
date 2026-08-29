@@ -38,10 +38,16 @@ export function NextManeuver({
 }) {
   const via = viaDaInstrucao(rota?.proximaInstrucao, 56);
   const distancia = distanciaDaManobra(rota?.proximaDistanciaM);
-  if (!via && !distancia) return null;
+  // Estado honesto: com rota calculada mas sem passo conhecido, o bloco não
+  // some (a tela ficaria vazia no topo) nem inventa um lado — diz apenas para
+  // seguir a rota desenhada no mapa. Sem rota alguma, nada é renderizado.
+  if (!via && !distancia && !rota) return null;
 
   const Seta = SETAS[setaDaManobra(rota?.proximaManobra)];
-  const acao = instrucaoDaManobra(rota?.proximaManobra, rota?.proximaInstrucao);
+  const acao =
+    via || distancia
+      ? instrucaoDaManobra(rota?.proximaManobra, rota?.proximaInstrucao)
+      : "Siga a rota";
 
   return (
     <div
