@@ -46,7 +46,8 @@ test("existe UM único CTA de iniciar viagem segura", () => {
   // Um na prévia (CTA dourado) e um na chamada inicial (estado ocioso).
   assert.equal(ctas.length, 2);
   const barra = ler("src/components/DestinationBar.tsx");
-  assert.ok(!/Iniciar viagem/.test(barra), "a faixa de destino não repete o CTA");
+  // A menção que sobra na faixa é o comentário histórico; botão, nenhum.
+  assert.ok(!/<button[\s\S]*Iniciar viagem/.test(barra), "a faixa de destino não repete o CTA");
 });
 
 test("a faixa de destino não duplica a prévia durante a preparação", () => {
