@@ -25,13 +25,13 @@ export function HomeTopBar({
   gpsOnline,
   sharing: _sharing = false,
   copilotOnline: _copilotOnline = false,
-  tripActive: _tripActive = false,
-  segundoPlano: _segundoPlano = null,
+  tripActive = false,
+  segundoPlano = null,
   temServico: _temServico = false,
 }: Props) {
   // Fora da viagem não há serviço em segundo plano a reportar. Durante a
   // viagem o estado real segue acessível sem voltar a criar uma faixa visual.
-  const estadoSegundoPlano = _tripActive && _segundoPlano ? _segundoPlano : null;
+  const estadoSegundoPlano = tripActive && segundoPlano ? segundoPlano : null;
 
   return (
     <header className="pointer-events-none absolute inset-x-4 top-[var(--ma-top)] z-30 grid h-9 grid-cols-[minmax(0,1fr)_auto] items-center">
