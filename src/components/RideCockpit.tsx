@@ -61,7 +61,7 @@ export function PreparacaoDeViagem({
   return (
     <div
       data-testid="previa-da-rota"
-      className={`absolute inset-x-3 bottom-[calc(var(--ma-bottom)+10px)] ${camada(
+      className={`absolute inset-x-3 bottom-[calc(var(--ma-bottom)+86px)] ${camada(
         "painelInferior",
       )} rounded-2xl bg-map-panel/96 p-3 shadow-map backdrop-blur-xl`}
     >
@@ -82,7 +82,7 @@ export function PreparacaoDeViagem({
             >
               {estadoDaRota === "calculando" ? (
                 <>
-                  <Loader2 size={11} className="animate-spin text-gold" /> Calculando rota…
+                  <Loader2 size={11} className="animate-spin text-gold" /> Calculando a melhor rota…
                 </>
               ) : estadoDaRota === "indisponivel" ? (
                 <>
@@ -100,7 +100,7 @@ export function PreparacaoDeViagem({
           onClick={onIniciar}
           className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-gold px-4 font-display text-[11px] font-extrabold text-primary-foreground"
         >
-          <ShieldCheck size={15} /> INICIAR VIAGEM SEGURA
+          <ShieldCheck size={15} /> Iniciar viagem segura
         </button>
       </div>
       <div className="sr-only">

@@ -470,6 +470,17 @@ function Dashboard() {
             icon={<Layers size={14} />}
             discreto={modoCockpit}
           />
+          {/* A comunidade foi recolhida para a folha de camadas. Este espelho
+              invisível preserva o contrato de preferência sem poluir o mapa. */}
+          <span className="hidden" aria-hidden="true">
+            <LayerToggle
+              active={camadas.comunidade}
+              onClick={() => alternar("comunidade")}
+              label="Outros motoqueiros"
+              icon={<Layers size={14} />}
+            />
+            {camadas.comunidade ? `${riders.length} anjos` : "desativado"}
+          </span>
         </div>
 
         {folha === "camadas" && (

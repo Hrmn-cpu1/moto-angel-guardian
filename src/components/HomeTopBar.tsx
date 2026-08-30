@@ -29,6 +29,10 @@ export function HomeTopBar({
   segundoPlano: _segundoPlano = null,
   temServico: _temServico = false,
 }: Props) {
+  // Fora da viagem não há serviço em segundo plano a reportar. Durante a
+  // viagem o estado real segue acessível sem voltar a criar uma faixa visual.
+  const estadoSegundoPlano = _tripActive && _segundoPlano ? _segundoPlano : null;
+
   return (
     <header className="pointer-events-none absolute inset-x-4 top-[var(--ma-top)] z-30 grid h-9 grid-cols-[minmax(0,1fr)_auto] items-center">
       <div className="flex min-w-0 items-center gap-2">
@@ -44,6 +48,9 @@ export function HomeTopBar({
           aria-label={gpsOnline ? "GPS ativo" : "GPS aguardando sinal"}
         />
       </span>
+      {estadoSegundoPlano && (
+        <span className="sr-only">Proteção em segundo plano: {estadoSegundoPlano.descricao}</span>
+      )}
     </header>
   );
 }
