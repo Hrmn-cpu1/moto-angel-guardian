@@ -3,7 +3,7 @@ import { Siren } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SOS_HOLD_MS } from "@/lib/sos-client";
 
-export type SosHoldVariant = "fab" | "map" | "page";
+export type SosHoldVariant = "fab" | "map" | "compact" | "page";
 
 interface Props {
   /** Recebe quantos milissegundos a pressão realmente durou. */
@@ -21,6 +21,7 @@ const TAMANHOS: Record<
 > = {
   fab: { box: "h-[72px] w-[72px]", icone: 22, rotulo: "text-[12px]", anel: "inset-[4px]" },
   map: { box: "h-[68px] w-[68px]", icone: 20, rotulo: "text-[11px]", anel: "inset-[3px]" },
+  compact: { box: "h-12 w-12", icone: 17, rotulo: "text-[9px]", anel: "inset-[3px]" },
   page: {
     box: "h-[min(56vw,208px)] w-[min(56vw,208px)]",
     icone: 38,
@@ -102,19 +103,15 @@ export function SosHoldButton({
       disabled={disabled}
       aria-label="Acionar SOS de emergência — segure 3 segundos"
       className={cn(
-        "relative flex select-none flex-col items-center justify-center rounded-full text-white",
-        "border-2 border-emergency/60 transition-transform active:scale-95",
+        "relative flex select-none flex-col items-center justify-center rounded-xl text-destructive-foreground",
+        "border border-emergency/50 bg-emergency transition-transform active:scale-95",
         "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emergency/50",
-        "animate-pulse-emergency",
+        variant === "compact" ? "shadow-map" : "animate-pulse-emergency",
         size.box,
         disabled && "opacity-50",
         className,
       )}
-      style={{
-        touchAction: "none",
-        background:
-          "radial-gradient(circle at 50% 35%, oklch(0.70 0.22 27.5), oklch(0.40 0.19 27.5))",
-      }}
+      style={{ touchAction: "none" }}
     >
       <span
         aria-hidden
@@ -138,7 +135,7 @@ export function SosHoldButton({
         <span className={cn("mt-1 font-black uppercase tracking-wider", size.rotulo)}>
           {variant === "page" ? "Emergência" : "SOS"}
         </span>
-        <span className="mt-0.5 text-[7px] font-semibold uppercase tracking-[0.2em] opacity-85">
+        <span className={cn("mt-0.5 text-[7px] font-semibold uppercase opacity-85", variant === "compact" && "sr-only")}>
           {holding ? "Continue segurando" : "Segure 3s"}
         </span>
       </span>

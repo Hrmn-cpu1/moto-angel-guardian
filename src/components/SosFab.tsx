@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 
 interface Props {
   className?: string;
+  compact?: boolean;
   /**
    * Esconde o acionador flutuante. Usado quando uma folha inferior ou o
    * teclado ocupam a mesma região: o SOS não pode interceptar o toque
@@ -36,6 +37,7 @@ interface Props {
 export function SosFabControlado({
   sos,
   className,
+  compact = false,
   oculto = false,
 }: Props & { sos: ReturnType<typeof useSosController> }) {
   const navigate = useNavigate();
@@ -44,7 +46,7 @@ export function SosFabControlado({
     <>
       {!oculto && (
         <SosHoldButton
-          variant="fab"
+          variant={compact ? "compact" : "fab"}
           // Bloqueado enquanto o app ainda não sabe se já existe um SOS aberto.
           disabled={sos.busy || sos.recovering}
           onHoldComplete={(heldMs) => sos.trigger(heldMs)}

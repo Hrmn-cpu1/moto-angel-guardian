@@ -1,4 +1,4 @@
-import { ChevronRight, MapPin } from "lucide-react";
+import { ChevronRight, Search } from "lucide-react";
 import { camada } from "@/lib/layers";
 import type { RouteInfo } from "@/components/RealMap";
 import type { Viagem } from "@/lib/trip";
@@ -30,24 +30,22 @@ export function DestinationBar({
       : null);
 
   return (
-    <div className={`absolute inset-x-3 top-[calc(var(--ma-top)+54px)] ${camada("cartoesDoMapa")}`}>
+    <div className={`absolute inset-x-4 top-[calc(var(--ma-top)+42px)] ${camada("cartoesDoMapa")}`}>
       <button
         type="button"
         onClick={onAbrirDestino}
-        className="flex w-full items-center gap-3 rounded-2xl border border-gold/25 bg-black/80 px-3 py-2.5 text-left backdrop-blur-md"
+        className="flex h-12 w-full items-center gap-3 rounded-xl bg-map-panel/94 px-4 text-left shadow-map backdrop-blur-xl"
       >
-        <MapPin size={16} className="shrink-0 text-gold" />
+        <Search size={18} className="shrink-0 text-gold" />
         <span className="min-w-0 flex-1">
-          <span className="block text-xs font-bold text-foreground">
+          <span className="block truncate font-display text-[15px] font-bold text-foreground">
             {rotulo ? "Destino" : "Para onde vamos?"}
           </span>
-          <span className="block truncate text-[11px] text-muted-foreground">
-            {rotulo ?? "Toque para escolher o destino"}
-          </span>
+          {rotulo && <span className="block truncate text-[10px] text-muted-foreground">{rotulo}</span>}
         </span>
 
         {rota ? (
-          <span className="flex shrink-0 items-stretch gap-2 border-l border-white/10 pl-2 text-center">
+          <span className="flex shrink-0 items-stretch gap-2 border-l border-foreground/10 pl-2 text-center">
             <span>
               <span className="block text-sm font-bold text-gold tabular-nums">
                 {rota.distanciaKm.toFixed(1).replace(".", ",")} km
