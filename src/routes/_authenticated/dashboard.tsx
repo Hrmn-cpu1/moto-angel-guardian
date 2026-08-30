@@ -427,7 +427,7 @@ function Dashboard() {
         {viagemAtiva && !cockpitAberto && (
           <button
             onClick={() => setCockpitAberto(true)}
-            className={`absolute inset-x-3 bottom-[calc(var(--ma-bottom)+12px)] ${camada(
+            className={`absolute inset-x-3 bottom-[calc(var(--ma-bottom)+86px)] ${camada(
               "painelInferior",
             )} flex ma-cta-h items-center justify-center gap-2 rounded-xl bg-map-panel/95 text-sm font-bold text-gold shadow-map backdrop-blur-xl`}
           >
