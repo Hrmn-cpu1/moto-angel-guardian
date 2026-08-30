@@ -793,7 +793,9 @@ export default function RealMap({
         }
 
         private applyHeading() {
-          const shield = this.element?.querySelector<HTMLElement>(".moto-user-location-marker__shield");
+          const shield = this.element?.querySelector<HTMLElement>(
+            ".moto-user-location-marker__shield",
+          );
           if (!shield) return;
           shield.style.transform = `translate(-50%, -50%) rotate(${this.heading ?? 0}deg)`;
           shield.classList.toggle("is-neutral", this.heading == null);

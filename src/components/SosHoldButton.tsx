@@ -135,7 +135,12 @@ export function SosHoldButton({
         <span className={cn("mt-1 font-black uppercase tracking-wider", size.rotulo)}>
           {variant === "page" ? "Emergência" : "SOS"}
         </span>
-        <span className={cn("mt-0.5 text-[7px] font-semibold uppercase opacity-85", variant === "compact" && "sr-only")}>
+        <span
+          className={cn(
+            "mt-0.5 text-[7px] font-semibold uppercase opacity-85",
+            variant === "compact" && "sr-only",
+          )}
+        >
           {holding ? "Continue segurando" : "Segure 3s"}
         </span>
       </span>

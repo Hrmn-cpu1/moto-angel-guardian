@@ -76,13 +76,22 @@ export function PreparacaoDeViagem({
               {rota.distanciaKm.toFixed(1).replace(".", ",")} km
             </p>
           ) : (
-            <p data-testid="estado-da-rota" className="mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <p
+              data-testid="estado-da-rota"
+              className="mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground"
+            >
               {estadoDaRota === "calculando" ? (
-                <><Loader2 size={11} className="animate-spin text-gold" /> Calculando rota…</>
+                <>
+                  <Loader2 size={11} className="animate-spin text-gold" /> Calculando rota…
+                </>
               ) : estadoDaRota === "indisponivel" ? (
-                <><AlertTriangle size={11} className="text-emergency" /> Rota indisponível</>
+                <>
+                  <AlertTriangle size={11} className="text-emergency" /> Rota indisponível
+                </>
               ) : (
-                <><Flag size={11} className="text-gold" /> Destino definido</>
+                <>
+                  <Flag size={11} className="text-gold" /> Destino definido
+                </>
               )}
             </p>
           )}
@@ -175,5 +184,9 @@ export function CockpitDeViagem({
  * ================================================================== */
 
 export function ChamadaViagemSegura({ onAbrir }: { onAbrir: () => void }) {
-  return <button onClick={onAbrir} className="sr-only">Iniciar viagem segura</button>;
+  return (
+    <button onClick={onAbrir} className="sr-only">
+      Iniciar viagem segura
+    </button>
+  );
 }

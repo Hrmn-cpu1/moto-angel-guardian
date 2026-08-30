@@ -357,7 +357,9 @@ function Dashboard() {
                 center={centro}
                 accuracy={position?.accuracy ?? null}
                 heading={
-                  position?.heading != null && Number.isFinite(position.heading) && (position.speed ?? 0) >= 2
+                  position?.heading != null &&
+                  Number.isFinite(position.heading) &&
+                  (position.speed ?? 0) >= 2
                     ? position.heading
                     : null
                 }
@@ -518,16 +520,16 @@ function Dashboard() {
             Navegando, a linha do Copiloto vive DENTRO da telemetria; sobre o
             mapa só sobra o alerta real, quando existe. */}
         {folha === "nenhuma" && modoCockpit && aviso != null && (
-            <CopilotCard
-              aviso={aviso}
-              viagemAtiva={viagemAtiva}
-              className={`absolute inset-x-3 ${
-                modoCockpit
-                  ? "bottom-[calc(env(safe-area-inset-bottom)+116px)]"
-                  : "bottom-[calc(var(--ma-bottom)+112px)]"
-              }`}
-            />
-          )}
+          <CopilotCard
+            aviso={aviso}
+            viagemAtiva={viagemAtiva}
+            className={`absolute inset-x-3 ${
+              modoCockpit
+                ? "bottom-[calc(env(safe-area-inset-bottom)+116px)]"
+                : "bottom-[calc(var(--ma-bottom)+112px)]"
+            }`}
+          />
+        )}
 
         {viagem.estado === "preparando" && folha !== "destino" && (
           <PreparacaoDeViagem
@@ -615,9 +617,7 @@ function LayerToggle({
       aria-pressed={active}
       aria-label={label}
       className={`flex h-10 w-10 items-center justify-center rounded-xl bg-map-panel/88 shadow-map backdrop-blur-xl transition ${
-        active
-          ? "text-gold"
-          : "text-muted-foreground"
+        active ? "text-gold" : "text-muted-foreground"
       } ${destaque ? "ring-1 ring-gold/20" : ""} ${discreto ? "opacity-60" : ""}`}
     >
       {icon}

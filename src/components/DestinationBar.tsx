@@ -41,7 +41,9 @@ export function DestinationBar({
           <span className="block truncate font-display text-[15px] font-bold text-foreground">
             {rotulo ? "Destino" : "Para onde vamos?"}
           </span>
-          {rotulo && <span className="block truncate text-[10px] text-muted-foreground">{rotulo}</span>}
+          {rotulo && (
+            <span className="block truncate text-[10px] text-muted-foreground">{rotulo}</span>
+          )}
         </span>
 
         {rota ? (
