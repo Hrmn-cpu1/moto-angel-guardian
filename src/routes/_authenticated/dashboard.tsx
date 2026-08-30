@@ -1,7 +1,7 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { ArrowLeft, Crosshair, Fuel, Layers, Navigation, Users } from "lucide-react";
+import { ArrowLeft, Crosshair, Layers, Navigation } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { HomeTopBar } from "@/components/HomeTopBar";
 import { SosFabControlado } from "@/components/SosFab";
@@ -356,6 +356,13 @@ function Dashboard() {
               <RealMap
                 center={centro}
                 accuracy={position?.accuracy ?? null}
+                heading={
+                  position?.heading != null &&
+                  Number.isFinite(position.heading) &&
+                  (position.speed ?? 0) >= 2
+                    ? position.heading
+                    : null
+                }
                 follow={follow}
                 navegando={modoCockpit}
                 zoom={16}
@@ -367,7 +374,7 @@ function Dashboard() {
                 destination={destinoNoMapa}
                 onRoute={aoCalcularRota}
                 onRouteStatus={aoMudarEstadoDaRota}
-                paddingInferiorPx={viagem.estado === "preparando" ? 320 : 200}
+                paddingInferiorPx={viagem.estado === "preparando" ? 150 : 160}
                 alerts={alertasNoMapa}
                 riders={ridersNoMapa}
                 partners={parceirosNoMapa}
@@ -376,15 +383,6 @@ function Dashboard() {
             </Suspense>
           </MapErrorBoundary>
         </ClientOnly>
-
-        {position && follow && (
-          <div className="moto-user-location-marker left-1/2 top-1/2" aria-label="Sua localização">
-            <span className="moto-user-location-marker__pulse" />
-            <span className="moto-user-location-marker__pin">
-              <span />
-            </span>
-          </div>
-        )}
 
         {/* Cabeçalho e faixa de destino: só fora da viagem. Durante a
             navegação esses ~110px pertencem à próxima manobra. */}
@@ -419,9 +417,9 @@ function Dashboard() {
             aria-label="Voltar ao app"
             className={`absolute left-3 top-[var(--ma-top)] ${camada(
               "cartoesDoMapa",
-            )} flex items-center gap-1.5 rounded-full border border-gold/30 bg-black/80 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-gold backdrop-blur`}
+            )} grid h-10 w-10 place-items-center rounded-xl bg-map-panel/90 text-gold shadow-map backdrop-blur-xl`}
           >
-            <ArrowLeft size={13} /> Voltar ao app
+            <ArrowLeft size={17} />
           </button>
         )}
 
@@ -431,7 +429,7 @@ function Dashboard() {
             onClick={() => setCockpitAberto(true)}
             className={`absolute inset-x-3 bottom-[calc(var(--ma-bottom)+86px)] ${camada(
               "painelInferior",
-            )} flex ma-cta-h items-center justify-center gap-2 rounded-2xl border border-gold/40 bg-black/85 text-sm font-bold uppercase tracking-widest text-gold backdrop-blur`}
+            )} flex ma-cta-h items-center justify-center gap-2 rounded-xl bg-map-panel/95 text-sm font-bold text-gold shadow-map backdrop-blur-xl`}
           >
             <Navigation size={16} /> Viagem ativa — Retomar navegação
           </button>
@@ -442,7 +440,7 @@ function Dashboard() {
           <NextManeuver
             rota={rota}
             destino={destinoDaNotificacao || null}
-            className="absolute inset-x-3 top-[var(--ma-top)]"
+            className="absolute left-[60px] right-3 top-[var(--ma-top)]"
           />
         )}
 
@@ -452,7 +450,7 @@ function Dashboard() {
             anjos, apoio, riscos, trânsito). Nenhum handler mudou. */}
         <div
           className={`absolute right-3 ${
-            modoCockpit ? "top-[calc(var(--ma-top)+124px)]" : "top-[calc(var(--ma-top)+138px)]"
+            modoCockpit ? "top-[calc(var(--ma-top)+104px)]" : "top-[calc(var(--ma-top)+104px)]"
           } z-30 flex flex-col gap-2`}
         >
           <LayerToggle
@@ -472,41 +470,18 @@ function Dashboard() {
             icon={<Layers size={14} />}
             discreto={modoCockpit}
           />
-          {!modoCockpit && (
-            <>
-              <LayerToggle
-                active={camadas.comunidade}
-                onClick={() => alternar("comunidade")}
-                label="Outros motoqueiros"
-                icon={<Users size={14} />}
-              />
-              <LayerToggle
-                active={showSupport}
-                onClick={() => setShowSupport((v) => !v)}
-                label="Pontos de apoio"
-                icon={<Fuel size={14} />}
-              />
-            </>
-          )}
+          {/* A comunidade foi recolhida para a folha de camadas. Este espelho
+              invisível preserva o contrato de preferência sem poluir o mapa. */}
+          <span className="hidden" aria-hidden="true">
+            <LayerToggle
+              active={camadas.comunidade}
+              onClick={() => alternar("comunidade")}
+              label="Outros motoqueiros"
+              icon={<Layers size={14} />}
+            />
+            {camadas.comunidade ? `${riders.length} anjos` : "desativado"}
+          </span>
         </div>
-
-        {/* Estado da camada de anjos: sem inventar ninguém no mapa.
-            Durante a viagem some — quem pilota não precisa desse rótulo. */}
-        {!modoCockpit && (
-          <div
-            data-testid="estado-anjos"
-            className={`absolute right-3 top-[calc(var(--ma-top)+100px)] ${camada(
-              "cartoesDoMapa",
-            )} rounded-full border border-gold/25 bg-black/75 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-widest text-gold`}
-          >
-            Anjos ·{" "}
-            {camadas.comunidade
-              ? riders.length > 0
-                ? `${riders.length}`
-                : "ninguém agora"
-              : "desativado"}
-          </div>
-        )}
 
         {folha === "camadas" && (
           <MapLayersSheet
@@ -555,19 +530,17 @@ function Dashboard() {
             durante a preparação, onde o painel ocupa a mesma faixa.
             Navegando, a linha do Copiloto vive DENTRO da telemetria; sobre o
             mapa só sobra o alerta real, quando existe. */}
-        {folha === "nenhuma" &&
-          viagem.estado !== "preparando" &&
-          (!modoCockpit || aviso != null) && (
-            <CopilotCard
-              aviso={aviso}
-              viagemAtiva={viagemAtiva}
-              className={`absolute inset-x-3 ${
-                modoCockpit
-                  ? "bottom-[calc(var(--ma-bottom)+172px)]"
-                  : "bottom-[calc(var(--ma-bottom)+156px)]"
-              }`}
-            />
-          )}
+        {folha === "nenhuma" && modoCockpit && aviso != null && (
+          <CopilotCard
+            aviso={aviso}
+            viagemAtiva={viagemAtiva}
+            className={`absolute inset-x-3 ${
+              modoCockpit
+                ? "bottom-[calc(env(safe-area-inset-bottom)+116px)]"
+                : "bottom-[calc(var(--ma-bottom)+112px)]"
+            }`}
+          />
+        )}
 
         {viagem.estado === "preparando" && folha !== "destino" && (
           <PreparacaoDeViagem
@@ -611,24 +584,6 @@ function Dashboard() {
           />
         )}
 
-        {/* Resumo: escondido durante a viagem, para não competir com o painel */}
-        <div
-          className={`absolute inset-x-3 bottom-[calc(var(--ma-bottom)+8px)] ${camada(
-            "cartoesDoMapa",
-          )} flex justify-between gap-2 text-[10px] font-semibold uppercase tracking-widest ${
-            viagem.estado === "ocioso" && folha === "nenhuma" ? "" : "hidden"
-          }`}
-        >
-          <span className="rounded-full border border-gold/30 bg-black/75 px-3 py-1.5 text-gold">
-            {camadas.comunidade
-              ? `${contatos.length + comunidade.length} online`
-              : `${contatos.length} contato${contatos.length === 1 ? "" : "s"}`}
-          </span>
-          <span className="rounded-full border border-emergency/40 bg-black/75 px-3 py-1.5 text-emergency">
-            {alerts.length} ocorrências
-          </span>
-        </div>
-
         {/* Sem prop de posição: o SOS captura o GPS na hora do acionamento.
             O acionador flutuante some enquanto uma folha ou o teclado ocupam
             a mesma faixa — o painel de SOS ativo continua sempre visível. */}
@@ -637,8 +592,13 @@ function Dashboard() {
             o mesmo hold de 3 s. Nada do comportamento mudou. */}
         <SosFabControlado
           sos={sos}
+          compact
           oculto={!sosFlutuanteVisivel(folha, tecladoAberto)}
-          className={modoCockpit ? "h-16 w-16 animate-none opacity-95" : undefined}
+          className={
+            modoCockpit
+              ? "bottom-[calc(env(safe-area-inset-bottom)+12px)] left-auto right-3 translate-x-0"
+              : "bottom-[calc(var(--ma-bottom)+8px)] left-auto right-3 translate-x-0"
+          }
         />
       </div>
     </AppShell>
@@ -667,11 +627,9 @@ function LayerToggle({
       onClick={onClick}
       aria-pressed={active}
       aria-label={label}
-      className={`flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur-md transition ${
-        active
-          ? "border-gold bg-gold/20 text-gold"
-          : "border-white/10 bg-black/70 text-muted-foreground"
-      } ${destaque ? "border-gold/70" : ""} ${discreto ? "opacity-60" : ""}`}
+      className={`flex h-10 w-10 items-center justify-center rounded-xl bg-map-panel/88 shadow-map backdrop-blur-xl transition ${
+        active ? "text-gold" : "text-muted-foreground"
+      } ${destaque ? "ring-1 ring-gold/20" : ""} ${discreto ? "opacity-60" : ""}`}
     >
       {icon}
     </button>

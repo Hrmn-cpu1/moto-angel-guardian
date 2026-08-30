@@ -52,18 +52,18 @@ export function NextManeuver({
   return (
     <div
       data-testid="proxima-manobra"
-      className={`${camada("cartoesDoMapa")} grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-2xl border-l-4 border-gold bg-[#0A0A0A]/95 py-3 pl-3 pr-4 shadow-[0_10px_30px_rgba(0,0,0,0.55)] ${className ?? ""}`}
+      className={`${camada("cartoesDoMapa")} grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-2xl bg-map-panel/96 p-2.5 shadow-map backdrop-blur-xl ${className ?? ""}`}
     >
-      <span className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-gold text-black">
+      <span className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-gold text-primary-foreground">
         <Seta size={34} strokeWidth={2.6} />
       </span>
       <div className="min-w-0">
         {distancia && (
-          <p className="text-[38px] font-black leading-[0.95] tracking-tight text-gold tabular-nums">
+          <p className="font-display text-[38px] font-black leading-[0.95] text-gold tabular-nums">
             {distancia}
           </p>
         )}
-        <p className="mt-0.5 truncate text-[19px] font-extrabold uppercase leading-tight tracking-tight text-foreground">
+        <p className="mt-0.5 truncate font-display text-[19px] font-extrabold uppercase leading-tight text-foreground">
           {acao}
         </p>
         {(via || destino) && (

@@ -101,6 +101,7 @@ function registerAuthFailureHandler(listener: () => void): () => void {
 
 type UserLocationOverlay = google.maps.OverlayView & {
   setPosition: (position: google.maps.LatLngLiteral) => void;
+  setHeading: (heading: number | null) => void;
 };
 
 export function loadGoogleMaps(apiKey: string, channel?: string): Promise<typeof google> {
@@ -219,6 +220,8 @@ function pinSvg(color: string, glyphColor: string, glyph: string): string {
 interface Props {
   center?: { lat: number; lng: number } | null;
   accuracy?: number | null;
+  /** Rumo real do GPS, em graus. `null` mantém o escudo neutro. */
+  heading?: number | null;
   follow?: boolean;
   /**
    * Viagem ativa: a câmera passa a ser de navegação — o motociclista fica no
@@ -284,6 +287,7 @@ export interface RouteInfo {
 export default function RealMap({
   center,
   accuracy = null,
+  heading = null,
   follow = true,
   navegando = false,
 
@@ -743,11 +747,13 @@ export default function RealMap({
     if (!userMarkerRef.current) {
       class MotoUserLocationOverlay extends g.maps.OverlayView {
         private position: google.maps.LatLngLiteral;
+        private heading: number | null;
         private element: HTMLDivElement | null = null;
 
-        constructor(position: google.maps.LatLngLiteral) {
+        constructor(position: google.maps.LatLngLiteral, heading: number | null) {
           super();
           this.position = position;
+          this.heading = heading;
         }
 
         onAdd() {
@@ -755,8 +761,9 @@ export default function RealMap({
           element.className = "moto-user-location-marker";
           element.setAttribute("aria-label", "Sua localização atual");
           element.innerHTML =
-            '<span class="moto-user-location-marker__pulse"></span><span class="moto-user-location-marker__pin"><span></span></span>';
+            '<span class="moto-user-location-marker__halo"></span><span class="moto-user-location-marker__shield"><span class="moto-user-location-marker__star">★</span></span>';
           this.element = element;
+          this.applyHeading();
           this.getPanes()?.overlayMouseTarget.appendChild(element);
         }
 
@@ -779,13 +786,28 @@ export default function RealMap({
           this.position = position;
           this.draw();
         }
+
+        setHeading(heading: number | null) {
+          this.heading = heading;
+          this.applyHeading();
+        }
+
+        private applyHeading() {
+          const shield = this.element?.querySelector<HTMLElement>(
+            ".moto-user-location-marker__shield",
+          );
+          if (!shield) return;
+          shield.style.transform = `translate(-50%, -50%) rotate(${this.heading ?? 0}deg)`;
+          shield.classList.toggle("is-neutral", this.heading == null);
+        }
       }
 
-      const marker = new MotoUserLocationOverlay(center);
+      const marker = new MotoUserLocationOverlay(center, heading);
       marker.setMap(map);
       userMarkerRef.current = marker;
     } else {
       userMarkerRef.current.setPosition(center);
+      userMarkerRef.current.setHeading(heading);
     }
     if (!accuracyCircleRef.current) {
       accuracyCircleRef.current = new g.maps.Circle({
@@ -821,7 +843,7 @@ export default function RealMap({
         map.panTo(alvo);
       }
     }
-  }, [center, state, accuracy, follow, navegando]);
+  }, [center, state, accuracy, follow, navegando, heading]);
 
   /* POIs — reconciliação incremental por ID.
    *
