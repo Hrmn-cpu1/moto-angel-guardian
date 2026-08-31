@@ -200,14 +200,15 @@ public class ViagemSeguraPlugin extends Plugin {
     @PluginMethod
     public void diagnosticoLock(PluginCall call) {
         final JSObject r = new JSObject();
-        r.put("disponivel", BuildConfig.DEBUG);
-        r.put("eventos", BuildConfig.DEBUG ? new JSArray(LockDiagnostics.listar(getContext()).toString()) : new JSArray());
+        final boolean disponivel = LockDiagnostics.disponivel(getContext());
+        r.put("disponivel", disponivel);
+        r.put("eventos", disponivel ? new JSArray(LockDiagnostics.listar(getContext()).toString()) : new JSArray());
         call.resolve(r);
     }
 
     @PluginMethod
     public void limparDiagnosticoLock(PluginCall call) {
-        if (BuildConfig.DEBUG) LockDiagnostics.limpar(getContext());
+        LockDiagnostics.limpar(getContext());
         call.resolve();
     }
 

@@ -1,6 +1,7 @@
 package com.motoanjo.app;
 
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
 import android.content.SharedPreferences;
 import android.util.Log;
 
@@ -17,13 +18,30 @@ public final class LockDiagnostics {
 
     private LockDiagnostics() {}
 
+    /**
+     * Única fonte de verdade sobre "este APK é debug?".
+     *
+     * BuildConfig não é gerado neste módulo (buildConfig desligado), então a
+     * detecção vem do próprio ApplicationInfo: a flag FLAG_DEBUGGABLE só é
+     * marcada em builds debug. Release cai em false e a instrumentação some.
+     */
+    public static boolean disponivel(Context contexto) {
+        if (contexto == null) return false;
+        try {
+            final ApplicationInfo info = contexto.getApplicationContext().getApplicationInfo();
+            return (info.flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
     public static synchronized void registrar(Context contexto, String evento) {
         registrar(contexto, evento, "");
     }
 
     public static synchronized void registrar(Context contexto, String evento, String detalheLogcat) {
         Log.i(TAG, detalheLogcat.isEmpty() ? evento : evento + " " + detalheLogcat);
-        if (!BuildConfig.DEBUG || contexto == null || !eventoPermitido(evento)) return;
+        if (!disponivel(contexto) || !eventoPermitido(evento)) return;
 
         try {
             final SharedPreferences prefs = contexto.getApplicationContext()
@@ -44,13 +62,13 @@ public final class LockDiagnostics {
     }
 
     public static synchronized JSONArray listar(Context contexto) {
-        if (!BuildConfig.DEBUG || contexto == null) return new JSONArray();
+        if (!disponivel(contexto)) return new JSONArray();
         return lerArray(contexto.getApplicationContext()
                 .getSharedPreferences(PREFS, Context.MODE_PRIVATE));
     }
 
     public static synchronized void limpar(Context contexto) {
-        if (!BuildConfig.DEBUG || contexto == null) return;
+        if (!disponivel(contexto)) return;
         contexto.getApplicationContext()
                 .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .edit()
