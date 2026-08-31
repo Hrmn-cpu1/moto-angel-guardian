@@ -691,6 +691,35 @@ export default function RealMap({
     };
   }, [destKey, originKey, state, tentativaRota, calcularRotaNoServidor]);
 
+  /**
+   * Recálculo automático quando o motociclista sai do caminho.
+   *
+   * Sem GPS novo, sem motor novo: a posição é a que o app já entrega e a
+   * decisão mora em `lib/reroute.ts`. Ao confirmar o desvio, apenas
+   * reaproveitamos o MESMO pedido de rota (o contador de tentativa), então
+   * traçado, manobra, ETA e a tela de bloqueio se atualizam pelo caminho de
+   * sempre.
+   */
+  useEffect(() => {
+    if (state !== "ready" || !destKey || !center) return;
+    if (tracadoAtualRef.current.length < 2) return;
+    const resultado = avaliarDesvio(desvioRef.current, {
+      posicao: { lat: center.lat, lng: center.lng },
+      tracado: tracadoAtualRef.current,
+      precisaoM: accuracy,
+      agoraMs: Date.now(),
+    });
+    desvioRef.current = resultado.estado;
+    if (!resultado.recalcular) return;
+    registrarEventoDeViagem("route.reroute", {
+      detalhe: `${Math.round(resultado.distanciaM ?? 0)}m`,
+    });
+    // Rota nova pede enquadramento novo do trecho seguinte.
+    enquadradoParaRef.current = null;
+    setTentativaRota((n) => n + 1);
+  }, [center?.lat, center?.lng, accuracy, state, destKey]);
+
+
   useEffect(
     () => () => {
       routePolylineRef.current?.setMap(null);
