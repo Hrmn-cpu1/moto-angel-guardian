@@ -595,6 +595,7 @@ export default function RealMap({
         const rota = resposta.ok ? resposta.rota : null;
         if (!rota) {
           limpar();
+          tracadoAtualRef.current = [];
           setRotaIndisponivel(true);
           const d = diagnosticarRota({ code: resposta.status ?? "UNKNOWN_ERROR" });
           registrarEventoDeViagem("directions.fail", {
@@ -608,8 +609,12 @@ export default function RealMap({
         }
 
         registrarEventoDeViagem("directions.success", { duracaoMs: Date.now() - iniciadoEm });
+        // Rota nova = base nova para medir desvio, e contador zerado.
+        tracadoAtualRef.current = rota.pontos;
+        desvioRef.current = { ...desvioRef.current, leiturasFora: 0 };
         setRotaIndisponivel(false);
         setDiagnostico(null);
+
 
         if (!routeCasingRef.current) {
           routeCasingRef.current = new g.maps.Polyline({
