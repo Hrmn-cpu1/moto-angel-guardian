@@ -529,17 +529,34 @@ public class ViagemSeguraService extends Service {
     }
 
     /* ============================================================== *
-     * P0.1c — Navegação sobre a tela de bloqueio
+     * P0.1c — Navegação sobre a tela de bloqueio (hotfix físico)
      *
-     * A Activity de bloqueio é aberta quando a TELA APAGA durante uma viagem
-     * ativa. É o único momento em que o app ainda está visível, então não há
-     * início de Activity em segundo plano (a API 29+ bloquearia) e não é
-     * preciso apelar para full-screen intent, que existe para chamada e
-     * alarme, não para navegação contínua.
+     * O QUE ESTAVA ERRADO
+     * A Activity só era pedida em ACTION_SCREEN_OFF. Em aparelho real (One UI)
+     * isso falha por dois motivos somados:
+     *   1) quando o SCREEN_OFF chega, o app já perdeu a janela visível, então
+     *      o Android 10+ recusa o início de Activity em segundo plano — e o
+     *      catch silencioso escondia a recusa;
+     *   2) mesmo quando a Activity é criada com a tela apagada, ela é parada
+     *      logo em seguida; ao ACORDAR a tela quem sobe na frente é o keyguard
+     *      do sistema, e ninguém pedia a Activity de volta.
      *
-     * Ao desbloquear (ACTION_USER_PRESENT) ela se fecha e o cockpit normal
-     * volta — mesma viagem, mesmo estado, sem duplicar nada.
+     * O QUE FAZEMOS AGORA
+     *   . pedimos a Activity no SCREEN_OFF (pré-aquecimento, quando ainda há
+     *     janela visível) E no SCREEN_ON com o keyguard ainda travado — este
+     *     segundo é o momento em que o usuário realmente olha a tela;
+     *   . no Android 14+ declaramos explicitamente a intenção de iniciar
+     *     Activity em segundo plano via ActivityOptions do PendingIntent, que
+     *     é a via oficial para serviço de primeiro plano;
+     *   . registramos o receptor com RECEIVER_NOT_EXPORTED (API 33+), senão a
+     *     34 recusa o registro e o recurso morre calado;
+     *   . logamos cada etapa em MA-LOCKNAV para o teste físico ser auditável.
+     *
+     * Continua NÃO havendo: desbloqueio automático, turnScreenOn, overlay,
+     * full-screen intent, segundo GPS, segundo mapa e segundo SOS.
      * ============================================================== */
+
+    public static final String LOG_LOCK = "MA-LOCKNAV";
 
     private BroadcastReceiver receptorDeTela = null;
 
@@ -550,8 +567,17 @@ public class ViagemSeguraService extends Service {
             public void onReceive(Context context, Intent intent) {
                 final String a = intent == null ? null : intent.getAction();
                 if (Intent.ACTION_SCREEN_OFF.equals(a)) {
-                    abrirNavegacaoBloqueada();
+                    android.util.Log.i(LOG_LOCK, "SCREEN_OFF recebido");
+                    abrirNavegacaoBloqueada("screen_off");
+                } else if (Intent.ACTION_SCREEN_ON.equals(a)) {
+                    android.util.Log.i(LOG_LOCK, "SCREEN_ON recebido");
+                    if (aparelhoBloqueado()) {
+                        abrirNavegacaoBloqueada("screen_on");
+                    } else {
+                        android.util.Log.i(LOG_LOCK, "SCREEN_ON sem keyguard: nada a mostrar");
+                    }
                 } else if (Intent.ACTION_USER_PRESENT.equals(a)) {
+                    android.util.Log.i(LOG_LOCK, "USER_PRESENT: fechando navegacao bloqueada");
                     // Desbloqueou: quem manda é o cockpit dentro do app.
                     LockNavigationState.fechar();
                 }
@@ -559,10 +585,17 @@ public class ViagemSeguraService extends Service {
         };
         final IntentFilter f = new IntentFilter();
         f.addAction(Intent.ACTION_SCREEN_OFF);
+        f.addAction(Intent.ACTION_SCREEN_ON);
         f.addAction(Intent.ACTION_USER_PRESENT);
         try {
-            registerReceiver(receptorDeTela, f);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(receptorDeTela, f, Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                registerReceiver(receptorDeTela, f);
+            }
+            android.util.Log.i(LOG_LOCK, "receptor de tela registrado");
         } catch (Exception e) {
+            android.util.Log.w(LOG_LOCK, "falha ao registrar receptor de tela: " + e);
             receptorDeTela = null;
         }
     }
@@ -577,19 +610,61 @@ public class ViagemSeguraService extends Service {
         receptorDeTela = null;
     }
 
-    /** Só abre com viagem ativa E com a preferência do usuário ligada. */
-    private void abrirNavegacaoBloqueada() {
-        final LockNavigationState.Quadro q = LockNavigationState.atual();
-        if (!q.ativa || !q.permitida) return;
-        final Intent i = new Intent(this, LockNavigationActivity.class);
-        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+    /** Keyguard travado é a única situação em que a Activity faz sentido. */
+    private boolean aparelhoBloqueado() {
         try {
-            startActivity(i);
-        } catch (Exception ignored) {
+            final android.app.KeyguardManager k =
+                    (android.app.KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+            return k != null && k.isKeyguardLocked();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** Só abre com viagem ativa E com a preferência do usuário ligada. */
+    private void abrirNavegacaoBloqueada(String origem) {
+        final LockNavigationState.Quadro q = LockNavigationState.atual();
+        if (!q.ativa || !q.permitida) {
+            android.util.Log.i(
+                    LOG_LOCK,
+                    "LockNavigationActivity NAO solicitada ("
+                            + origem
+                            + "): ativa="
+                            + q.ativa
+                            + " permitida="
+                            + q.permitida);
+            return;
+        }
+        final Intent i = new Intent(this, LockNavigationActivity.class);
+        i.addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK
+                        | Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+        android.util.Log.i(LOG_LOCK, "LockNavigationActivity solicitada (" + origem + ")");
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                // Via oficial na 34+: o serviço de primeiro plano declara que
+                // o PendingIntent pode iniciar Activity vinda do segundo plano.
+                final android.app.ActivityOptions opcoes = android.app.ActivityOptions.makeBasic();
+                opcoes.setPendingIntentBackgroundActivityStartMode(
+                        android.app.ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED);
+                final PendingIntent pi =
+                        PendingIntent.getActivity(
+                                this,
+                                0,
+                                i,
+                                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                pi.send(this, 0, null, null, null, null, opcoes.toBundle());
+            } else {
+                startActivity(i);
+            }
+        } catch (Exception e) {
+            android.util.Log.w(LOG_LOCK, "falha ao abrir LockNavigationActivity: " + e);
             // Sem navegação no bloqueio: a notificação persistente continua
             // sendo o caminho oficial, e a viagem não é afetada.
         }
     }
+
 
     private boolean temPermissaoDeLocalizacao() {
         return ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
