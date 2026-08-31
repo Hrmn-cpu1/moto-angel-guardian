@@ -144,7 +144,9 @@ public final class LockNavigationState {
         final AoPublicar p = aoPublicar;
         if (p != null) p.aoPublicar(atual);
         // Viagem encerrada não pode deixar navegação de pé sobre o bloqueio.
-        if (!atual.ativa) fechar();
+        // Só o FIM DA VIAGEM fecha: quadro vazio com serviço ainda em viagem é
+        // WebView congelada, não fim de viagem.
+        if (!atual.ativa && !servicoAtivo) fechar();
     }
 
     /**
@@ -155,11 +157,13 @@ public final class LockNavigationState {
      */
     public static void atualizarPosicao(double novaLat, double novaLng) {
         final Quadro q = atual;
-        if (!q.ativa) return;
+        if (!viagemAtivaAgora()) return;
         if (q.lat == novaLat && q.lng == novaLng) return;
         atual = new Quadro(
-                q.ativa,
-                q.permitida,
+                // Com o serviço em viagem a posição continua sendo navegação
+                // real, mesmo que a WebView ainda não tenha publicado quadro.
+                q.ativa || servicoAtivo,
+                q.permitida || permitidaLembrada,
                 q.manobra,
                 q.distanciaManobra,
                 q.destino,
@@ -172,6 +176,7 @@ public final class LockNavigationState {
         final Ouvinte o = ouvinte;
         if (o != null) o.aoMudar(atual);
     }
+
 
     public static void definirPublicacao(AoPublicar p) {
         aoPublicar = p;
