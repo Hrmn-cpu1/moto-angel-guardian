@@ -28,10 +28,12 @@ public class RotaView extends View {
     private final Paint halo = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path caminho = new Path();
 
-    private double[] rota = new double[0];
-    private double lat = 0d;
-    private double lng = 0d;
-    private boolean temPosicao = false;
+    // protected: a camada de mapa (MapaTilesView) desenha os MESMOS dados numa
+    // projeção diferente e cai aqui como fallback degradado, sem duplicar estado.
+    protected double[] rota = new double[0];
+    protected double lat = 0d;
+    protected double lng = 0d;
+    protected boolean temPosicao = false;
 
     public RotaView(Context c) {
         super(c);
