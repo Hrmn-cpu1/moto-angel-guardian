@@ -338,9 +338,15 @@ public class ViagemSeguraService extends Service {
         ativoAgora = ativo;
         notificacaoVisivelAgora = visivel;
         motivoAgora = motivo;
+        // A Activity de bloqueio precisa da MESMA verdade que o serviço usa
+        // para decidir abrir. Sem isto ela nascia e se matava no onCreate,
+        // porque o único sinal que ela tinha era o quadro da WebView — que
+        // congela com a tela apagada.
+        LockNavigationState.definirServicoAtivo(ativo);
         final EstadoDoServico d = ouvinteDeEstado;
         if (d != null) d.aoMudar(ativo, visivel, motivo);
     }
+
 
     /** A notificação vai mesmo aparecer? Vale em qualquer API, inclusive < 33. */
     private boolean podeMostrarNotificacao() {
