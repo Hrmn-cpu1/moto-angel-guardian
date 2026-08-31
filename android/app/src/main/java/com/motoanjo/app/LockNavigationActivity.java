@@ -65,8 +65,11 @@ public class LockNavigationActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        android.util.Log.i(ViagemSeguraService.LOG_LOCK, "LockNavigationActivity onCreate");
 
         // API oficial. Abaixo da 27 só existe a flag de janela equivalente.
+        // Chamada ANTES de qualquer conteúdo: a decisão de aparecer sobre o
+        // keyguard precisa estar tomada antes de a janela ser apresentada.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true);
         } else {
@@ -78,6 +81,9 @@ public class LockNavigationActivity extends Activity {
         final LockNavigationState.Quadro inicial = LockNavigationState.atual();
         if (!inicial.ativa || !inicial.permitida) {
             // Estado persistido manda. Activity recriada não vira viagem.
+            android.util.Log.i(
+                    ViagemSeguraService.LOG_LOCK,
+                    "LockNavigationActivity encerrada no onCreate: sem quadro ativo");
             finish();
             return;
         }
@@ -98,12 +104,33 @@ public class LockNavigationActivity extends Activity {
     }
 
     @Override
+    protected void onNewIntent(android.content.Intent intent) {
+        super.onNewIntent(intent);
+        android.util.Log.i(ViagemSeguraService.LOG_LOCK, "LockNavigationActivity onNewIntent");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        android.util.Log.i(ViagemSeguraService.LOG_LOCK, "LockNavigationActivity onResume");
+        final LockNavigationState.Quadro q = LockNavigationState.atual();
+        if (!q.ativa || !q.permitida) {
+            // Viagem terminou enquanto a tela estava apagada: não sobra tela
+            // prometendo navegação.
+            finish();
+            return;
+        }
+        aplicar(q);
+    }
+
+    @Override
     protected void onDestroy() {
         LockNavigationState.removerOuvinte(ouvinte);
         LockNavigationState.removerFechamento(fechamento);
         principal.removeCallbacksAndMessages(null);
         super.onDestroy();
     }
+
 
     private void aplicar(LockNavigationState.Quadro q) {
         manobra.setText(q.manobra.isEmpty() ? "Siga em frente" : q.manobra);
