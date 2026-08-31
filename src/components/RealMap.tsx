@@ -8,6 +8,8 @@ import { centroAcimaDoUsuario, deslocamentoDaCamera, precisaMoverCamera } from "
 
 import { fimDosPassos, type PontoDaRota } from "@/lib/rota";
 import { calcularRota } from "@/lib/rota.functions";
+import { avaliarDesvio, DESVIO_INICIAL, type EstadoDeDesvio } from "@/lib/reroute";
+
 import { diagnosticarRota, type DiagnosticoDeRota } from "@/lib/directions-status";
 import { pontosDeRiscoVisiveis } from "@/lib/map-layers";
 import { chaveDePonto, planejarReconciliacao } from "@/lib/marker-sync";
