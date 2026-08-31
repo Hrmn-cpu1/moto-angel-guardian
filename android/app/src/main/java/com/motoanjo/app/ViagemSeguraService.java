@@ -630,6 +630,15 @@ public class ViagemSeguraService extends Service {
                 registerReceiver(receptorDeTela, f);
             }
             LockDiagnostics.registrar(this, "SCREEN_RECEIVER_REGISTERED");
+            // Quadro novo com o aparelho já bloqueado (o app publicou logo
+            // antes de a tela apagar): aproveita para abrir sem esperar evento.
+            LockNavigationState.definirPublicacao(new LockNavigationState.AoPublicar() {
+                @Override
+                public void aoPublicar(LockNavigationState.Quadro q) {
+                    if (!q.ativa || LockNavigationState.activityViva()) return;
+                    if (aparelhoBloqueado()) abrirNavegacaoBloqueada("quadro_publicado");
+                }
+            });
         } catch (Exception e) {
             android.util.Log.w(LOG_LOCK, "falha ao registrar receptor de tela: " + e);
             receptorDeTela = null;
@@ -637,6 +646,8 @@ public class ViagemSeguraService extends Service {
     }
 
     private void removerReceptorDeTela() {
+        agendaLock.removeCallbacksAndMessages(null);
+        LockNavigationState.definirPublicacao(null);
         if (receptorDeTela == null) return;
         try {
             unregisterReceiver(receptorDeTela);
