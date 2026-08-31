@@ -319,3 +319,14 @@ test("LOCK.24: diagnóstico nativo cobre toda a cadeia do teste físico", () => 
   }
   assert.match(servico, /LOG_LOCK = "MOTOANJO_LOCK"/);
 });
+
+test("LOCK.25: histórico local é debug-only, limitado e sem payload sensível", () => {
+  const diagnostico = ler(`${JAVA}/LockDiagnostics.java`);
+  const plugin = ler(`${JAVA}/ViagemSeguraPlugin.java`);
+  assert.match(diagnostico, /BuildConfig\.DEBUG/);
+  assert.match(diagnostico, /LIMITE = 50/);
+  assert.match(diagnostico, /System\.currentTimeMillis\(\)/);
+  assert.ok(!/lat|lng|token|session|email|phone/i.test(diagnostico));
+  assert.match(plugin, /diagnosticoLock/);
+  assert.match(plugin, /limparDiagnosticoLock/);
+});

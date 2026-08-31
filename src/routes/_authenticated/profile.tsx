@@ -24,6 +24,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { AndroidLockDiagnostics } from "@/components/AndroidLockDiagnostics";
 import { Header } from "@/components/Header";
 import { GoldButton } from "@/components/GoldButton";
 import { OutlineButton } from "@/components/OutlineButton";
@@ -32,6 +33,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { setIntroHidden } from "@/lib/intro";
 import { definirPreferenciaTelaBloqueada, preferenciaTelaBloqueada } from "@/lib/lock-navigation";
+import { lerDiagnosticoLock } from "@/lib/trip-service";
 import type { User } from "@/types";
 import { toast } from "sonner";
 
@@ -58,7 +60,12 @@ function ProfilePage() {
      e-mail, telefone ou contatos. A leitura acontece depois da montagem
      porque esta rota renderiza no servidor. */
   const [navBloqueio, setNavBloqueio] = useState(false);
+  const [diagnosticoDisponivel, setDiagnosticoDisponivel] = useState(false);
+  const [diagnosticoAberto, setDiagnosticoAberto] = useState(false);
   useEffect(() => setNavBloqueio(preferenciaTelaBloqueada()), []);
+  useEffect(() => {
+    void lerDiagnosticoLock().then((r) => setDiagnosticoDisponivel(r.disponivel));
+  }, []);
 
   if (loading || !user) return <LoadingScreen />;
 
@@ -203,6 +210,13 @@ function ProfilePage() {
             label="Permissões"
             onClick={() => toast("Gerenciar permissões do sistema.")}
           />
+          {diagnosticoDisponivel && (
+            <Row
+              icon={Smartphone}
+              label="Diagnóstico Android"
+              onClick={() => setDiagnosticoAberto(true)}
+            />
+          )}
           <Row
             icon={FileText}
             label="Termos de Uso"
@@ -240,6 +254,7 @@ function ProfilePage() {
           <LogOut size={14} /> Sair
         </OutlineButton>
       </div>
+      {diagnosticoAberto && <AndroidLockDiagnostics onClose={() => setDiagnosticoAberto(false)} />}
     </AppShell>
   );
 }
