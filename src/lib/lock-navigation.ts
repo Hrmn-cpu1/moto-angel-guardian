@@ -78,11 +78,7 @@ const TELEFONE = /(\+?\d[\d\s().-]{7,}\d)/g;
 /** Remove o que não pode aparecer com o aparelho bloqueado. */
 export function textoPublico(valor: unknown, limite = 60): string {
   if (typeof valor !== "string") return "";
-  const limpo = valor
-    .replace(EMAIL, "")
-    .replace(TELEFONE, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  const limpo = valor.replace(EMAIL, "").replace(TELEFONE, "").replace(/\s+/g, " ").trim();
   if (limpo.length <= limite) return limpo;
   return `${limpo.slice(0, limite - 1).trimEnd()}…`;
 }
@@ -98,9 +94,7 @@ export function reduzirTracado(
   maximo = MAX_PONTOS_TRACADO,
 ): number[] {
   if (!Array.isArray(pontos) || pontos.length === 0 || maximo < 2) return [];
-  const validos = pontos.filter(
-    (p) => p && Number.isFinite(p.lat) && Number.isFinite(p.lng),
-  );
+  const validos = pontos.filter((p) => p && Number.isFinite(p.lat) && Number.isFinite(p.lng));
   if (validos.length === 0) return [];
   if (validos.length <= maximo) return validos.flatMap((p) => [p.lat, p.lng]);
 
@@ -152,9 +146,7 @@ export const QUADRO_VAZIO: QuadroNavegacaoBloqueada = {
  * é isto que impede a tela de bloqueio de continuar anunciando navegação
  * depois do fim da viagem, mesmo que a Activity seja recriada pelo sistema.
  */
-export function montarQuadroBloqueado(
-  e: EntradaNavegacaoBloqueada,
-): QuadroNavegacaoBloqueada {
+export function montarQuadroBloqueado(e: EntradaNavegacaoBloqueada): QuadroNavegacaoBloqueada {
   if (!e.viagemAtiva || !e.permitida) return { ...QUADRO_VAZIO };
   const pos =
     e.posicao && Number.isFinite(e.posicao.lat) && Number.isFinite(e.posicao.lng)
@@ -176,10 +168,7 @@ export function montarQuadroBloqueado(
 }
 
 /** Dois quadros iguais não precisam atravessar a ponte. */
-export function quadrosIguais(
-  a: QuadroNavegacaoBloqueada,
-  b: QuadroNavegacaoBloqueada,
-): boolean {
+export function quadrosIguais(a: QuadroNavegacaoBloqueada, b: QuadroNavegacaoBloqueada): boolean {
   return (
     a.ativa === b.ativa &&
     a.permitida === b.permitida &&

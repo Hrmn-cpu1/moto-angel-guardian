@@ -31,10 +31,7 @@ import { LoadingScreen } from "@/components/LoadingScreen";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { setIntroHidden } from "@/lib/intro";
-import {
-  definirPreferenciaTelaBloqueada,
-  preferenciaTelaBloqueada,
-} from "@/lib/lock-navigation";
+import { definirPreferenciaTelaBloqueada, preferenciaTelaBloqueada } from "@/lib/lock-navigation";
 import type { User } from "@/types";
 import { toast } from "sonner";
 
@@ -195,9 +192,7 @@ function ProfilePage() {
             </span>
             <span
               className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-widest ${
-                navBloqueio
-                  ? "bg-gold/15 text-gold"
-                  : "bg-white/5 text-muted-foreground"
+                navBloqueio ? "bg-gold/15 text-gold" : "bg-white/5 text-muted-foreground"
               }`}
             >
               {navBloqueio ? "Ligado" : "Desligado"}

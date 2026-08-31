@@ -63,7 +63,6 @@ export const EVENTOS_MA_TRIP = [
   "sos.lockscreen.request",
 ] as const;
 
-
 export type EventoMaTrip = (typeof EVENTOS_MA_TRIP)[number];
 
 export interface RegistroDeEvento {
