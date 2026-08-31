@@ -262,7 +262,7 @@ test("NOTIF.5: o serviço mantém o campo que não veio no Intent", () => {
   const plugin = lerSemComentarios(`${ANDROID_JAVA}/ViagemSeguraPlugin.java`);
   assert.ok(
     /if \(v != null\) i\.putExtra\(extra, v\);/.test(plugin),
-    "o plugin não pode inventar \"\" para campo que o JS não mandou",
+    'o plugin não pode inventar "" para campo que o JS não mandou',
   );
   assert.ok(
     !/getString\("destino", ""\)[\s\S]{0,80}ACAO_ATUALIZAR/.test(plugin),
@@ -420,7 +420,11 @@ test("EXT.6: WhatsApp fora da navegação permitida do WebView", () => {
 test("CI.1: existe um único workflow de Android", () => {
   const wfs = readdirSync(join(process.cwd(), ".github/workflows"));
   const android = wfs.filter((f) => /android/i.test(f));
-  assert.deepEqual(android, ["android.yml"], `dois fluxos disputando o push: ${android.join(", ")}`);
+  assert.deepEqual(
+    android,
+    ["android.yml"],
+    `dois fluxos disputando o push: ${android.join(", ")}`,
+  );
   assert.ok(!existsSync(join(process.cwd(), ".github/workflows/android-debug.yml")));
 });
 

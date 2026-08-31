@@ -204,9 +204,12 @@ function publicarEstadoDoServico(bruto: Partial<EstadoServicoViagem>): EstadoSer
     solicitado: bruto.solicitado === true,
   };
   for (const a of assinantesDeEstado) a(estadoDoServico);
-  registrarEventoDeViagem(estadoDoServico.ativo ? "trip.native.status.active" : "trip.native.status.failed", {
-    detalhe: estadoDoServico.motivo,
-  });
+  registrarEventoDeViagem(
+    estadoDoServico.ativo ? "trip.native.status.active" : "trip.native.status.failed",
+    {
+      detalhe: estadoDoServico.motivo,
+    },
+  );
   return estadoDoServico;
 }
 
@@ -302,14 +305,20 @@ export async function iniciarServicoDeViagem(destino?: string): Promise<EstadoSe
     const r = await p.iniciar({ destino: destino ?? "" });
     const estado = publicarEstadoDoServico(r ?? {});
     if (!estado.ativo && estado.motivo !== "ativo") {
-      registrarEventoDeViagem("trip.native.start.fail", { detalhe: estado.motivo, duracaoMs: Date.now() - comecou });
+      registrarEventoDeViagem("trip.native.start.fail", {
+        detalhe: estado.motivo,
+        duracaoMs: Date.now() - comecou,
+      });
       recordTripDiagnostic("native.trip.start_recusado", new Error(estado.motivo));
     } else {
       registrarEventoDeViagem("trip.native.start.success", { duracaoMs: Date.now() - comecou });
     }
     return estado;
   } catch (error) {
-    registrarEventoDeViagem("trip.native.start.fail", { detalhe: "excecao", duracaoMs: Date.now() - comecou });
+    registrarEventoDeViagem("trip.native.start.fail", {
+      detalhe: "excecao",
+      duracaoMs: Date.now() - comecou,
+    });
     console.error(TRIP_NATIVE_ERROR, recordTripDiagnostic("native.trip.start", error));
     // Falhar aqui não pode derrubar a viagem: ela continua em primeiro plano.
     return publicarEstadoDoServico({ motivo: "falha_ao_iniciar" });
