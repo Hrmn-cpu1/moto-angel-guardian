@@ -33,6 +33,35 @@ export interface PosicaoNativa {
  * `ViagemSeguraService`; os dois últimos nascem aqui, quando nem chegamos a
  * falar com o serviço.
  */
+/**
+ * Amostra de movimento vinda do serviço nativo (P0.1b).
+ *
+ * `monotonicoMs` é `SystemClock.elapsedRealtime`: não anda para trás com
+ * ajuste de fuso/NTP, que é o que a janela de detecção precisa. `quandoMs` é
+ * relógio de parede e serve só para log.
+ */
+export interface MovimentoNativoAmostra {
+  /** m/s² lineares. -1 quando o aparelho não informou. */
+  accelMs2: number;
+  /** graus/s. -1 quando não há giroscópio. */
+  gyroDegS: number;
+  monotonicoMs: number;
+  quandoMs: number;
+}
+
+/** O que o aparelho realmente tem. Sem acelerômetro não há detecção. */
+export interface SensoresNativos {
+  aceleracao: boolean;
+  giroscopio: boolean;
+  capturando: boolean;
+}
+
+export const SENSORES_NATIVOS_AUSENTES: SensoresNativos = {
+  aceleracao: false,
+  giroscopio: false,
+  capturando: false,
+};
+
 export type MotivoServico =
   | "ativo"
   | "parado"
@@ -78,6 +107,7 @@ type PluginViagem = {
   atualizar: (o: AtualizacaoDeViagem) => Promise<Partial<EstadoServicoViagem>>;
   parar: () => Promise<Partial<EstadoServicoViagem>>;
   consultarEstado?: () => Promise<Partial<EstadoServicoViagem>>;
+  estadoSensores?: () => Promise<Partial<SensoresNativos>>;
   permissaoNotificacao?: () => Promise<Partial<PermissaoNotificacao>>;
   pedirPermissaoNotificacao?: () => Promise<Partial<PermissaoNotificacao>>;
   addListener: (
@@ -425,6 +455,89 @@ export function ouvirPosicaoNativa(cb: (p: PosicaoNativa) => void): () => void {
       recordTripDiagnostic("native.trip.listener_remove", error);
     }
   };
+}
+
+/**
+ * Escuta o movimento capturado pelo SERVIÇO (não pela WebView).
+ *
+ * Esta é a razão de existir do P0.1b: `devicemotion` morre junto com a
+ * WebView suspensa, e a queda que importa acontece justamente com a tela
+ * apagada. Aqui a origem é o `SensorEventListener` registrado dentro do
+ * foreground service, com o mesmo ciclo de vida da viagem.
+ *
+ * Fora do aparelho devolve um cancelador vazio — e o chamador continua com o
+ * `devicemotion` como está hoje.
+ */
+export function ouvirMovimentoNativo(cb: (m: MovimentoNativoAmostra) => void): () => void {
+  const p = plugin();
+  if (!p?.addListener) return () => {};
+  let handle: ListenerHandle | null = null;
+  let cancelado = false;
+
+  const aoReceber = (bruto: Partial<MovimentoNativoAmostra>) => {
+    if (cancelado || !bruto) return;
+    if (typeof bruto.accelMs2 !== "number" || typeof bruto.monotonicoMs !== "number") {
+      recordTripDiagnostic("native.motion.payload", new Error("Invalid native motion payload"));
+      return;
+    }
+    try {
+      cb({
+        accelMs2: bruto.accelMs2,
+        gyroDegS: typeof bruto.gyroDegS === "number" ? bruto.gyroDegS : -1,
+        monotonicoMs: bruto.monotonicoMs,
+        quandoMs: typeof bruto.quandoMs === "number" ? bruto.quandoMs : Date.now(),
+      });
+    } catch (error) {
+      recordTripDiagnostic("native.motion.callback", error);
+    }
+  };
+
+  void (async () => {
+    try {
+      const h = await normalizarHandle(
+        p.addListener(
+          "movimento",
+          aoReceber as unknown as (dados: PosicaoNativa & Partial<EstadoServicoViagem>) => void,
+        ),
+      );
+      if (!h || typeof h.remove !== "function") return;
+      if (cancelado) await h.remove();
+      else handle = h;
+    } catch (error) {
+      recordTripDiagnostic("native.motion.listener", error);
+    }
+  })();
+
+  return () => {
+    cancelado = true;
+    const h = handle;
+    handle = null;
+    if (!h) return;
+    try {
+      void Promise.resolve(h.remove()).catch((error) => {
+        recordTripDiagnostic("native.motion.listener_remove", error);
+      });
+    } catch (error) {
+      recordTripDiagnostic("native.motion.listener_remove", error);
+    }
+  };
+}
+
+/** Pergunta ao Android o que existe de verdade. Nunca lança. */
+export async function consultarSensoresNativos(): Promise<SensoresNativos> {
+  const p = plugin();
+  if (!p?.estadoSensores) return SENSORES_NATIVOS_AUSENTES;
+  try {
+    const r = (await p.estadoSensores()) ?? {};
+    return {
+      aceleracao: r.aceleracao === true,
+      giroscopio: r.giroscopio === true,
+      capturando: r.capturando === true,
+    };
+  } catch (error) {
+    recordTripDiagnostic("native.motion.state", error);
+    return SENSORES_NATIVOS_AUSENTES;
+  }
 }
 
 /**

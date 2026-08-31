@@ -473,7 +473,14 @@ test("ESCOPO: SOS, RLS e migrations intactos neste lote", () => {
   }
 });
 
-test("ESCOPO: nada de SensorManager ou countdown de queda neste lote", () => {
+/**
+ * Atualizado em P0.1b: o SensorManager passou a ser ESCOPO, não desvio — a
+ * aquisição de queda precisa sobreviver à WebView suspensa. O que continua
+ * proibido aqui é a camada nativa decidir emergência por conta própria: o
+ * countdown e o acionamento seguem no JS, com o SOS único que já existe.
+ */
+test("ESCOPO: o serviço lê sensores mas NÃO decide emergência", () => {
   const servico = lerSemComentarios(`${ANDROID_JAVA}/ViagemSeguraService.java`);
-  assert.ok(!/SensorManager|TYPE_LINEAR_ACCELERATION/.test(servico), "fora do escopo deste lote");
+  assert.ok(/SensorManager/.test(servico), "a aquisição nativa é esperada desde o P0.1b");
+  assert.ok(!/countdown|sos_open|abrirSos/i.test(servico), "nada de SOS na camada nativa");
 });

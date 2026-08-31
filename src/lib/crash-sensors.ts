@@ -17,23 +17,47 @@
  * 3. Nenhum dado simulado. Sem acelerômetro, `accelMs2`/`gyroDegS` são `null`
  *    e o motor simplesmente não fecha assinatura — o estado é honesto.
  *
- * LIMITE CONHECIDO (NOT PROVEN)
- * -----------------------------
- * `devicemotion` roda na WebView. Com a tela bloqueada por muito tempo o
- * Android pode suspender a WebView mesmo com o foreground service de pé: a
- * posição continua chegando pelo serviço, o acelerômetro pode parar. A
- * captura de aceleração dentro do `ViagemSeguraService` é trabalho separado
- * (P0.2) e está registrada como pendência física.
+ * FONTES DE MOVIMENTO (P0.1b)
+ * ---------------------------
+ * 1. NATIVA — `SensorEventListener` dentro do `ViagemSeguraService`. É a
+ *    única que sobrevive à WebView suspensa com a tela apagada, e por isso
+ *    tem prioridade absoluta.
+ * 2. `devicemotion` — fallback para navegador e para aparelho sem o serviço.
+ *    Enquanto houver amostra nativa recente, o `devicemotion` é ignorado:
+ *    misturar as duas dobraria a taxa e embaralharia a linha do tempo.
+ *
+ * TEMPO
+ * -----
+ * A amostra nativa traz `SystemClock.elapsedRealtime` (monotônico). Ele é
+ * ancorado UMA vez ao relógio local, então os intervalos entre amostras são
+ * os do aparelho, não os do agendador da WebView.
+ *
+ * NOT PROVEN: o comportamento em Doze e com a tela bloqueada por longos
+ * períodos só se comprova em aparelho físico.
  */
 
 import type { AmostraSensor } from "./crash-detection.ts";
 import { assinarPosicao } from "./geo-watch.ts";
-import { ouvirPosicaoNativa } from "./trip-service.ts";
+import {
+  consultarSensoresNativos,
+  ouvirMovimentoNativo,
+  ouvirPosicaoNativa,
+  type SensoresNativos,
+} from "./trip-service.ts";
 
 /** Período mínimo entre amostras entregues (ms). ~5 Hz. */
 export const PERIODO_AMOSTRA_MS = 200;
 
 export type DisponibilidadeMovimento = "disponivel" | "sem_permissao" | "indisponivel";
+
+export type FonteMovimento = "nenhuma" | "nativa" | "webview";
+
+/**
+ * Depois deste silêncio, a fonte nativa é considerada perdida e o
+ * `devicemotion` volta a valer. Cinco períodos de amostra: tolerante a
+ * engasgo, rápido o bastante para reconectar sem buraco perceptível.
+ */
+export const TIMEOUT_NATIVO_MS = 1000;
 
 /** Módulo do vetor de aceleração linear (sem gravidade), em m/s². */
 export function moduloAceleracao(
@@ -62,6 +86,7 @@ const assinantes = new Set<Assinante>();
 let ligado = false;
 let cancelarGps: (() => void) | null = null;
 let cancelarNativo: (() => void) | null = null;
+let cancelarMovimentoNativo: (() => void) | null = null;
 let ouvinteMovimento: ((e: DeviceMotionEvent) => void) | null = null;
 
 /** Última leitura de cada fonte. O motor recebe as duas juntas. */
@@ -70,6 +95,30 @@ let ultimaPrecisaoM: number | null = null;
 let ultimoAccel: number | null = null;
 let ultimoGyro: number | null = null;
 let ultimaEntrega = 0;
+
+/** Última amostra nativa recebida (relógio local) e âncora do monotônico. */
+let ultimoNativoEm = 0;
+let ancoraMonotonica: number | null = null;
+let fonteAtual: FonteMovimento = "nenhuma";
+let sensoresNativos: SensoresNativos = {
+  aceleracao: false,
+  giroscopio: false,
+  capturando: false,
+};
+
+/** Qual fonte está alimentando o motor agora. */
+export function fonteDeMovimento(): FonteMovimento {
+  return fonteAtual;
+}
+
+/** O que o Android reportou sobre o hardware. */
+export function sensoresNativosConhecidos(): SensoresNativos {
+  return sensoresNativos;
+}
+
+function nativoRecente(agora: number): boolean {
+  return ultimoNativoEm > 0 && agora - ultimoNativoEm < TIMEOUT_NATIVO_MS;
+}
 
 export function movimentoDisponivel(): boolean {
   return typeof window !== "undefined" && "DeviceMotionEvent" in window;
@@ -89,11 +138,16 @@ export async function pedirPermissaoDeMovimento(): Promise<DisponibilidadeMovime
   }
 }
 
-function entregar(agora: number) {
-  if (agora - ultimaEntrega < PERIODO_AMOSTRA_MS) return;
-  ultimaEntrega = agora;
+/**
+ * `tempo` é a linha do tempo da amostra (monotônica quando vem do serviço) e
+ * também o relógio do throttle — usar o relógio de parede aqui descartaria
+ * amostras nativas legítimas que chegam em rajada pela ponte.
+ */
+function entregar(agora: number, tempo = agora) {
+  if (tempo - ultimaEntrega < PERIODO_AMOSTRA_MS) return;
+  ultimaEntrega = tempo;
   const amostra: AmostraSensor = {
-    t: agora,
+    t: tempo,
     speedKmh: ultimaVelocidadeKmh,
     accelMs2: ultimoAccel,
     gyroDegS: ultimoGyro,
@@ -112,14 +166,34 @@ function ligar() {
   if (ligado) return;
   ligado = true;
 
+  // Prioridade 1: sensores do serviço nativo.
+  cancelarMovimentoNativo = ouvirMovimentoNativo((m) => {
+    const agora = Date.now();
+    if (ancoraMonotonica == null) ancoraMonotonica = agora - m.monotonicoMs;
+    ultimoNativoEm = agora;
+    fonteAtual = "nativa";
+    if (m.accelMs2 >= 0) ultimoAccel = m.accelMs2;
+    if (m.gyroDegS >= 0) ultimoGyro = m.gyroDegS;
+    entregar(agora, m.monotonicoMs + ancoraMonotonica);
+  });
+
+  void consultarSensoresNativos().then((s) => {
+    sensoresNativos = s;
+  });
+
+  // Prioridade 2: WebView. Só vale enquanto o nativo estiver calado.
   if (movimentoDisponivel()) {
     ouvinteMovimento = (e: DeviceMotionEvent) => {
+      const agoraWeb = Date.now();
+      // Nativo mandando: ignorar o duplicado em vez de somar duas fontes.
+      if (nativoRecente(agoraWeb)) return;
       const linear =
         moduloAceleracao(e.acceleration) ?? moduloAceleracao(e.accelerationIncludingGravity);
       if (linear != null) ultimoAccel = linear;
       const rot = moduloRotacao(e.rotationRate);
       if (rot != null) ultimoGyro = rot;
-      entregar(Date.now());
+      fonteAtual = "webview";
+      entregar(agoraWeb);
     };
     window.addEventListener("devicemotion", ouvinteMovimento);
   }
@@ -149,6 +223,12 @@ function desligar() {
   cancelarGps = null;
   cancelarNativo?.();
   cancelarNativo = null;
+  cancelarMovimentoNativo?.();
+  cancelarMovimentoNativo = null;
+  ultimoNativoEm = 0;
+  ancoraMonotonica = null;
+  fonteAtual = "nenhuma";
+  sensoresNativos = { aceleracao: false, giroscopio: false, capturando: false };
   ultimaVelocidadeKmh = null;
   ultimaPrecisaoM = null;
   ultimoAccel = null;

@@ -8,9 +8,12 @@ import {
 } from "@/lib/crash-detection";
 import {
   assinarSensoresDeQueda,
+  fonteDeMovimento,
   movimentoDisponivel,
   pedirPermissaoDeMovimento,
+  type FonteMovimento,
 } from "@/lib/crash-sensors";
+import { consultarSensoresNativos } from "@/lib/trip-service";
 import { registrarEventoDeViagem } from "@/lib/trip-diagnostics";
 
 export interface OpcoesDeteccaoQueda {
@@ -34,6 +37,8 @@ export interface DeteccaoQueda {
   segundos: number | null;
   /** Há acelerômetro utilizável neste aparelho? */
   sensoresDisponiveis: boolean;
+  /** De onde vêm as amostras: serviço nativo, WebView ou nenhuma. */
+  fonte: FonteMovimento;
   /** "estou bem": encerra sem SOS. */
   cancelar: () => void;
   /** "preciso de ajuda": antecipa o SOS. */
@@ -61,6 +66,7 @@ export function useCrashDetection(opcoes: OpcoesDeteccaoQueda): DeteccaoQueda {
   const [sinais, setSinais] = useState<string[]>([]);
   const [segundos, setSegundos] = useState<number | null>(null);
   const [sensoresDisponiveis, setSensoresDisponiveis] = useState(false);
+  const [fonte, setFonte] = useState<FonteMovimento>("nenhuma");
 
   const inicioCountdown = useRef<number | null>(null);
   // Uma queda = no máximo um SOS. Sem esta trava, cada tick do countdown
@@ -92,6 +98,11 @@ export function useCrashDetection(opcoes: OpcoesDeteccaoQueda): DeteccaoQueda {
     if (!ativo || !deteccaoLigada) return;
     setSensoresDisponiveis(movimentoDisponivel());
     void pedirPermissaoDeMovimento().then((r) => setSensoresDisponiveis(r === "disponivel"));
+    // O serviço nativo tem a palavra final: ele lê o hardware de verdade e
+    // continua lendo com a WebView suspensa.
+    void consultarSensoresNativos().then((s) => {
+      if (s.aceleracao) setSensoresDisponiveis(true);
+    });
 
     engine.current?.reset();
     jaAcionou.current = false;
@@ -111,7 +122,11 @@ export function useCrashDetection(opcoes: OpcoesDeteccaoQueda): DeteccaoQueda {
       }
     });
     registrarEventoDeViagem("crash.capture.start");
+    // A fonte pode trocar durante a viagem (nativo cai, WebView assume e
+    // vice-versa). A tela precisa refletir isso sem mentir.
+    const relogioDeFonte = window.setInterval(() => setFonte(fonteDeMovimento()), 1000);
     return () => {
+      window.clearInterval(relogioDeFonte);
       cancelar();
       registrarEventoDeViagem("crash.capture.stop");
     };
@@ -160,5 +175,5 @@ export function useCrashDetection(opcoes: OpcoesDeteccaoQueda): DeteccaoQueda {
     dispararSeDevido(r.estado);
   }, [dispararSeDevido]);
 
-  return { estado, motivo, sinais, segundos, sensoresDisponiveis, cancelar, confirmar };
+  return { estado, motivo, sinais, segundos, sensoresDisponiveis, fonte, cancelar, confirmar };
 }
