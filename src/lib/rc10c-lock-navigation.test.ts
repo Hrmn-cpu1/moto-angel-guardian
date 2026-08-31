@@ -225,7 +225,7 @@ test("LOCK.16: a navegação de bloqueio existe só durante a viagem", () => {
 
   const activity = semComentariosJava(`${JAVA}/LockNavigationActivity.java`);
   // Recriação por process death não inventa viagem ativa.
-  assert.match(activity, /if \(!inicial\.ativa \|\| !inicial\.permitida\)[\s\S]{0,80}finish\(\)/);
+  assert.match(activity, /if \(!inicial\.ativa \|\| !inicial\.permitida\)[\s\S]{0,300}finish\(\)/);
 });
 
 test("LOCK.17: um SOS só — o da tela de bloqueio delega ao pipeline existente", () => {
@@ -265,4 +265,38 @@ test("LOCK.20: a notificação de primeiro plano continua intacta", () => {
   assert.match(servico, /setOngoing\(true\)/);
   assert.match(servico, /VISIBILITY_PUBLIC/);
   assert.match(servico, /CATEGORY_NAVIGATION/);
+});
+
+/* ================================================================== *
+ * Hotfix físico: acordar a tela bloqueada precisa REAPRESENTAR a tela
+ * ================================================================== */
+
+test("LOCK.21: acordar a tela com o keyguard travado pede a Activity de volta", () => {
+  const servico = semComentariosJava(`${JAVA}/ViagemSeguraService.java`);
+  assert.match(servico, /ACTION_SCREEN_ON/, "sem SCREEN_ON a tela nunca reaparece ao acordar");
+  assert.match(servico, /isKeyguardLocked\(\)/, "só faz sentido com o aparelho bloqueado");
+  assert.match(servico, /abrirNavegacaoBloqueada\("screen_on"\)/);
+});
+
+test("LOCK.22: o registro do receptor sobrevive à API 33+", () => {
+  const servico = semComentariosJava(`${JAVA}/ViagemSeguraService.java`);
+  assert.match(servico, /RECEIVER_NOT_EXPORTED/);
+});
+
+test("LOCK.23: início de Activity declarado para a API 34+, sem overlay", () => {
+  const servico = semComentariosJava(`${JAVA}/ViagemSeguraService.java`);
+  assert.match(servico, /MODE_BACKGROUND_ACTIVITY_START_ALLOWED/);
+  assert.match(servico, /FLAG_ACTIVITY_NEW_TASK/);
+  assert.ok(!/SYSTEM_ALERT_WINDOW|TYPE_APPLICATION_OVERLAY/.test(servico));
+  assert.ok(!/setTurnScreenOn|requestDismissKeyguard/.test(servico));
+});
+
+test("LOCK.24: diagnóstico nativo cobre as cinco etapas do teste físico", () => {
+  const servico = semComentariosJava(`${JAVA}/ViagemSeguraService.java`);
+  const activity = semComentariosJava(`${JAVA}/LockNavigationActivity.java`);
+  assert.match(servico, /"SCREEN_OFF recebido"/);
+  assert.match(servico, /"SCREEN_ON recebido"/);
+  assert.match(servico, /LockNavigationActivity solicitada/);
+  assert.match(activity, /"LockNavigationActivity onCreate"/);
+  assert.match(activity, /"LockNavigationActivity onResume"/);
 });
