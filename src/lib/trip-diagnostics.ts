@@ -51,6 +51,13 @@ export const EVENTOS_MA_TRIP = [
   "pois.request.fail",
   "error.boundary",
   "trip.stop",
+  // Detecção de queda (P0.1). Nenhum destes ACIONA nada: são a trilha que
+  // permite auditar depois por que o motor mudou de estado.
+  "crash.capture.start",
+  "crash.capture.stop",
+  "crash.countdown.start",
+  "crash.cancelled",
+  "crash.decision",
 ] as const;
 
 export type EventoMaTrip = (typeof EVENTOS_MA_TRIP)[number];
