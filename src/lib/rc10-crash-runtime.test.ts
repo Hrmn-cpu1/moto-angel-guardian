@@ -65,12 +65,15 @@ async function comAmbienteDeSensores(fn: (api: {
     },
   };
   g.window = win;
-  g.navigator = { geolocation: undefined };
+  Object.defineProperty(g, "navigator", {
+    value: { geolocation: undefined },
+    configurable: true,
+  });
   try {
     await fn({ ouvintes });
   } finally {
     g.window = antes.window;
-    g.navigator = antes.navigator;
+    Object.defineProperty(g, "navigator", { value: antes.navigator, configurable: true });
   }
 }
 
@@ -190,8 +193,13 @@ const sensores = readFileSync("src/lib/crash-sensors.ts", "utf8");
 const hook = readFileSync("src/hooks/useCrashDetection.ts", "utf8");
 const home = readFileSync("src/routes/_authenticated/dashboard.tsx", "utf8");
 
+/** Remove comentários: o que importa é o CÓDIGO, não a prosa que o explica. */
+function semComentarios(fonte: string): string {
+  return fonte.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+}
+
 test("a captura não fabrica leituras", () => {
-  assert.ok(!/Math\.random|mock|fake|simul/i.test(sensores.replace(/simplesmente/gi, "")));
+  assert.ok(!/Math\.random|mock|fake|simula/i.test(semComentarios(sensores)));
 });
 
 test("o motor tem consumidor de runtime", () => {
@@ -201,7 +209,10 @@ test("o motor tem consumidor de runtime", () => {
 });
 
 test("a queda usa o SOS existente, não um segundo sistema", () => {
-  assert.ok(!/supabase|whatsapp|sos_open/i.test(hook), "o hook não fala com o backend");
+  assert.ok(
+    !/supabase|whatsapp|sos_open/i.test(semComentarios(hook)),
+    "o hook não fala com o backend",
+  );
   assert.match(home, /aoAcionarSos: \(\) => sos\.trigger/);
 });
 
