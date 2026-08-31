@@ -196,6 +196,21 @@ public class ViagemSeguraPlugin extends Plugin {
         call.resolve();
     }
 
+    /** Histórico local P0.1c. Release responde indisponível e nunca expõe eventos. */
+    @PluginMethod
+    public void diagnosticoLock(PluginCall call) {
+        final JSObject r = new JSObject();
+        r.put("disponivel", BuildConfig.DEBUG);
+        r.put("eventos", BuildConfig.DEBUG ? new JSArray(LockDiagnostics.listar(getContext()).toString()) : new JSArray());
+        call.resolve(r);
+    }
+
+    @PluginMethod
+    public void limparDiagnosticoLock(PluginCall call) {
+        if (BuildConfig.DEBUG) LockDiagnostics.limpar(getContext());
+        call.resolve();
+    }
+
     @PluginMethod
     public void parar(PluginCall call) {
         final Intent i = new Intent(getContext(), ViagemSeguraService.class);

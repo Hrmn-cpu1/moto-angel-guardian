@@ -9,8 +9,8 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // versionCode monotonico: cada APK que sai do CI precisa de um numero
         // maior que o anterior, senao a Play rejeita. 4 = primeiro RC Android.
-        versionCode 9
-        versionName "1.3.9-rc9"
+        versionCode 10
+        versionName "1.3.10-p01c-diag"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

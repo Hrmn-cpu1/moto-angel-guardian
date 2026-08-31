@@ -56,6 +56,16 @@ export interface SensoresNativos {
   capturando: boolean;
 }
 
+export interface EventoDiagnosticoLock {
+  evento: string;
+  quandoMs: number;
+}
+
+export interface DiagnosticoLock {
+  disponivel: boolean;
+  eventos: EventoDiagnosticoLock[];
+}
+
 export const SENSORES_NATIVOS_AUSENTES: SensoresNativos = {
   aceleracao: false,
   giroscopio: false,
@@ -109,6 +119,8 @@ type PluginViagem = {
   consultarEstado?: () => Promise<Partial<EstadoServicoViagem>>;
   navegacaoBloqueada?: (q: QuadroNavegacaoBloqueada) => Promise<void>;
   limparNavegacaoBloqueada?: () => Promise<void>;
+  diagnosticoLock?: () => Promise<Partial<DiagnosticoLock>>;
+  limparDiagnosticoLock?: () => Promise<void>;
   estadoSensores?: () => Promise<Partial<SensoresNativos>>;
   permissaoNotificacao?: () => Promise<Partial<PermissaoNotificacao>>;
   pedirPermissaoNotificacao?: () => Promise<Partial<PermissaoNotificacao>>;
@@ -152,6 +164,34 @@ function plugin(): PluginViagem | null {
 export function servicoDisponivel(): boolean {
   if (typeof window === "undefined") return false;
   return plugin() !== null;
+}
+
+/** O botão do Perfil usa isto para sumir completamente fora do APK debug. */
+export async function lerDiagnosticoLock(): Promise<DiagnosticoLock> {
+  const p = plugin();
+  if (!p?.diagnosticoLock) return { disponivel: false, eventos: [] };
+  try {
+    const r = await p.diagnosticoLock();
+    const eventos = Array.isArray(r.eventos)
+      ? r.eventos.filter(
+          (item): item is EventoDiagnosticoLock =>
+            typeof item?.evento === "string" && Number.isFinite(item.quandoMs),
+        )
+      : [];
+    return { disponivel: r.disponivel === true, eventos: eventos.slice(-50) };
+  } catch {
+    return { disponivel: false, eventos: [] };
+  }
+}
+
+export async function limparDiagnosticoLock(): Promise<void> {
+  const p = plugin();
+  if (!p?.limparDiagnosticoLock) return;
+  try {
+    await p.limparDiagnosticoLock();
+  } catch {
+    // Diagnóstico não pode interferir na viagem.
+  }
 }
 
 const TRIP_NATIVE_ERROR = "Moto Anjo native trip service error";

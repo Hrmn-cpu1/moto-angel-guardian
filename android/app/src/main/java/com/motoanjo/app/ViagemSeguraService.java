@@ -357,7 +357,7 @@ public class ViagemSeguraService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         final String acao = intent == null ? null : intent.getAction();
-        android.util.Log.i(LOG_LOCK, "SERVICE_STARTED");
+        LockDiagnostics.registrar(this, "SERVICE_STARTED");
 
         if (ACAO_PARAR.equals(acao)) {
             pararTudo();
@@ -568,10 +568,10 @@ public class ViagemSeguraService extends Service {
             public void onReceive(Context context, Intent intent) {
                 final String a = intent == null ? null : intent.getAction();
                 if (Intent.ACTION_SCREEN_OFF.equals(a)) {
-                    android.util.Log.i(LOG_LOCK, "SCREEN_OFF_RECEIVED");
+                    LockDiagnostics.registrar(ViagemSeguraService.this, "SCREEN_OFF_RECEIVED");
                     abrirNavegacaoBloqueada("screen_off");
                 } else if (Intent.ACTION_SCREEN_ON.equals(a)) {
-                    android.util.Log.i(LOG_LOCK, "SCREEN_ON_RECEIVED");
+                    LockDiagnostics.registrar(ViagemSeguraService.this, "SCREEN_ON_RECEIVED");
                     if (aparelhoBloqueado()) {
                         abrirNavegacaoBloqueada("screen_on");
                     } else {
@@ -594,7 +594,7 @@ public class ViagemSeguraService extends Service {
             } else {
                 registerReceiver(receptorDeTela, f);
             }
-            android.util.Log.i(LOG_LOCK, "SCREEN_RECEIVER_REGISTERED");
+            LockDiagnostics.registrar(this, "SCREEN_RECEIVER_REGISTERED");
         } catch (Exception e) {
             android.util.Log.w(LOG_LOCK, "falha ao registrar receptor de tela: " + e);
             receptorDeTela = null;
@@ -625,7 +625,7 @@ public class ViagemSeguraService extends Service {
     /** Só abre com viagem ativa E com a preferência do usuário ligada. */
     private void abrirNavegacaoBloqueada(String origem) {
         final LockNavigationState.Quadro q = LockNavigationState.atual();
-        android.util.Log.i(LOG_LOCK, "TRIP_ACTIVE=" + q.ativa);
+        LockDiagnostics.registrar(this, "TRIP_ACTIVE=" + q.ativa);
         if (!q.ativa || !q.permitida) {
             android.util.Log.i(
                     LOG_LOCK,
@@ -642,8 +642,8 @@ public class ViagemSeguraService extends Service {
                 Intent.FLAG_ACTIVITY_NEW_TASK
                         | Intent.FLAG_ACTIVITY_SINGLE_TOP
                         | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-        android.util.Log.i(LOG_LOCK, "LOCK_NAV_INTENT_CREATED origin=" + origem);
-        android.util.Log.i(LOG_LOCK, "START_ACTIVITY_ATTEMPT origin=" + origem);
+        LockDiagnostics.registrar(this, "LOCK_NAV_INTENT_CREATED", "origin=" + origem);
+        LockDiagnostics.registrar(this, "START_ACTIVITY_ATTEMPT", "origin=" + origem);
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 // Via oficial na 34+: o serviço de primeiro plano declara que
@@ -663,16 +663,12 @@ public class ViagemSeguraService extends Service {
             }
             // SUCCESS significa apenas que a API aceitou a solicitação. A prova
             // de criação real é LOCK_ACTIVITY_ON_CREATE, emitido pela Activity.
-            android.util.Log.i(LOG_LOCK, "START_ACTIVITY_SUCCESS origin=" + origem);
+            LockDiagnostics.registrar(this, "START_ACTIVITY_SUCCESS", "origin=" + origem);
         } catch (Exception e) {
-            android.util.Log.e(
-                    LOG_LOCK,
-                    "START_ACTIVITY_EXCEPTION origin="
-                            + origem
-                            + " type="
-                            + e.getClass().getSimpleName()
-                            + " message="
-                            + String.valueOf(e.getMessage()));
+            LockDiagnostics.registrar(
+                    this,
+                    "START_ACTIVITY_EXCEPTION",
+                    "origin=" + origem + " type=" + e.getClass().getSimpleName());
             // Sem navegação no bloqueio: a notificação persistente continua
             // sendo o caminho oficial, e a viagem não é afetada.
         }
