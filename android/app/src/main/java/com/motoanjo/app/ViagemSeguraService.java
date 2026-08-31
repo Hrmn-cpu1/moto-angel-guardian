@@ -10,6 +10,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -125,6 +129,175 @@ public class ViagemSeguraService extends Service {
     public static void definirOuvinte(PosicaoNativa d) {
         ouvinteExterno = d;
     }
+
+    /* ============================================================== *
+     * P0.1b — Movimento (acelerômetro/giroscópio) no serviço
+     *
+     * POR QUE AQUI E NÃO NA WEBVIEW
+     * `devicemotion` só existe enquanto a WebView está viva. Com a tela
+     * apagada o Android pode suspendê-la mesmo com o processo de pé — o GPS
+     * continuava chegando pelo serviço e a aceleração simplesmente parava.
+     * Registrando o SensorEventListener DENTRO do serviço de primeiro plano,
+     * a aquisição segue o ciclo de vida da viagem, não o da página.
+     *
+     * O QUE ESTA CAMADA FAZ: ler, normalizar (m/s² lineares e graus/s) e
+     * entregar no máximo 5 amostras por segundo.
+     * O QUE ELA NÃO FAZ: decidir se houve queda. A decisão continua sendo do
+     * `CrashDetectionEngine` no JS, e o SOS continua sendo o único que já
+     * existe. Nada de segundo pipeline de emergência aqui.
+     * ============================================================== */
+
+    /** ~5 Hz. Amostrar mais rápido não melhora a detecção e custa bateria. */
+    private static final long PERIODO_MOVIMENTO_MS = 200L;
+
+    /** Gravidade padrão, para estimar aceleração linear quando o aparelho não
+     *  tem TYPE_LINEAR_ACCELERATION (sensor virtual ausente em modelos baratos). */
+    private static final float GRAVIDADE = 9.80665f;
+
+    public interface MovimentoNativo {
+        /**
+         * @param accelMs2       módulo da aceleração linear, m/s². -1 se ausente.
+         * @param gyroDegS       módulo da velocidade angular, graus/s. -1 se ausente.
+         * @param monotonicoMs   relógio monotônico (SystemClock.elapsedRealtime).
+         * @param quandoMs       relógio de parede, só para log.
+         */
+        void aoReceber(float accelMs2, float gyroDegS, long monotonicoMs, long quandoMs);
+    }
+
+    private static MovimentoNativo ouvinteDeMovimento = null;
+
+    public static void definirOuvinteDeMovimento(MovimentoNativo d) {
+        ouvinteDeMovimento = d;
+    }
+
+    private SensorManager sensores;
+    private Sensor sensorAceleracao;
+    private Sensor sensorGiroscopio;
+    private SensorEventListener ouvinteSensores;
+    private boolean capturandoMovimento = false;
+    private boolean aceleracaoLinear = false;
+
+    private static boolean temAceleracaoAgora = false;
+    private static boolean temGiroscopioAgora = false;
+    private static boolean movimentoAtivoAgora = false;
+
+    public static boolean temAceleracao() {
+        return temAceleracaoAgora;
+    }
+
+    public static boolean temGiroscopio() {
+        return temGiroscopioAgora;
+    }
+
+    public static boolean movimentoAtivo() {
+        return movimentoAtivoAgora;
+    }
+
+    private float ultimoAccel = -1f;
+    private float ultimoGyro = -1f;
+    private long ultimaEntregaMovimento = 0L;
+
+    /** Um listener por serviço. Idempotente: chamar duas vezes não empilha. */
+    private void iniciarSensores() {
+        if (capturandoMovimento) return;
+        sensores = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        if (sensores == null) {
+            temAceleracaoAgora = false;
+            temGiroscopioAgora = false;
+            return;
+        }
+
+        sensorAceleracao = sensores.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
+        aceleracaoLinear = sensorAceleracao != null;
+        if (sensorAceleracao == null) {
+            sensorAceleracao = sensores.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        }
+        sensorGiroscopio = sensores.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+
+        temAceleracaoAgora = sensorAceleracao != null;
+        temGiroscopioAgora = sensorGiroscopio != null;
+
+        // Sem acelerômetro não há detecção possível. Nada de valor inventado:
+        // o app mostra que o aparelho não suporta.
+        if (sensorAceleracao == null && sensorGiroscopio == null) {
+            movimentoAtivoAgora = false;
+            return;
+        }
+
+        ouvinteSensores = new SensorEventListener() {
+            @Override
+            public void onSensorChanged(SensorEvent e) {
+                if (e == null || e.values == null) return;
+                final int tipo = e.sensor == null ? -1 : e.sensor.getType();
+                if (tipo == Sensor.TYPE_LINEAR_ACCELERATION || tipo == Sensor.TYPE_ACCELEROMETER) {
+                    if (e.values.length < 3) return;
+                    final double m = Math.sqrt(
+                            e.values[0] * e.values[0]
+                                    + e.values[1] * e.values[1]
+                                    + e.values[2] * e.values[2]);
+                    // Com o acelerômetro cru a gravidade está embutida; tirá-la
+                    // do módulo é aproximação, mas é honesta e suficiente para
+                    // o motor, que trabalha com picos e não com precisão fina.
+                    final double linear = aceleracaoLinear ? m : Math.abs(m - GRAVIDADE);
+                    ultimoAccel = (float) linear;
+                } else if (tipo == Sensor.TYPE_GYROSCOPE) {
+                    if (e.values.length < 3) return;
+                    final double r = Math.sqrt(
+                            e.values[0] * e.values[0]
+                                    + e.values[1] * e.values[1]
+                                    + e.values[2] * e.values[2]);
+                    ultimoGyro = (float) Math.toDegrees(r);
+                } else {
+                    return;
+                }
+
+                // `elapsedRealtime` não anda para trás nem pula com ajuste de
+                // fuso/NTP — é o relógio certo para janela de detecção.
+                final long agora = android.os.SystemClock.elapsedRealtime();
+                if (agora - ultimaEntregaMovimento < PERIODO_MOVIMENTO_MS) return;
+                ultimaEntregaMovimento = agora;
+
+                final MovimentoNativo d = ouvinteDeMovimento;
+                if (d == null) return;
+                d.aoReceber(ultimoAccel, ultimoGyro, agora, System.currentTimeMillis());
+            }
+
+            @Override
+            public void onAccuracyChanged(Sensor sensor, int accuracy) {}
+        };
+
+        // SENSOR_DELAY_GAME (~50 Hz) na fonte, com throttle nosso na saída: o
+        // pico de uma queda dura poucos milissegundos e some em taxa baixa.
+        if (sensorAceleracao != null) {
+            sensores.registerListener(ouvinteSensores, sensorAceleracao, SensorManager.SENSOR_DELAY_GAME);
+        }
+        if (sensorGiroscopio != null) {
+            sensores.registerListener(ouvinteSensores, sensorGiroscopio, SensorManager.SENSOR_DELAY_GAME);
+        }
+        capturandoMovimento = true;
+        movimentoAtivoAgora = true;
+    }
+
+    /** Sem isto o sensor continua ligado depois da viagem, drenando bateria. */
+    private void pararSensores() {
+        if (sensores != null && ouvinteSensores != null) {
+            try {
+                sensores.unregisterListener(ouvinteSensores);
+            } catch (Exception ignored) {
+                // O listener morre com o serviço de qualquer forma.
+            }
+        }
+        ouvinteSensores = null;
+        sensorAceleracao = null;
+        sensorGiroscopio = null;
+        sensores = null;
+        capturandoMovimento = false;
+        movimentoAtivoAgora = false;
+        ultimoAccel = -1f;
+        ultimoGyro = -1f;
+        ultimaEntregaMovimento = 0L;
+    }
+
 
     /**
      * Estado REAL do serviço, para o app parar de prometer o que o Android
@@ -327,6 +500,9 @@ public class ViagemSeguraService extends Service {
                         LocationManager.NETWORK_PROVIDER, INTERVALO_MS, DISTANCIA_M, ouvinteDePosicao);
             }
             capturando = true;
+            // Movimento só depois que a posição subiu: mesma viagem, mesmo
+            // ciclo de vida, um único ponto de parada.
+            iniciarSensores();
         } catch (SecurityException e) {
             // Permissão revogada entre a checagem e o pedido: sem captura, mas
             // sem derrubar o app.
@@ -336,6 +512,7 @@ public class ViagemSeguraService extends Service {
 
     /** Sem isto sobra GPS ligado depois da viagem — o pior tipo de vazamento. */
     private void pararCaptura() {
+        pararSensores();
         if (gerenciador != null && ouvinteDePosicao != null) {
             try {
                 gerenciador.removeUpdates(ouvinteDePosicao);

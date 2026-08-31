@@ -76,6 +76,17 @@ public class ViagemSeguraPlugin extends Plugin {
 
         ViagemSeguraService.definirOuvinteDeEstado((ativo, visivel, motivo) ->
                 notifyListeners("estado", montarEstado(ativo, visivel, motivo)));
+
+        // P0.1b: movimento capturado pelo serviço, não pela WebView. O plugin
+        // continua sendo só cano — quem decide se houve queda é o motor no JS.
+        ViagemSeguraService.definirOuvinteDeMovimento((accelMs2, gyroDegS, monotonicoMs, quandoMs) -> {
+            final JSObject m = new JSObject();
+            m.put("accelMs2", accelMs2);
+            m.put("gyroDegS", gyroDegS);
+            m.put("monotonicoMs", monotonicoMs);
+            m.put("quandoMs", quandoMs);
+            notifyListeners("movimento", m);
+        });
     }
 
     @PluginMethod
@@ -147,6 +158,21 @@ public class ViagemSeguraPlugin extends Plugin {
     @PluginMethod
     public void consultarEstado(PluginCall call) {
         call.resolve(estadoReal());
+    }
+
+    /**
+     * Estado honesto dos sensores de movimento.
+     *
+     * A tela usa para dizer a verdade quando o aparelho não tem acelerômetro:
+     * detecção de queda indisponível é informação, não detalhe técnico.
+     */
+    @PluginMethod
+    public void estadoSensores(PluginCall call) {
+        final JSObject r = new JSObject();
+        r.put("aceleracao", ViagemSeguraService.temAceleracao());
+        r.put("giroscopio", ViagemSeguraService.temGiroscopio());
+        r.put("capturando", ViagemSeguraService.movimentoAtivo());
+        call.resolve(r);
     }
 
     /** Diz se a notificação pode aparecer, sem pedir nada ao usuário. */

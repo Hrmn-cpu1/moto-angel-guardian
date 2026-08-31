@@ -262,7 +262,7 @@ test("NOTIF.5: o serviço mantém o campo que não veio no Intent", () => {
   const plugin = lerSemComentarios(`${ANDROID_JAVA}/ViagemSeguraPlugin.java`);
   assert.ok(
     /if \(v != null\) i\.putExtra\(extra, v\);/.test(plugin),
-    "o plugin não pode inventar \"\" para campo que o JS não mandou",
+    'o plugin não pode inventar "" para campo que o JS não mandou',
   );
   assert.ok(
     !/getString\("destino", ""\)[\s\S]{0,80}ACAO_ATUALIZAR/.test(plugin),
@@ -420,7 +420,11 @@ test("EXT.6: WhatsApp fora da navegação permitida do WebView", () => {
 test("CI.1: existe um único workflow de Android", () => {
   const wfs = readdirSync(join(process.cwd(), ".github/workflows"));
   const android = wfs.filter((f) => /android/i.test(f));
-  assert.deepEqual(android, ["android.yml"], `dois fluxos disputando o push: ${android.join(", ")}`);
+  assert.deepEqual(
+    android,
+    ["android.yml"],
+    `dois fluxos disputando o push: ${android.join(", ")}`,
+  );
   assert.ok(!existsSync(join(process.cwd(), ".github/workflows/android-debug.yml")));
 });
 
@@ -473,7 +477,14 @@ test("ESCOPO: SOS, RLS e migrations intactos neste lote", () => {
   }
 });
 
-test("ESCOPO: nada de SensorManager ou countdown de queda neste lote", () => {
+/**
+ * Atualizado em P0.1b: o SensorManager passou a ser ESCOPO, não desvio — a
+ * aquisição de queda precisa sobreviver à WebView suspensa. O que continua
+ * proibido aqui é a camada nativa decidir emergência por conta própria: o
+ * countdown e o acionamento seguem no JS, com o SOS único que já existe.
+ */
+test("ESCOPO: o serviço lê sensores mas NÃO decide emergência", () => {
   const servico = lerSemComentarios(`${ANDROID_JAVA}/ViagemSeguraService.java`);
-  assert.ok(!/SensorManager|TYPE_LINEAR_ACCELERATION/.test(servico), "fora do escopo deste lote");
+  assert.ok(/SensorManager/.test(servico), "a aquisição nativa é esperada desde o P0.1b");
+  assert.ok(!/countdown|sos_open|abrirSos/i.test(servico), "nada de SOS na camada nativa");
 });
