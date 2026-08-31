@@ -78,8 +78,9 @@ export function movimentoDisponivel(): boolean {
 /** iOS pede permissão explícita; Android concede por padrão. */
 export async function pedirPermissaoDeMovimento(): Promise<DisponibilidadeMovimento> {
   if (!movimentoDisponivel()) return "indisponivel";
-  const ctor = (window as unknown as { DeviceMotionEvent: { requestPermission?: () => Promise<string> } })
-    .DeviceMotionEvent;
+  const ctor = (
+    window as unknown as { DeviceMotionEvent: { requestPermission?: () => Promise<string> } }
+  ).DeviceMotionEvent;
   if (typeof ctor.requestPermission !== "function") return "disponivel";
   try {
     return (await ctor.requestPermission()) === "granted" ? "disponivel" : "sem_permissao";
@@ -113,7 +114,8 @@ function ligar() {
 
   if (movimentoDisponivel()) {
     ouvinteMovimento = (e: DeviceMotionEvent) => {
-      const linear = moduloAceleracao(e.acceleration) ?? moduloAceleracao(e.accelerationIncludingGravity);
+      const linear =
+        moduloAceleracao(e.acceleration) ?? moduloAceleracao(e.accelerationIncludingGravity);
       if (linear != null) ultimoAccel = linear;
       const rot = moduloRotacao(e.rotationRate);
       if (rot != null) ultimoGyro = rot;

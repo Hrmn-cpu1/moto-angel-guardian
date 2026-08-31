@@ -1,16 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import {
-  CrashDetectionEngine,
-  decidirAcionamento,
-  type AmostraSensor,
-} from "./crash-detection.ts";
-import {
-  PERIODO_AMOSTRA_MS,
-  moduloAceleracao,
-  moduloRotacao,
-} from "./crash-sensors.ts";
+import { CrashDetectionEngine, decidirAcionamento, type AmostraSensor } from "./crash-detection.ts";
+import { PERIODO_AMOSTRA_MS, moduloAceleracao, moduloRotacao } from "./crash-sensors.ts";
 
 /**
  * P0.1 — a detecção de queda deixou de ser biblioteca sem consumidor.
@@ -48,9 +40,9 @@ test("amostragem é limitada a ~5 Hz", () => {
 
 type Ouvinte = (e: unknown) => void;
 
-async function comAmbienteDeSensores(fn: (api: {
-  ouvintes: Map<string, Set<Ouvinte>>;
-}) => Promise<void> | void) {
+async function comAmbienteDeSensores(
+  fn: (api: { ouvintes: Map<string, Set<Ouvinte>> }) => Promise<void> | void,
+) {
   const ouvintes = new Map<string, Set<Ouvinte>>();
   const g = globalThis as Record<string, unknown>;
   const antes = { window: g.window, navigator: g.navigator };
