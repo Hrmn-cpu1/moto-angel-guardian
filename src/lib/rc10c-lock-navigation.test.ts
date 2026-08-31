@@ -291,12 +291,31 @@ test("LOCK.23: início de Activity declarado para a API 34+, sem overlay", () =>
   assert.ok(!/setTurnScreenOn|requestDismissKeyguard/.test(servico));
 });
 
-test("LOCK.24: diagnóstico nativo cobre as cinco etapas do teste físico", () => {
+test("LOCK.24: diagnóstico nativo cobre toda a cadeia do teste físico", () => {
   const servico = semComentariosJava(`${JAVA}/ViagemSeguraService.java`);
   const activity = semComentariosJava(`${JAVA}/LockNavigationActivity.java`);
-  assert.match(servico, /"SCREEN_OFF recebido"/);
-  assert.match(servico, /"SCREEN_ON recebido"/);
-  assert.match(servico, /LockNavigationActivity solicitada/);
-  assert.match(activity, /"LockNavigationActivity onCreate"/);
-  assert.match(activity, /"LockNavigationActivity onResume"/);
+  for (const marcador of [
+    "SERVICE_STARTED",
+    "SCREEN_RECEIVER_REGISTERED",
+    "SCREEN_OFF_RECEIVED",
+    "SCREEN_ON_RECEIVED",
+    "TRIP_ACTIVE=",
+    "LOCK_NAV_INTENT_CREATED",
+    "START_ACTIVITY_ATTEMPT",
+    "START_ACTIVITY_SUCCESS",
+    "START_ACTIVITY_EXCEPTION",
+  ]) {
+    assert.match(servico, new RegExp(marcador));
+  }
+  for (const marcador of [
+    "LOCK_ACTIVITY_ON_CREATE",
+    "LOCK_ACTIVITY_ON_START",
+    "LOCK_ACTIVITY_ON_RESUME",
+    "LOCK_ACTIVITY_ON_PAUSE",
+    "LOCK_ACTIVITY_ON_STOP",
+    "LOCK_ACTIVITY_ON_DESTROY",
+  ]) {
+    assert.match(activity, new RegExp(marcador));
+  }
+  assert.match(servico, /LOG_LOCK = "MOTOANJO_LOCK"/);
 });

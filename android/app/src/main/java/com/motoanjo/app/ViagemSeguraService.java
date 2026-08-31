@@ -357,6 +357,7 @@ public class ViagemSeguraService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         final String acao = intent == null ? null : intent.getAction();
+        android.util.Log.i(LOG_LOCK, "SERVICE_STARTED");
 
         if (ACAO_PARAR.equals(acao)) {
             pararTudo();
@@ -550,13 +551,13 @@ public class ViagemSeguraService extends Service {
      *     é a via oficial para serviço de primeiro plano;
      *   . registramos o receptor com RECEIVER_NOT_EXPORTED (API 33+), senão a
      *     34 recusa o registro e o recurso morre calado;
-     *   . logamos cada etapa em MA-LOCKNAV para o teste físico ser auditável.
+     *   . logamos cada etapa em MOTOANJO_LOCK para o teste físico ser auditável.
      *
      * Continua NÃO havendo: desbloqueio automático, turnScreenOn, overlay,
      * full-screen intent, segundo GPS, segundo mapa e segundo SOS.
      * ============================================================== */
 
-    public static final String LOG_LOCK = "MA-LOCKNAV";
+    public static final String LOG_LOCK = "MOTOANJO_LOCK";
 
     private BroadcastReceiver receptorDeTela = null;
 
@@ -567,10 +568,10 @@ public class ViagemSeguraService extends Service {
             public void onReceive(Context context, Intent intent) {
                 final String a = intent == null ? null : intent.getAction();
                 if (Intent.ACTION_SCREEN_OFF.equals(a)) {
-                    android.util.Log.i(LOG_LOCK, "SCREEN_OFF recebido");
+                    android.util.Log.i(LOG_LOCK, "SCREEN_OFF_RECEIVED");
                     abrirNavegacaoBloqueada("screen_off");
                 } else if (Intent.ACTION_SCREEN_ON.equals(a)) {
-                    android.util.Log.i(LOG_LOCK, "SCREEN_ON recebido");
+                    android.util.Log.i(LOG_LOCK, "SCREEN_ON_RECEIVED");
                     if (aparelhoBloqueado()) {
                         abrirNavegacaoBloqueada("screen_on");
                     } else {
@@ -593,7 +594,7 @@ public class ViagemSeguraService extends Service {
             } else {
                 registerReceiver(receptorDeTela, f);
             }
-            android.util.Log.i(LOG_LOCK, "receptor de tela registrado");
+            android.util.Log.i(LOG_LOCK, "SCREEN_RECEIVER_REGISTERED");
         } catch (Exception e) {
             android.util.Log.w(LOG_LOCK, "falha ao registrar receptor de tela: " + e);
             receptorDeTela = null;
@@ -624,6 +625,7 @@ public class ViagemSeguraService extends Service {
     /** Só abre com viagem ativa E com a preferência do usuário ligada. */
     private void abrirNavegacaoBloqueada(String origem) {
         final LockNavigationState.Quadro q = LockNavigationState.atual();
+        android.util.Log.i(LOG_LOCK, "TRIP_ACTIVE=" + q.ativa);
         if (!q.ativa || !q.permitida) {
             android.util.Log.i(
                     LOG_LOCK,
@@ -640,7 +642,8 @@ public class ViagemSeguraService extends Service {
                 Intent.FLAG_ACTIVITY_NEW_TASK
                         | Intent.FLAG_ACTIVITY_SINGLE_TOP
                         | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-        android.util.Log.i(LOG_LOCK, "LockNavigationActivity solicitada (" + origem + ")");
+        android.util.Log.i(LOG_LOCK, "LOCK_NAV_INTENT_CREATED origin=" + origem);
+        android.util.Log.i(LOG_LOCK, "START_ACTIVITY_ATTEMPT origin=" + origem);
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 // Via oficial na 34+: o serviço de primeiro plano declara que
@@ -658,8 +661,18 @@ public class ViagemSeguraService extends Service {
             } else {
                 startActivity(i);
             }
+            // SUCCESS significa apenas que a API aceitou a solicitação. A prova
+            // de criação real é LOCK_ACTIVITY_ON_CREATE, emitido pela Activity.
+            android.util.Log.i(LOG_LOCK, "START_ACTIVITY_SUCCESS origin=" + origem);
         } catch (Exception e) {
-            android.util.Log.w(LOG_LOCK, "falha ao abrir LockNavigationActivity: " + e);
+            android.util.Log.e(
+                    LOG_LOCK,
+                    "START_ACTIVITY_EXCEPTION origin="
+                            + origem
+                            + " type="
+                            + e.getClass().getSimpleName()
+                            + " message="
+                            + String.valueOf(e.getMessage()));
             // Sem navegação no bloqueio: a notificação persistente continua
             // sendo o caminho oficial, e a viagem não é afetada.
         }
