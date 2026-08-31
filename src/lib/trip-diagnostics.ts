@@ -46,6 +46,9 @@ export const EVENTOS_MA_TRIP = [
   "directions.begin",
   "directions.success",
   "directions.fail",
+  // Desvio de caminho confirmado: o app pediu rota nova pelo MESMO caminho.
+  "route.reroute",
+
   "pois.request.begin",
   "pois.request.end",
   "pois.request.fail",

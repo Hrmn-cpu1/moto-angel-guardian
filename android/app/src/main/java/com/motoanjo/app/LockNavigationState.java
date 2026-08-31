@@ -99,12 +99,32 @@ public final class LockNavigationState {
      */
     private static volatile boolean permitidaLembrada = true;
 
+    /**
+     * O serviço de primeiro plano está em viagem AGORA.
+     *
+     * REGRESSÃO CORRIGIDA (P0): o serviço passou a abrir a Activity com base
+     * nesta verdade, mas a Activity continuava se matando quando o último
+     * quadro publicado pela WebView estava vazio ou velho — e com a tela
+     * apagada ele SEMPRE está. Resultado: a tela de bloqueio parou de
+     * aparecer. Agora as duas pontas leem a mesma coisa.
+     */
+    private static volatile boolean servicoAtivo = false;
+
     public static Quadro atual() {
         return atual;
     }
 
     public static boolean permitidaLembrada() {
         return permitidaLembrada;
+    }
+
+    public static void definirServicoAtivo(boolean ativo) {
+        servicoAtivo = ativo;
+    }
+
+    /** Verdade única sobre "há viagem": serviço vivo OU quadro ativo. */
+    public static boolean viagemAtivaAgora() {
+        return servicoAtivo || atual.ativa;
     }
 
     public static void marcarActivity(boolean viva) {
@@ -115,6 +135,7 @@ public final class LockNavigationState {
         return activityViva;
     }
 
+
     public static void publicar(Quadro q) {
         atual = q == null ? VAZIO : q;
         permitidaLembrada = atual.permitida;
@@ -123,7 +144,9 @@ public final class LockNavigationState {
         final AoPublicar p = aoPublicar;
         if (p != null) p.aoPublicar(atual);
         // Viagem encerrada não pode deixar navegação de pé sobre o bloqueio.
-        if (!atual.ativa) fechar();
+        // Só o FIM DA VIAGEM fecha: quadro vazio com serviço ainda em viagem é
+        // WebView congelada, não fim de viagem.
+        if (!atual.ativa && !servicoAtivo) fechar();
     }
 
     /**
@@ -134,11 +157,13 @@ public final class LockNavigationState {
      */
     public static void atualizarPosicao(double novaLat, double novaLng) {
         final Quadro q = atual;
-        if (!q.ativa) return;
+        if (!viagemAtivaAgora()) return;
         if (q.lat == novaLat && q.lng == novaLng) return;
         atual = new Quadro(
-                q.ativa,
-                q.permitida,
+                // Com o serviço em viagem a posição continua sendo navegação
+                // real, mesmo que a WebView ainda não tenha publicado quadro.
+                q.ativa || servicoAtivo,
+                q.permitida || permitidaLembrada,
                 q.manobra,
                 q.distanciaManobra,
                 q.destino,
@@ -151,6 +176,7 @@ public final class LockNavigationState {
         final Ouvinte o = ouvinte;
         if (o != null) o.aoMudar(atual);
     }
+
 
     public static void definirPublicacao(AoPublicar p) {
         aoPublicar = p;
@@ -190,6 +216,8 @@ public final class LockNavigationState {
     /** Fim da viagem: nada sobra para a próxima. */
     public static void limpar() {
         atual = VAZIO;
+        servicoAtivo = false;
         fechar();
     }
+
 }

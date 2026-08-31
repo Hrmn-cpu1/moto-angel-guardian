@@ -8,6 +8,8 @@ import { centroAcimaDoUsuario, deslocamentoDaCamera, precisaMoverCamera } from "
 
 import { fimDosPassos, type PontoDaRota } from "@/lib/rota";
 import { calcularRota } from "@/lib/rota.functions";
+import { avaliarDesvio, DESVIO_INICIAL, type EstadoDeDesvio } from "@/lib/reroute";
+
 import { diagnosticarRota, type DiagnosticoDeRota } from "@/lib/directions-status";
 import { pontosDeRiscoVisiveis } from "@/lib/map-layers";
 import { chaveDePonto, planejarReconciliacao } from "@/lib/marker-sync";
@@ -341,6 +343,10 @@ export default function RealMap({
   /** Contorno escuro sob a rota: contraste sobre mapa dark. Só estilo. */
   const routeCasingRef = useRef<google.maps.Polyline | null>(null);
   const routeRequestRef = useRef(0);
+  /** Traçado da rota vigente: base do cálculo de desvio, nada mais. */
+  const tracadoAtualRef = useRef<PontoDaRota[]>([]);
+  const desvioRef = useRef<EstadoDeDesvio>(DESVIO_INICIAL);
+
   /** Destino já enquadrado — impede a câmera de brigar com o modo "seguir". */
   const enquadradoParaRef = useRef<string | null>(null);
   /** Último centro aplicado à câmera — evita tremor com o GPS parado. */
@@ -394,10 +400,12 @@ export default function RealMap({
   // the Android/Capacitor WebView); fall back to the Lovable-managed key.
   const ownKey = import.meta.env.VITE_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
   const managedKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as
-    string | undefined;
+    | string
+    | undefined;
   const apiKey = (ownKey && ownKey.trim()) || managedKey;
   const channel = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID as
-    string | undefined;
+    | string
+    | undefined;
 
   const fallbackCenter = useMemo(() => center ?? DEFAULT_CENTER, []);
   const initialZoom = useRef(zoom).current;
@@ -589,6 +597,7 @@ export default function RealMap({
         const rota = resposta.ok ? resposta.rota : null;
         if (!rota) {
           limpar();
+          tracadoAtualRef.current = [];
           setRotaIndisponivel(true);
           const d = diagnosticarRota({ code: resposta.status ?? "UNKNOWN_ERROR" });
           registrarEventoDeViagem("directions.fail", {
@@ -602,6 +611,9 @@ export default function RealMap({
         }
 
         registrarEventoDeViagem("directions.success", { duracaoMs: Date.now() - iniciadoEm });
+        // Rota nova = base nova para medir desvio, e contador zerado.
+        tracadoAtualRef.current = rota.pontos;
+        desvioRef.current = { ...desvioRef.current, leiturasFora: 0 };
         setRotaIndisponivel(false);
         setDiagnostico(null);
 
@@ -690,6 +702,34 @@ export default function RealMap({
       cancelled = true;
     };
   }, [destKey, originKey, state, tentativaRota, calcularRotaNoServidor]);
+
+  /**
+   * Recálculo automático quando o motociclista sai do caminho.
+   *
+   * Sem GPS novo, sem motor novo: a posição é a que o app já entrega e a
+   * decisão mora em `lib/reroute.ts`. Ao confirmar o desvio, apenas
+   * reaproveitamos o MESMO pedido de rota (o contador de tentativa), então
+   * traçado, manobra, ETA e a tela de bloqueio se atualizam pelo caminho de
+   * sempre.
+   */
+  useEffect(() => {
+    if (state !== "ready" || !destKey || !center) return;
+    if (tracadoAtualRef.current.length < 2) return;
+    const resultado = avaliarDesvio(desvioRef.current, {
+      posicao: { lat: center.lat, lng: center.lng },
+      tracado: tracadoAtualRef.current,
+      precisaoM: accuracy,
+      agoraMs: Date.now(),
+    });
+    desvioRef.current = resultado.estado;
+    if (!resultado.recalcular) return;
+    registrarEventoDeViagem("route.reroute", {
+      detalhe: `${Math.round(resultado.distanciaM ?? 0)}m`,
+    });
+    // Rota nova pede enquadramento novo do trecho seguinte.
+    enquadradoParaRef.current = null;
+    setTentativaRota((n) => n + 1);
+  }, [center?.lat, center?.lng, accuracy, state, destKey]);
 
   useEffect(
     () => () => {
