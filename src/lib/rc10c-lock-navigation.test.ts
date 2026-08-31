@@ -323,7 +323,9 @@ test("LOCK.24: diagnóstico nativo cobre toda a cadeia do teste físico", () => 
 test("LOCK.25: histórico local é debug-only, limitado e sem payload sensível", () => {
   const diagnostico = ler(`${JAVA}/LockDiagnostics.java`);
   const plugin = ler(`${JAVA}/ViagemSeguraPlugin.java`);
-  assert.match(diagnostico, /BuildConfig\.DEBUG/);
+  assert.match(diagnostico, /FLAG_DEBUGGABLE/);
+  assert.ok(!/BuildConfig\.DEBUG/.test(diagnostico));
+  assert.ok(!/BuildConfig\.DEBUG/.test(plugin));
   assert.match(diagnostico, /LIMITE = 50/);
   assert.match(diagnostico, /System\.currentTimeMillis\(\)/);
   assert.ok(!/lat|lng|token|session|email|phone/i.test(diagnostico));
