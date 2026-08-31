@@ -337,7 +337,7 @@ test("LOCK.25: histórico local é debug-only, limitado e sem payload sensível"
  * P0.1c — Fase A (latência), Fase B (mapa real) e Fase C (degradado)
  * ================================================================== */
 
-test("LOCK.24: abrir não depende do quadro congelado da WebView", () => {
+test("LOCK.26: abrir não depende do quadro congelado da WebView", () => {
   const servico = semComentariosJava(`${JAVA}/ViagemSeguraService.java`);
   assert.match(
     servico,
@@ -350,7 +350,7 @@ test("LOCK.24: abrir não depende do quadro congelado da WebView", () => {
   assert.match(servico, /LOCK_ACTIVITY_ALREADY_UP/, "sem empilhar Activity já viva");
 });
 
-test("LOCK.25: a posição do bloqueio vem do GPS que já existe", () => {
+test("LOCK.27: a posição do bloqueio vem do GPS que já existe", () => {
   const servico = semComentariosJava(`${JAVA}/ViagemSeguraService.java`);
   assert.match(servico, /LockNavigationState\.atualizarPosicao\(/);
   const estado = semComentariosJava(`${JAVA}/LockNavigationState.java`);
@@ -358,7 +358,7 @@ test("LOCK.25: a posição do bloqueio vem do GPS que já existe", () => {
   assert.match(estado, /activityViva/);
 });
 
-test("LOCK.26: mapa real na tela bloqueada, sem SDK e sem segundo GPS", () => {
+test("LOCK.28: mapa real na tela bloqueada, sem SDK e sem segundo GPS", () => {
   const mapa = semComentariosJava(`${JAVA}/MapaTilesView.java`);
   assert.match(mapa, /class MapaTilesView extends RotaView/, "fallback herdado, não duplicado");
   assert.match(mapa, /tile\.openstreetmap\.org/);
@@ -367,7 +367,7 @@ test("LOCK.26: mapa real na tela bloqueada, sem SDK e sem segundo GPS", () => {
   assert.ok(!/api_key|API_KEY|key=/.test(mapa), "nenhuma chave vai para a tela de bloqueio");
 });
 
-test("LOCK.27: sem rede o mapa degrada em vez de ficar vazio", () => {
+test("LOCK.29: sem rede o mapa degrada em vez de ficar vazio", () => {
   const mapa = semComentariosJava(`${JAVA}/MapaTilesView.java`);
   assert.match(mapa, /if \(!algumTile\) \{[\s\S]{0,200}super\.onDraw\(canvas\)/);
   assert.match(mapa, /encerrar\(\)/, "threads morrem com a Activity");
@@ -375,7 +375,7 @@ test("LOCK.27: sem rede o mapa degrada em vez de ficar vazio", () => {
   assert.match(activity, /mapa\.encerrar\(\)/);
 });
 
-test("LOCK.28: latência e mapa passam a ser mensuráveis no aparelho", () => {
+test("LOCK.30: latência e mapa passam a ser mensuráveis no aparelho", () => {
   const diagnostico = semComentariosJava(`${JAVA}/LockDiagnostics.java`);
   for (const marcador of ["FIRST_STATE_RENDER", "MAP_READY", "LOCK_ACTIVITY_ALREADY_UP"]) {
     assert.match(diagnostico, new RegExp(marcador));
