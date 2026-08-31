@@ -300,4 +300,3 @@ test("LOCK.24: diagnóstico nativo cobre as cinco etapas do teste físico", () =
   assert.match(activity, /"LockNavigationActivity onCreate"/);
   assert.match(activity, /"LockNavigationActivity onResume"/);
 });
-
