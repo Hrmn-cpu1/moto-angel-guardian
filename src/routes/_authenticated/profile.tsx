@@ -254,9 +254,7 @@ function ProfilePage() {
           <LogOut size={14} /> Sair
         </OutlineButton>
       </div>
-      {diagnosticoAberto && (
-        <AndroidLockDiagnostics onClose={() => setDiagnosticoAberto(false)} />
-      )}
+      {diagnosticoAberto && <AndroidLockDiagnostics onClose={() => setDiagnosticoAberto(false)} />}
     </AppShell>
   );
 }

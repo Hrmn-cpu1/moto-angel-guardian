@@ -71,12 +71,19 @@ export function AndroidLockDiagnostics({ onClose }: { onClose: () => void }) {
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           {eventos.length === 0 ? (
-            <p className="py-10 text-center text-sm text-muted-foreground">Nenhum evento registrado.</p>
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              Nenhum evento registrado.
+            </p>
           ) : (
             <ol className="space-y-2 font-mono text-xs">
               {[...eventos].reverse().map((item, indice) => (
-                <li key={`${item.quandoMs}-${indice}`} className="flex gap-3 border-b border-border py-2">
-                  <time className="w-16 shrink-0 text-muted-foreground">{tempoRelativo(item.quandoMs)}</time>
+                <li
+                  key={`${item.quandoMs}-${indice}`}
+                  className="flex gap-3 border-b border-border py-2"
+                >
+                  <time className="w-16 shrink-0 text-muted-foreground">
+                    {tempoRelativo(item.quandoMs)}
+                  </time>
                   <span className="break-all text-foreground">{item.evento}</span>
                 </li>
               ))}
