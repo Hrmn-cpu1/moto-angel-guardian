@@ -100,6 +100,10 @@ public final class LockDiagnostics {
                 || evento.equals("LOCK_ACTIVITY_ON_RESUME")
                 || evento.equals("LOCK_ACTIVITY_ON_PAUSE")
                 || evento.equals("LOCK_ACTIVITY_ON_STOP")
-                || evento.equals("LOCK_ACTIVITY_ON_DESTROY");
+                || evento.equals("LOCK_ACTIVITY_ON_DESTROY")
+                || evento.equals("LOCK_ACTIVITY_ALREADY_UP")
+                // Fase A/B: medem o tempo ate aparecer e a prova de mapa real.
+                || evento.equals("FIRST_STATE_RENDER")
+                || evento.equals("MAP_READY");
     }
 }

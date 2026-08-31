@@ -77,21 +77,83 @@ public final class LockNavigationState {
     private static final Quadro VAZIO =
             new Quadro(false, false, "", "", "", "", "", "", 0d, 0d, new double[0]);
 
+    /** Avisa o serviço que um quadro novo chegou (pode ser hora de abrir). */
+    public interface AoPublicar {
+        void aoPublicar(Quadro q);
+    }
+
     private static volatile Quadro atual = VAZIO;
     private static volatile Ouvinte ouvinte = null;
     private static volatile CanalDeSos canalDeSos = null;
     private static volatile Runnable fechamento = null;
+    private static volatile AoPublicar aoPublicar = null;
+    private static volatile boolean activityViva = false;
+
+    /**
+     * Última preferência conhecida do usuário.
+     *
+     * Com a tela apagada a WebView congela e para de publicar quadros. Se a
+     * decisão de abrir dependesse só do último quadro, a navegação sumiria
+     * exatamente quando é necessária. A preferência é lembrada aqui e o
+     * padrão do produto (ligado) vale enquanto o app não disser o contrário.
+     */
+    private static volatile boolean permitidaLembrada = true;
 
     public static Quadro atual() {
         return atual;
     }
 
+    public static boolean permitidaLembrada() {
+        return permitidaLembrada;
+    }
+
+    public static void marcarActivity(boolean viva) {
+        activityViva = viva;
+    }
+
+    public static boolean activityViva() {
+        return activityViva;
+    }
+
     public static void publicar(Quadro q) {
         atual = q == null ? VAZIO : q;
+        permitidaLembrada = atual.permitida;
         final Ouvinte o = ouvinte;
         if (o != null) o.aoMudar(atual);
+        final AoPublicar p = aoPublicar;
+        if (p != null) p.aoPublicar(atual);
         // Viagem encerrada não pode deixar navegação de pé sobre o bloqueio.
         if (!atual.ativa) fechar();
+    }
+
+    /**
+     * Posição vinda do serviço (GPS que JÁ existe), sem passar pela WebView.
+     *
+     * É isto que faz o marcador andar com a tela bloqueada: a WebView está
+     * congelada, mas o LocationListener do serviço continua entregando.
+     */
+    public static void atualizarPosicao(double novaLat, double novaLng) {
+        final Quadro q = atual;
+        if (!q.ativa) return;
+        if (q.lat == novaLat && q.lng == novaLng) return;
+        atual = new Quadro(
+                q.ativa,
+                q.permitida,
+                q.manobra,
+                q.distanciaManobra,
+                q.destino,
+                q.restante,
+                q.eta,
+                q.risco,
+                novaLat,
+                novaLng,
+                q.rota);
+        final Ouvinte o = ouvinte;
+        if (o != null) o.aoMudar(atual);
+    }
+
+    public static void definirPublicacao(AoPublicar p) {
+        aoPublicar = p;
     }
 
     public static void definirOuvinte(Ouvinte o) {

@@ -21,7 +21,9 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
@@ -470,8 +472,13 @@ public class ViagemSeguraService extends Service {
         ouvinteDePosicao = new LocationListener() {
             @Override
             public void onLocationChanged(Location l) {
+                if (l == null) return;
+                // Com a tela apagada a WebView congela e para de publicar
+                // quadros. O marcador do bloqueio anda com ESTE GPS, que já
+                // existe — nenhum segundo LocationManager é criado.
+                LockNavigationState.atualizarPosicao(l.getLatitude(), l.getLongitude());
                 final PosicaoNativa d = ouvinteExterno;
-                if (d == null || l == null) return;
+                if (d == null) return;
                 d.aoReceber(
                         l.getLatitude(),
                         l.getLongitude(),
@@ -560,6 +567,30 @@ public class ViagemSeguraService extends Service {
     public static final String LOG_LOCK = "MOTOANJO_LOCK";
 
     private BroadcastReceiver receptorDeTela = null;
+    private final Handler agendaLock = new Handler(Looper.getMainLooper());
+
+    /**
+     * Rajada de tentativas ao acordar a tela (P0.1c — Fase A).
+     *
+     * O sistema pode recusar a primeira solicitação enquanto o keyguard ainda
+     * está compondo. Insistir por poucos segundos custa nada e é a diferença
+     * entre a navegação aparecer imediatamente ou só quando o Android resolver.
+     */
+    private static final long[] RETENTATIVAS_MS = {0L, 400L, 1200L, 3000L};
+
+    private void tentarAbrirEmRajada(final String origem) {
+        agendaLock.removeCallbacksAndMessages(null);
+        for (final long atraso : RETENTATIVAS_MS) {
+            agendaLock.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    if (LockNavigationState.activityViva()) return;
+                    if (!aparelhoBloqueado()) return;
+                    abrirNavegacaoBloqueada(origem + "+" + atraso + "ms");
+                }
+            }, atraso);
+        }
+    }
 
     private void registrarReceptorDeTela() {
         if (receptorDeTela != null) return;
@@ -569,15 +600,19 @@ public class ViagemSeguraService extends Service {
                 final String a = intent == null ? null : intent.getAction();
                 if (Intent.ACTION_SCREEN_OFF.equals(a)) {
                     LockDiagnostics.registrar(ViagemSeguraService.this, "SCREEN_OFF_RECEIVED");
+                    // Pré-aquecimento: aqui ainda existe janela visível, então
+                    // o start de Activity não é considerado "de segundo plano".
                     abrirNavegacaoBloqueada("screen_off");
                 } else if (Intent.ACTION_SCREEN_ON.equals(a)) {
                     LockDiagnostics.registrar(ViagemSeguraService.this, "SCREEN_ON_RECEIVED");
                     if (aparelhoBloqueado()) {
                         abrirNavegacaoBloqueada("screen_on");
+                        tentarAbrirEmRajada("screen_on_retry");
                     } else {
                         android.util.Log.i(LOG_LOCK, "SCREEN_ON sem keyguard: nada a mostrar");
                     }
                 } else if (Intent.ACTION_USER_PRESENT.equals(a)) {
+                    agendaLock.removeCallbacksAndMessages(null);
                     android.util.Log.i(LOG_LOCK, "USER_PRESENT: fechando navegacao bloqueada");
                     // Desbloqueou: quem manda é o cockpit dentro do app.
                     LockNavigationState.fechar();
@@ -595,6 +630,15 @@ public class ViagemSeguraService extends Service {
                 registerReceiver(receptorDeTela, f);
             }
             LockDiagnostics.registrar(this, "SCREEN_RECEIVER_REGISTERED");
+            // Quadro novo com o aparelho já bloqueado (o app publicou logo
+            // antes de a tela apagar): aproveita para abrir sem esperar evento.
+            LockNavigationState.definirPublicacao(new LockNavigationState.AoPublicar() {
+                @Override
+                public void aoPublicar(LockNavigationState.Quadro q) {
+                    if (!q.ativa || LockNavigationState.activityViva()) return;
+                    if (aparelhoBloqueado()) abrirNavegacaoBloqueada("quadro_publicado");
+                }
+            });
         } catch (Exception e) {
             android.util.Log.w(LOG_LOCK, "falha ao registrar receptor de tela: " + e);
             receptorDeTela = null;
@@ -602,6 +646,8 @@ public class ViagemSeguraService extends Service {
     }
 
     private void removerReceptorDeTela() {
+        agendaLock.removeCallbacksAndMessages(null);
+        LockNavigationState.definirPublicacao(null);
         if (receptorDeTela == null) return;
         try {
             unregisterReceiver(receptorDeTela);
@@ -622,19 +668,37 @@ public class ViagemSeguraService extends Service {
         }
     }
 
-    /** Só abre com viagem ativa E com a preferência do usuário ligada. */
+    /**
+     * Só abre com viagem ativa E com a preferência do usuário ligada.
+     *
+     * CAUSA RAIZ DA LATÊNCIA (P0.1c — Fase A)
+     * Antes, "viagem ativa" era lida do último quadro publicado pela WebView.
+     * Com a tela apagada o WebView é congelado pelo sistema: o quadro para de
+     * chegar e envelhece. Resultado: SCREEN_OFF e SCREEN_ON caíam nesta guarda
+     * e a Activity só nascia minutos depois, quando o app voltava a publicar.
+     *
+     * A verdade sobre "há viagem" é do PRÓPRIO serviço em primeiro plano
+     * (`ativoAgora`) — ele não congela. A preferência usa a última conhecida,
+     * com o padrão do produto enquanto o app não disser o contrário.
+     */
     private void abrirNavegacaoBloqueada(String origem) {
         final LockNavigationState.Quadro q = LockNavigationState.atual();
-        LockDiagnostics.registrar(this, "TRIP_ACTIVE=" + q.ativa);
-        if (!q.ativa || !q.permitida) {
+        final boolean viagemAtiva = ativoAgora || q.ativa;
+        final boolean permitida = LockNavigationState.permitidaLembrada();
+        LockDiagnostics.registrar(this, "TRIP_ACTIVE=" + viagemAtiva);
+        if (!viagemAtiva || !permitida) {
             android.util.Log.i(
                     LOG_LOCK,
                     "LockNavigationActivity NAO solicitada ("
                             + origem
                             + "): ativa="
-                            + q.ativa
+                            + viagemAtiva
                             + " permitida="
-                            + q.permitida);
+                            + permitida);
+            return;
+        }
+        if (LockNavigationState.activityViva()) {
+            LockDiagnostics.registrar(this, "LOCK_ACTIVITY_ALREADY_UP", "origin=" + origem);
             return;
         }
         final Intent i = new Intent(this, LockNavigationActivity.class);
