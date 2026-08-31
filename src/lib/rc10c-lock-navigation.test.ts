@@ -226,11 +226,7 @@ test("LOCK.16: a navegação de bloqueio existe só durante a viagem", () => {
   const activity = semComentariosJava(`${JAVA}/LockNavigationActivity.java`);
   // Recriação por process death não inventa viagem ativa. A verdade agora é
   // o serviço em primeiro plano — a WebView congela com a tela apagada.
-  assert.match(
-    activity,
-    /if \(!LockNavigationState\.viagemAtivaAgora\(\)[\s\S]{0,300}finish\(\)/,
-  );
-
+  assert.match(activity, /if \(!LockNavigationState\.viagemAtivaAgora\(\)[\s\S]{0,300}finish\(\)/);
 });
 
 test("LOCK.17: um SOS só — o da tela de bloqueio delega ao pipeline existente", () => {
