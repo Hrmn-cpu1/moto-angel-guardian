@@ -6,7 +6,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { passosDoEnquadramento } from "@/lib/navigation-cue";
 import { centroAcimaDoUsuario, deslocamentoDaCamera, precisaMoverCamera } from "@/lib/nav-camera";
 
-import { fimDosPassos } from "@/lib/rota";
+import { fimDosPassos, type PontoDaRota } from "@/lib/rota";
 import { calcularRota } from "@/lib/rota.functions";
 import { diagnosticarRota, type DiagnosticoDeRota } from "@/lib/directions-status";
 import { pontosDeRiscoVisiveis } from "@/lib/map-layers";
