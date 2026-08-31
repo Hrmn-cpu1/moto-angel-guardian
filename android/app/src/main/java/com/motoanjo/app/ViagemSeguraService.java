@@ -6,8 +6,10 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.hardware.Sensor;
@@ -389,6 +391,7 @@ public class ViagemSeguraService extends Service {
                 }
                 emPrimeiroPlano = true;
                 iniciarCaptura();
+                registrarReceptorDeTela();
             } catch (Exception e) {
                 // API 31+ recusa subir FGS a partir do segundo plano
                 // (ForegroundServiceStartNotAllowedException) e a 34+ recusa o
@@ -525,6 +528,69 @@ public class ViagemSeguraService extends Service {
         capturando = false;
     }
 
+    /* ============================================================== *
+     * P0.1c — Navegação sobre a tela de bloqueio
+     *
+     * A Activity de bloqueio é aberta quando a TELA APAGA durante uma viagem
+     * ativa. É o único momento em que o app ainda está visível, então não há
+     * início de Activity em segundo plano (a API 29+ bloquearia) e não é
+     * preciso apelar para full-screen intent, que existe para chamada e
+     * alarme, não para navegação contínua.
+     *
+     * Ao desbloquear (ACTION_USER_PRESENT) ela se fecha e o cockpit normal
+     * volta — mesma viagem, mesmo estado, sem duplicar nada.
+     * ============================================================== */
+
+    private BroadcastReceiver receptorDeTela = null;
+
+    private void registrarReceptorDeTela() {
+        if (receptorDeTela != null) return;
+        receptorDeTela = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                final String a = intent == null ? null : intent.getAction();
+                if (Intent.ACTION_SCREEN_OFF.equals(a)) {
+                    abrirNavegacaoBloqueada();
+                } else if (Intent.ACTION_USER_PRESENT.equals(a)) {
+                    // Desbloqueou: quem manda é o cockpit dentro do app.
+                    LockNavigationState.fechar();
+                }
+            }
+        };
+        final IntentFilter f = new IntentFilter();
+        f.addAction(Intent.ACTION_SCREEN_OFF);
+        f.addAction(Intent.ACTION_USER_PRESENT);
+        try {
+            registerReceiver(receptorDeTela, f);
+        } catch (Exception e) {
+            receptorDeTela = null;
+        }
+    }
+
+    private void removerReceptorDeTela() {
+        if (receptorDeTela == null) return;
+        try {
+            unregisterReceiver(receptorDeTela);
+        } catch (Exception ignored) {
+            // Já removido: nada a fazer.
+        }
+        receptorDeTela = null;
+    }
+
+    /** Só abre com viagem ativa E com a preferência do usuário ligada. */
+    private void abrirNavegacaoBloqueada() {
+        final LockNavigationState.Quadro q = LockNavigationState.atual();
+        if (!q.ativa || !q.permitida) return;
+        final Intent i = new Intent(this, LockNavigationActivity.class);
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        try {
+            startActivity(i);
+        } catch (Exception ignored) {
+            // Sem navegação no bloqueio: a notificação persistente continua
+            // sendo o caminho oficial, e a viagem não é afetada.
+        }
+    }
+
     private boolean temPermissaoDeLocalizacao() {
         return ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                         == PackageManager.PERMISSION_GRANTED
@@ -534,6 +600,10 @@ public class ViagemSeguraService extends Service {
 
     private void pararTudo() {
         pararCaptura();
+        removerReceptorDeTela();
+        // Viagem encerrada fecha a navegação de bloqueio; nada de tela
+        // prometendo proteção depois do fim.
+        LockNavigationState.limpar();
         if (emPrimeiroPlano) {
             stopForeground(true);
             emPrimeiroPlano = false;
