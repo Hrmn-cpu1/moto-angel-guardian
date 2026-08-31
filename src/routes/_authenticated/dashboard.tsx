@@ -301,7 +301,8 @@ function Dashboard() {
    * novo é criado — a Activity de bloqueio só desenha o que chega aqui.
    *
    * A preferência é lida depois da montagem porque esta rota roda com SSR:
-   * tocar em localStorage na renderização do servidor quebraria a hidratação.
+   * tocar no armazenamento do navegador durante a renderização do servidor
+   * quebraria a hidratação. A chave vive em `lib/lock-navigation.ts`.
    * ---------------------------------------------------------------- */
   const [mostrarNoBloqueio, setMostrarNoBloqueio] = useState(false);
   useEffect(() => {
