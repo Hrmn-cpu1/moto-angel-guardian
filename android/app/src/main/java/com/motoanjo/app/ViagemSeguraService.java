@@ -472,8 +472,13 @@ public class ViagemSeguraService extends Service {
         ouvinteDePosicao = new LocationListener() {
             @Override
             public void onLocationChanged(Location l) {
+                if (l == null) return;
+                // Com a tela apagada a WebView congela e para de publicar
+                // quadros. O marcador do bloqueio anda com ESTE GPS, que já
+                // existe — nenhum segundo LocationManager é criado.
+                LockNavigationState.atualizarPosicao(l.getLatitude(), l.getLongitude());
                 final PosicaoNativa d = ouvinteExterno;
-                if (d == null || l == null) return;
+                if (d == null) return;
                 d.aoReceber(
                         l.getLatitude(),
                         l.getLongitude(),
