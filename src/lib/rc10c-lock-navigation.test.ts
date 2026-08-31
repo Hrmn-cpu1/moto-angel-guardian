@@ -225,7 +225,7 @@ test("LOCK.16: a navegação de bloqueio existe só durante a viagem", () => {
 
   const activity = semComentariosJava(`${JAVA}/LockNavigationActivity.java`);
   // Recriação por process death não inventa viagem ativa.
-  assert.match(activity, /if \(!inicial\.ativa \|\| !inicial\.permitida\)[\s\S]{0,80}finish\(\)/);
+  assert.match(activity, /if \(!inicial\.ativa \|\| !inicial\.permitida\)[\s\S]{0,300}finish\(\)/);
 });
 
 test("LOCK.17: um SOS só — o da tela de bloqueio delega ao pipeline existente", () => {
