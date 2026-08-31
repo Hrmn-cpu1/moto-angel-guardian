@@ -58,7 +58,11 @@ export const EVENTOS_MA_TRIP = [
   "crash.countdown.start",
   "crash.cancelled",
   "crash.decision",
+  // Navegação na tela de bloqueio (P0.1c). O pedido de SOS vindo do keyguard
+  // fica registrado como qualquer outro: ele usa o MESMO pipeline manual.
+  "sos.lockscreen.request",
 ] as const;
+
 
 export type EventoMaTrip = (typeof EVENTOS_MA_TRIP)[number];
 
