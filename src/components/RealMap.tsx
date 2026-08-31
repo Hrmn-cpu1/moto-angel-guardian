@@ -397,8 +397,7 @@ export default function RealMap({
     string | undefined;
   const apiKey = (ownKey && ownKey.trim()) || managedKey;
   const channel = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID as
-    | string
-    | undefined;
+    string | undefined;
 
   const fallbackCenter = useMemo(() => center ?? DEFAULT_CENTER, []);
   const initialZoom = useRef(zoom).current;
