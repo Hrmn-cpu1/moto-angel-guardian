@@ -567,6 +567,30 @@ public class ViagemSeguraService extends Service {
     public static final String LOG_LOCK = "MOTOANJO_LOCK";
 
     private BroadcastReceiver receptorDeTela = null;
+    private final Handler agendaLock = new Handler(Looper.getMainLooper());
+
+    /**
+     * Rajada de tentativas ao acordar a tela (P0.1c — Fase A).
+     *
+     * O sistema pode recusar a primeira solicitação enquanto o keyguard ainda
+     * está compondo. Insistir por poucos segundos custa nada e é a diferença
+     * entre a navegação aparecer imediatamente ou só quando o Android resolver.
+     */
+    private static final long[] RETENTATIVAS_MS = {0L, 400L, 1200L, 3000L};
+
+    private void tentarAbrirEmRajada(final String origem) {
+        agendaLock.removeCallbacksAndMessages(null);
+        for (final long atraso : RETENTATIVAS_MS) {
+            agendaLock.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    if (LockNavigationState.activityViva()) return;
+                    if (!aparelhoBloqueado()) return;
+                    abrirNavegacaoBloqueada(origem + "+" + atraso + "ms");
+                }
+            }, atraso);
+        }
+    }
 
     private void registrarReceptorDeTela() {
         if (receptorDeTela != null) return;
@@ -576,15 +600,19 @@ public class ViagemSeguraService extends Service {
                 final String a = intent == null ? null : intent.getAction();
                 if (Intent.ACTION_SCREEN_OFF.equals(a)) {
                     LockDiagnostics.registrar(ViagemSeguraService.this, "SCREEN_OFF_RECEIVED");
+                    // Pré-aquecimento: aqui ainda existe janela visível, então
+                    // o start de Activity não é considerado "de segundo plano".
                     abrirNavegacaoBloqueada("screen_off");
                 } else if (Intent.ACTION_SCREEN_ON.equals(a)) {
                     LockDiagnostics.registrar(ViagemSeguraService.this, "SCREEN_ON_RECEIVED");
                     if (aparelhoBloqueado()) {
                         abrirNavegacaoBloqueada("screen_on");
+                        tentarAbrirEmRajada("screen_on_retry");
                     } else {
                         android.util.Log.i(LOG_LOCK, "SCREEN_ON sem keyguard: nada a mostrar");
                     }
                 } else if (Intent.ACTION_USER_PRESENT.equals(a)) {
+                    agendaLock.removeCallbacksAndMessages(null);
                     android.util.Log.i(LOG_LOCK, "USER_PRESENT: fechando navegacao bloqueada");
                     // Desbloqueou: quem manda é o cockpit dentro do app.
                     LockNavigationState.fechar();
