@@ -81,11 +81,15 @@ public class LockNavigationActivity extends Activity {
         setContentView(montarTela());
 
         final LockNavigationState.Quadro inicial = LockNavigationState.atual();
-        if (!inicial.ativa || !inicial.permitida) {
-            // Estado persistido manda. Activity recriada não vira viagem.
+        // REGRESSÃO CORRIGIDA (P0): antes exigíamos `inicial.ativa`, isto é, um
+        // quadro recém-publicado pela WebView. Com a tela apagada a WebView é
+        // congelada e esse quadro nunca chega — a Activity abria e se matava,
+        // e a tela de bloqueio deixou de mostrar navegação. A verdade sobre
+        // "há viagem" é do serviço em primeiro plano.
+        if (!LockNavigationState.viagemAtivaAgora() || !LockNavigationState.permitidaLembrada()) {
             android.util.Log.i(
                     ViagemSeguraService.LOG_LOCK,
-                    "LockNavigationActivity encerrada no onCreate: sem quadro ativo");
+                    "LockNavigationActivity encerrada no onCreate: sem viagem ativa");
             finish();
             return;
         }
@@ -93,7 +97,7 @@ public class LockNavigationActivity extends Activity {
 
         ouvinte = q -> principal.post(() -> {
             if (isFinishing()) return;
-            if (!q.ativa || !q.permitida) {
+            if (!LockNavigationState.viagemAtivaAgora() || !LockNavigationState.permitidaLembrada()) {
                 finish();
                 return;
             }
@@ -115,15 +119,15 @@ public class LockNavigationActivity extends Activity {
     protected void onResume() {
         super.onResume();
         LockDiagnostics.registrar(this, "LOCK_ACTIVITY_ON_RESUME");
-        final LockNavigationState.Quadro q = LockNavigationState.atual();
-        if (!q.ativa || !q.permitida) {
+        if (!LockNavigationState.viagemAtivaAgora() || !LockNavigationState.permitidaLembrada()) {
             // Viagem terminou enquanto a tela estava apagada: não sobra tela
             // prometendo navegação.
             finish();
             return;
         }
-        aplicar(q);
+        aplicar(LockNavigationState.atual());
     }
+
 
     @Override
     protected void onStart() {
