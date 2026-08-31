@@ -6,7 +6,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { passosDoEnquadramento } from "@/lib/navigation-cue";
 import { centroAcimaDoUsuario, deslocamentoDaCamera, precisaMoverCamera } from "@/lib/nav-camera";
 
-import { fimDosPassos } from "@/lib/rota";
+import { fimDosPassos, type PontoDaRota } from "@/lib/rota";
 import { calcularRota } from "@/lib/rota.functions";
 import { diagnosticarRota, type DiagnosticoDeRota } from "@/lib/directions-status";
 import { pontosDeRiscoVisiveis } from "@/lib/map-layers";
@@ -282,6 +282,9 @@ export interface RouteInfo {
   /** Código de manobra do Google (`turn-left`, `roundabout-right`...). */
   proximaManobra: string | null;
   destinoTexto: string | null;
+  /** Traçado real já decodificado. Usado pela navegação na tela bloqueada,
+   *  que desenha a rota sem subir um segundo mapa. */
+  tracado: PontoDaRota[];
 }
 
 export default function RealMap({
@@ -662,6 +665,7 @@ export default function RealMap({
           proximaDistanciaM: passo?.distanciaM ?? null,
           proximaManobra: passo?.manobra ?? null,
           destinoTexto: rota.destinoTexto ?? destination?.address ?? null,
+          tracado: rota.pontos,
         });
         onRouteStatusRef.current?.("pronta");
       })

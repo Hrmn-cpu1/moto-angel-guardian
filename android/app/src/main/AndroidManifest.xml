@@ -71,6 +71,29 @@
         </activity>
 
         <!--
+          Navegação sobre a tela de bloqueio (P0.1c).
+
+          showWhenLocked é a API oficial: a Activity aparece sobre o keyguard
+          quando a tela acende, sem desbloquear o aparelho, sem overlay e sem
+          full-screen intent (que é para chamada/alarme, não para navegação).
+          turnScreenOn NÃO é declarado: tela apagada continua apagada, com GPS
+          e sensores rodando no serviço.
+
+          exported="false": só o próprio serviço a inicia, e apenas durante
+          viagem ativa. excludeFromRecents evita deixar rastro de navegação na
+          lista de apps recentes.
+        -->
+        <activity
+            android:name=".LockNavigationActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:taskAffinity="com.motoanjo.app.lock"
+            android:showWhenLocked="true"
+            tools:targetApi="27"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
+
+        <!--
           Serviço de primeiro plano da Viagem Segura.
 
           foregroundServiceType="location" é obrigatório a partir da API 34 e

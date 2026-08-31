@@ -36,9 +36,18 @@ import {
   descricaoDoServico,
   montarAtualizacaoDaViagem,
   servicoDisponivel,
+  limparNavegacaoBloqueada,
+  ouvirSosDaTelaBloqueada,
+  publicarNavegacaoBloqueada,
   type PermissaoNotificacao,
 } from "@/lib/trip-service";
 import { distanciaDaManobra, viaDaInstrucao } from "@/lib/navigation-cue";
+import {
+  montarQuadroBloqueado,
+  preferenciaTelaBloqueada,
+  quadrosIguais,
+  QUADRO_VAZIO,
+} from "@/lib/lock-navigation";
 import { APARENCIA, distanciaCurta } from "@/lib/map-events";
 import { useRiskZones } from "@/hooks/useRiskZones";
 import { usePartners } from "@/hooks/usePartners";
@@ -283,6 +292,71 @@ function Dashboard() {
     rota?.proximaInstrucao,
     rota?.proximaDistanciaM,
   ]);
+
+  /* ---------------------------------------------------------------- *
+   * P0.1c — Navegação na tela de bloqueio.
+   *
+   * O quadro é um ESPELHO do que o cockpit já mostra: mesma viagem, mesma
+   * rota, mesmo GPS, mesmo Copiloto. Nada é recalculado e nenhum watcher
+   * novo é criado — a Activity de bloqueio só desenha o que chega aqui.
+   *
+   * A preferência é lida depois da montagem porque esta rota roda com SSR:
+   * tocar no armazenamento do navegador durante a renderização do servidor
+   * quebraria a hidratação. A chave vive em `lib/lock-navigation.ts`.
+   * ---------------------------------------------------------------- */
+  const [mostrarNoBloqueio, setMostrarNoBloqueio] = useState(false);
+  useEffect(() => {
+    setMostrarNoBloqueio(preferenciaTelaBloqueada());
+  }, []);
+
+  const quadroBloqueado = useMemo(
+    () =>
+      montarQuadroBloqueado({
+        viagemAtiva,
+        permitida: mostrarNoBloqueio,
+        manobra: viaDaInstrucao(rota?.proximaInstrucao),
+        distanciaManobra: distanciaDaManobra(rota?.proximaDistanciaM),
+        destino: destinoDaNotificacao,
+        restante: rota ? `${rota.distanciaKm.toFixed(1)} km` : "",
+        eta: rota ? `${rota.duracaoMin} min` : "",
+        risco: aviso
+          ? `${APARENCIA[aviso.categoria].rotulo} a ${distanciaCurta(aviso.distanciaKm)}`
+          : "",
+        posicao: centro,
+        tracado: rota?.tracado ?? null,
+      }),
+    [
+      viagemAtiva,
+      mostrarNoBloqueio,
+      rota,
+      destinoDaNotificacao,
+      aviso?.id,
+      aviso?.categoria,
+      aviso?.distanciaKm,
+      centro,
+    ],
+  );
+
+  const [ultimoQuadro, setUltimoQuadro] = useState(QUADRO_VAZIO);
+  useEffect(() => {
+    if (quadrosIguais(quadroBloqueado, ultimoQuadro)) return;
+    setUltimoQuadro(quadroBloqueado);
+    if (quadroBloqueado.ativa) void publicarNavegacaoBloqueada(quadroBloqueado);
+    else void limparNavegacaoBloqueada();
+  }, [quadroBloqueado, ultimoQuadro]);
+
+  // Fim da viagem (ou saída da tela) não pode deixar navegação de pé.
+  useEffect(() => () => void limparNavegacaoBloqueada(), []);
+
+  /* O SOS da tela de bloqueio usa o MESMO controlador do botão manual.
+     Nada de segundo pipeline de emergência: aqui só chega o pedido. */
+  useEffect(() => {
+    if (!viagemAtiva) return;
+    return ouvirSosDaTelaBloqueada(() => {
+      registrarEventoDeViagem("sos.lockscreen.request");
+      sos.trigger(sos.holdMs);
+    });
+  }, [viagemAtiva, sos.trigger, sos.holdMs]);
 
   // Ao (re)entrar em viagem, a navegação volta a ser a tela dominante.
   useEffect(() => {

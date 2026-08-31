@@ -107,6 +107,8 @@ type PluginViagem = {
   atualizar: (o: AtualizacaoDeViagem) => Promise<Partial<EstadoServicoViagem>>;
   parar: () => Promise<Partial<EstadoServicoViagem>>;
   consultarEstado?: () => Promise<Partial<EstadoServicoViagem>>;
+  navegacaoBloqueada?: (q: QuadroNavegacaoBloqueada) => Promise<void>;
+  limparNavegacaoBloqueada?: () => Promise<void>;
   estadoSensores?: () => Promise<Partial<SensoresNativos>>;
   permissaoNotificacao?: () => Promise<Partial<PermissaoNotificacao>>;
   pedirPermissaoNotificacao?: () => Promise<Partial<PermissaoNotificacao>>;
@@ -605,4 +607,101 @@ export function ouvirEstadoDoServico(cb: (e: EstadoServicoViagem) => void): () =
  */
 export function servicoDeveEstarAtivo(estadoDaViagem: string): boolean {
   return estadoDaViagem === "ativa";
+}
+
+/* ================================================================== *
+ * P0.1c — Ponte da navegação na tela de bloqueio
+ *
+ * Só transporte. O quadro é montado (e higienizado) em
+ * `src/lib/lock-navigation.ts`, a partir da MESMA viagem, da MESMA rota e do
+ * MESMO GPS que o cockpit usa. Nada aqui cria estado.
+ * ================================================================== */
+
+/** Quadro publicado para o Android. Sem nome, e-mail, telefone ou contatos. */
+export interface QuadroNavegacaoBloqueada {
+  ativa: boolean;
+  /** Preferência do usuário: "Mostrar navegação na tela bloqueada". */
+  permitida: boolean;
+  manobra: string;
+  distanciaManobra: string;
+  destino: string;
+  restante: string;
+  eta: string;
+  risco: string;
+  lat: number;
+  lng: number;
+  /** Pares lat,lng já reduzidos: [lat0, lng0, lat1, lng1, ...]. */
+  rota: number[];
+}
+
+export async function publicarNavegacaoBloqueada(q: QuadroNavegacaoBloqueada): Promise<void> {
+  const p = plugin();
+  if (!p?.navegacaoBloqueada) return;
+  try {
+    await p.navegacaoBloqueada(q);
+  } catch (error) {
+    recordTripDiagnostic("native.lock_navigation.publish", error);
+  }
+}
+
+export async function limparNavegacaoBloqueada(): Promise<void> {
+  const p = plugin();
+  if (!p?.limparNavegacaoBloqueada) return;
+  try {
+    await p.limparNavegacaoBloqueada();
+  } catch (error) {
+    recordTripDiagnostic("native.lock_navigation.clear", error);
+  }
+}
+
+/**
+ * SOS pedido na tela de bloqueio.
+ *
+ * O Android só avisa; quem dispara é o controlador de SOS que já existe. É
+ * isto que impede um segundo pipeline de emergência.
+ */
+export function ouvirSosDaTelaBloqueada(cb: () => void): () => void {
+  const p = plugin();
+  if (!p?.addListener) return () => {};
+  let handle: ListenerHandle | null = null;
+  let cancelado = false;
+
+  const aoReceber = () => {
+    if (cancelado) return;
+    try {
+      cb();
+    } catch (error) {
+      recordTripDiagnostic("native.lock_navigation.sos_callback", error);
+    }
+  };
+
+  void (async () => {
+    try {
+      const h = await normalizarHandle(
+        p.addListener(
+          "sosTelaBloqueada",
+          aoReceber as unknown as Parameters<PluginViagem["addListener"]>[1],
+        ),
+      );
+      if (!h || typeof h.remove !== "function") return;
+      if (cancelado) await h.remove();
+      else handle = h;
+    } catch (error) {
+      recordTripDiagnostic("native.lock_navigation.sos_listener", error);
+    }
+  })();
+
+  return () => {
+    cancelado = true;
+    const h = handle;
+    handle = null;
+    if (!h) return;
+    try {
+      void Promise.resolve(h.remove()).catch((error) => {
+        recordTripDiagnostic("native.lock_navigation.sos_listener_remove", error);
+      });
+    } catch (error) {
+      recordTripDiagnostic("native.lock_navigation.sos_listener_remove", error);
+    }
+  };
 }

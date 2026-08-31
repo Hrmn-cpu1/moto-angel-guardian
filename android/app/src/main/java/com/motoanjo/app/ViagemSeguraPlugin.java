@@ -8,6 +8,7 @@ import android.os.Build;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationManagerCompat;
 
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -15,6 +16,8 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
+
+import java.util.List;
 
 /**
  * Ponte entre a Viagem Segura (React) e o serviço nativo.
@@ -87,6 +90,12 @@ public class ViagemSeguraPlugin extends Plugin {
             m.put("quandoMs", quandoMs);
             notifyListeners("movimento", m);
         });
+
+        // P0.1c: SOS pedido na tela de bloqueio. NÃO abre um segundo caminho
+        // de emergência — apenas avisa o app, e quem dispara é o mesmo
+        // controlador de SOS que o botão manual já usa.
+        LockNavigationState.definirCanalDeSos(() ->
+                notifyListeners("sosTelaBloqueada", new JSObject()));
     }
 
     @PluginMethod
@@ -138,6 +147,53 @@ public class ViagemSeguraPlugin extends Plugin {
             return;
         }
         call.resolve(estadoReal());
+    }
+
+    /**
+     * Publica o quadro de navegação para a tela de bloqueio (P0.1c).
+     *
+     * O app é a fonte: viagem, rota, manobra e ETA já existem lá. Aqui só
+     * atravessam a ponte. Nada é calculado, nada é inventado, e nenhum dado
+     * pessoal passa — a tela de bloqueio é pública por definição.
+     */
+    @PluginMethod
+    public void navegacaoBloqueada(PluginCall call) {
+        final JSArray bruta = call.getArray("rota");
+        double[] rota = new double[0];
+        if (bruta != null) {
+            try {
+                final List<Object> lista = bruta.toList();
+                final int pares = lista.size() / 2;
+                rota = new double[pares * 2];
+                for (int i = 0; i < pares * 2; i++) {
+                    final Object v = lista.get(i);
+                    rota[i] = v instanceof Number ? ((Number) v).doubleValue() : 0d;
+                }
+            } catch (Exception e) {
+                rota = new double[0];
+            }
+        }
+
+        LockNavigationState.publicar(new LockNavigationState.Quadro(
+                Boolean.TRUE.equals(call.getBoolean("ativa", false)),
+                Boolean.TRUE.equals(call.getBoolean("permitida", false)),
+                call.getString("manobra", ""),
+                call.getString("distanciaManobra", ""),
+                call.getString("destino", ""),
+                call.getString("restante", ""),
+                call.getString("eta", ""),
+                call.getString("risco", ""),
+                call.getDouble("lat", 0d),
+                call.getDouble("lng", 0d),
+                rota));
+        call.resolve();
+    }
+
+    /** Fim da viagem, ou preferência desligada: nada sobra sobre o bloqueio. */
+    @PluginMethod
+    public void limparNavegacaoBloqueada(PluginCall call) {
+        LockNavigationState.limpar();
+        call.resolve();
     }
 
     @PluginMethod

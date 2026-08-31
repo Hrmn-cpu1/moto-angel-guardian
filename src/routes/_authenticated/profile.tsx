@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   BadgePercent,
@@ -18,6 +18,7 @@ import {
   Shield,
   ShieldCheck,
   Siren,
+  Smartphone,
   Sparkles,
   User as UserIcon,
   type LucideIcon,
@@ -30,6 +31,7 @@ import { LoadingScreen } from "@/components/LoadingScreen";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { setIntroHidden } from "@/lib/intro";
+import { definirPreferenciaTelaBloqueada, preferenciaTelaBloqueada } from "@/lib/lock-navigation";
 import type { User } from "@/types";
 import { toast } from "sonner";
 
@@ -51,6 +53,12 @@ function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<User | null>(null);
   const { isAdmin } = useIsAdmin(user?.id);
+  /* Navegação na tela bloqueada (P0.1c). Padrão LIGADO e documentado em
+     `src/lib/lock-navigation.ts`: o quadro mostra só navegação — nunca nome,
+     e-mail, telefone ou contatos. A leitura acontece depois da montagem
+     porque esta rota renderiza no servidor. */
+  const [navBloqueio, setNavBloqueio] = useState(false);
+  useEffect(() => setNavBloqueio(preferenciaTelaBloqueada()), []);
 
   if (loading || !user) return <LoadingScreen />;
 
@@ -162,6 +170,34 @@ function ProfilePage() {
             label="Privacidade"
             onClick={() => toast("Configurações de privacidade em breve.")}
           />
+          <button
+            onClick={() => {
+              const proximo = !navBloqueio;
+              setNavBloqueio(proximo);
+              definirPreferenciaTelaBloqueada(proximo);
+              toast(
+                proximo
+                  ? "Navegação aparecerá na tela bloqueada durante a viagem."
+                  : "Navegação não será mostrada na tela bloqueada.",
+              );
+            }}
+            className="flex w-full items-center gap-3 px-5 py-4 text-left"
+          >
+            <Smartphone size={16} className="text-gold" />
+            <span className="flex-1 text-sm font-medium text-foreground">
+              Mostrar navegação na tela bloqueada
+              <span className="mt-0.5 block text-[11px] font-normal text-muted-foreground">
+                Só manobra, rota e ETA. Nenhum dado pessoal.
+              </span>
+            </span>
+            <span
+              className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-widest ${
+                navBloqueio ? "bg-gold/15 text-gold" : "bg-white/5 text-muted-foreground"
+              }`}
+            >
+              {navBloqueio ? "Ligado" : "Desligado"}
+            </span>
+          </button>
           <Row
             icon={Shield}
             label="Permissões"
