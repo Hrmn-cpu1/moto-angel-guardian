@@ -343,6 +343,10 @@ export default function RealMap({
   /** Contorno escuro sob a rota: contraste sobre mapa dark. Só estilo. */
   const routeCasingRef = useRef<google.maps.Polyline | null>(null);
   const routeRequestRef = useRef(0);
+  /** Traçado da rota vigente: base do cálculo de desvio, nada mais. */
+  const tracadoAtualRef = useRef<PontoDaRota[]>([]);
+  const desvioRef = useRef<EstadoDeDesvio>(DESVIO_INICIAL);
+
   /** Destino já enquadrado — impede a câmera de brigar com o modo "seguir". */
   const enquadradoParaRef = useRef<string | null>(null);
   /** Último centro aplicado à câmera — evita tremor com o GPS parado. */
