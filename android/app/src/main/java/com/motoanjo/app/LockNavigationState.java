@@ -99,12 +99,32 @@ public final class LockNavigationState {
      */
     private static volatile boolean permitidaLembrada = true;
 
+    /**
+     * O serviço de primeiro plano está em viagem AGORA.
+     *
+     * REGRESSÃO CORRIGIDA (P0): o serviço passou a abrir a Activity com base
+     * nesta verdade, mas a Activity continuava se matando quando o último
+     * quadro publicado pela WebView estava vazio ou velho — e com a tela
+     * apagada ele SEMPRE está. Resultado: a tela de bloqueio parou de
+     * aparecer. Agora as duas pontas leem a mesma coisa.
+     */
+    private static volatile boolean servicoAtivo = false;
+
     public static Quadro atual() {
         return atual;
     }
 
     public static boolean permitidaLembrada() {
         return permitidaLembrada;
+    }
+
+    public static void definirServicoAtivo(boolean ativo) {
+        servicoAtivo = ativo;
+    }
+
+    /** Verdade única sobre "há viagem": serviço vivo OU quadro ativo. */
+    public static boolean viagemAtivaAgora() {
+        return servicoAtivo || atual.ativa;
     }
 
     public static void marcarActivity(boolean viva) {
@@ -114,6 +134,7 @@ public final class LockNavigationState {
     public static boolean activityViva() {
         return activityViva;
     }
+
 
     public static void publicar(Quadro q) {
         atual = q == null ? VAZIO : q;
