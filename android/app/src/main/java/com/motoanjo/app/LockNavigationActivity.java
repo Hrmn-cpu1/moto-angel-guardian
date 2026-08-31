@@ -55,17 +55,19 @@ public class LockNavigationActivity extends Activity {
     private TextView telemetria;
     private TextView risco;
     private TextView sos;
-    private RotaView mapa;
+    private MapaTilesView mapa;
 
     private LockNavigationState.Ouvinte ouvinte;
     private Runnable fechamento;
     private long pressionadoEm = 0L;
     private boolean sosPedido = false;
+    private boolean primeiroDesenho = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         LockDiagnostics.registrar(this, "LOCK_ACTIVITY_ON_CREATE");
+        LockNavigationState.marcarActivity(true);
 
         // API oficial. Abaixo da 27 só existe a flag de janela equivalente.
         // Chamada ANTES de qualquer conteúdo: a decisão de aparecer sobre o
@@ -144,6 +146,8 @@ public class LockNavigationActivity extends Activity {
     @Override
     protected void onDestroy() {
         LockDiagnostics.registrar(this, "LOCK_ACTIVITY_ON_DESTROY");
+        LockNavigationState.marcarActivity(false);
+        if (mapa != null) mapa.encerrar();
         LockNavigationState.removerOuvinte(ouvinte);
         LockNavigationState.removerFechamento(fechamento);
         principal.removeCallbacksAndMessages(null);
@@ -152,6 +156,11 @@ public class LockNavigationActivity extends Activity {
 
 
     private void aplicar(LockNavigationState.Quadro q) {
+        if (!primeiroDesenho) {
+            primeiroDesenho = true;
+            // Prova de que a tela já mostra navegação real, não moldura vazia.
+            LockDiagnostics.registrar(this, "FIRST_STATE_RENDER");
+        }
         manobra.setText(q.manobra.isEmpty() ? "Siga em frente" : q.manobra);
         distancia.setText(q.distanciaManobra);
         distancia.setVisibility(q.distanciaManobra.isEmpty() ? View.GONE : View.VISIBLE);
@@ -195,7 +204,7 @@ public class LockNavigationActivity extends Activity {
         destino = texto("", 13, "#9AA0A6", false);
         raiz.addView(destino);
 
-        mapa = new RotaView(this);
+        mapa = new MapaTilesView(this);
         final LinearLayout.LayoutParams lpMapa =
                 new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f);
         lpMapa.topMargin = dp(16);
