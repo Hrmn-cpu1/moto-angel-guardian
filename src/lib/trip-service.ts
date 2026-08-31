@@ -678,7 +678,7 @@ export function ouvirSosDaTelaBloqueada(cb: () => void): () => void {
   void (async () => {
     try {
       const h = await normalizarHandle(
-        p.addListener("sosTelaBloqueada", aoReceber as unknown as (d: never) => void),
+        p.addListener("sosTelaBloqueada", aoReceber as unknown as Parameters<PluginViagem["addListener"]>[1]),
       );
       if (!h || typeof h.remove !== "function") return;
       if (cancelado) await h.remove();
