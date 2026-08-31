@@ -4,6 +4,11 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.util.Log;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationManagerCompat;
@@ -202,8 +207,29 @@ public class ViagemSeguraPlugin extends Plugin {
         final JSObject r = new JSObject();
         final boolean disponivel = LockDiagnostics.disponivel(getContext());
         r.put("disponivel", disponivel);
-        r.put("eventos", disponivel ? new JSArray(LockDiagnostics.listar(getContext()).toString()) : new JSArray());
+        r.put("eventos", disponivel ? copiarEventos() : new JSArray());
         call.resolve(r);
+    }
+
+    /**
+     * Copia os eventos sem parsing textual: JSArray estende JSONArray, então
+     * os itens são transferidos um a um — sem converter para String e sem
+     * depender do construtor JSArray(String), que lança JSONException.
+     *
+     * O diagnóstico é auxiliar: qualquer falha degrada para um array vazio e
+     * nunca derruba o plugin nem a Viagem Segura. Registro só com mensagem
+     * técnica, sem PII.
+     */
+    private JSArray copiarEventos() {
+        final JSArray eventos = new JSArray();
+        try {
+            final JSONArray fonte = LockDiagnostics.listar(getContext());
+            for (int i = 0; i < fonte.length(); i++) eventos.put(fonte.getJSONObject(i));
+        } catch (JSONException e) {
+            Log.w("MOTOANJO_LOCK", "diagnosticoLock: falha ao copiar eventos de diagnóstico");
+            return new JSArray();
+        }
+        return eventos;
     }
 
     @PluginMethod
