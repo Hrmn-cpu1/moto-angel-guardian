@@ -111,10 +111,7 @@ export interface ResultadoDeDesvio {
  * zera o contador; fora, conta. Só com leituras consecutivas suficientes e
  * fora do cooldown a função pede recálculo.
  */
-export function avaliarDesvio(
-  estado: EstadoDeDesvio,
-  leitura: LeituraDeDesvio,
-): ResultadoDeDesvio {
+export function avaliarDesvio(estado: EstadoDeDesvio, leitura: LeituraDeDesvio): ResultadoDeDesvio {
   const distanciaM = distanciaDaRota(leitura.posicao, leitura.tracado);
   if (distanciaM == null) return { estado, recalcular: false, distanciaM: null };
 
