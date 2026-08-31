@@ -657,19 +657,37 @@ public class ViagemSeguraService extends Service {
         }
     }
 
-    /** Só abre com viagem ativa E com a preferência do usuário ligada. */
+    /**
+     * Só abre com viagem ativa E com a preferência do usuário ligada.
+     *
+     * CAUSA RAIZ DA LATÊNCIA (P0.1c — Fase A)
+     * Antes, "viagem ativa" era lida do último quadro publicado pela WebView.
+     * Com a tela apagada o WebView é congelado pelo sistema: o quadro para de
+     * chegar e envelhece. Resultado: SCREEN_OFF e SCREEN_ON caíam nesta guarda
+     * e a Activity só nascia minutos depois, quando o app voltava a publicar.
+     *
+     * A verdade sobre "há viagem" é do PRÓPRIO serviço em primeiro plano
+     * (`ativoAgora`) — ele não congela. A preferência usa a última conhecida,
+     * com o padrão do produto enquanto o app não disser o contrário.
+     */
     private void abrirNavegacaoBloqueada(String origem) {
         final LockNavigationState.Quadro q = LockNavigationState.atual();
-        LockDiagnostics.registrar(this, "TRIP_ACTIVE=" + q.ativa);
-        if (!q.ativa || !q.permitida) {
+        final boolean viagemAtiva = ativoAgora || q.ativa;
+        final boolean permitida = LockNavigationState.permitidaLembrada();
+        LockDiagnostics.registrar(this, "TRIP_ACTIVE=" + viagemAtiva);
+        if (!viagemAtiva || !permitida) {
             android.util.Log.i(
                     LOG_LOCK,
                     "LockNavigationActivity NAO solicitada ("
                             + origem
                             + "): ativa="
-                            + q.ativa
+                            + viagemAtiva
                             + " permitida="
-                            + q.permitida);
+                            + permitida);
+            return;
+        }
+        if (LockNavigationState.activityViva()) {
+            LockDiagnostics.registrar(this, "LOCK_ACTIVITY_ALREADY_UP", "origin=" + origem);
             return;
         }
         final Intent i = new Intent(this, LockNavigationActivity.class);
