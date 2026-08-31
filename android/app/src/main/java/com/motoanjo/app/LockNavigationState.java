@@ -216,6 +216,8 @@ public final class LockNavigationState {
     /** Fim da viagem: nada sobra para a próxima. */
     public static void limpar() {
         atual = VAZIO;
+        servicoAtivo = false;
         fechar();
     }
+
 }
