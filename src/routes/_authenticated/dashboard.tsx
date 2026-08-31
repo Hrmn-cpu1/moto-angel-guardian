@@ -21,6 +21,8 @@ import { rotuloDoDestino } from "@/lib/trip";
 import { useCockpitTelemetry } from "@/hooks/useCockpitTelemetry";
 import { useSafetyCopilot } from "@/hooks/useSafetyCopilot";
 import { useSosController } from "@/hooks/useSosController";
+import { useCrashDetection } from "@/hooks/useCrashDetection";
+import { CrashAlert } from "@/components/CrashAlert";
 import { ChamadaViagemSegura, CockpitDeViagem, PreparacaoDeViagem } from "@/components/RideCockpit";
 import { DestinoDialog } from "@/components/DestinoDialog";
 import { NextManeuver } from "@/components/NextManeuver";
@@ -107,6 +109,14 @@ function Dashboard() {
   // há sos_event_id. É isso que "finalizar viagem" não pode destruir.
   const sosAtivo =
     sos.phase === "aguardando_envio" || sos.phase === "sem_contatos" || sos.sosEventId != null;
+  // P0.1: detecção de queda ligada a sensores REAIS. O hook não abre um
+  // segundo caminho de emergência: no fim da máquina de estados ele chama o
+  // MESMO `sos.trigger` do botão manual.
+  const deteccaoDeQueda = useCrashDetection({
+    ativo: viagemAtiva,
+    sosAtivo,
+    aoAcionarSos: () => sos.trigger(sos.holdMs),
+  });
   const { aviso, vozLigada, vozSuportada, alternarVoz } = useSafetyCopilot({
     alerts,
     pois,
@@ -434,6 +444,8 @@ function Dashboard() {
             <Navigation size={16} /> Viagem ativa — Retomar navegação
           </button>
         )}
+
+        <CrashAlert deteccao={deteccaoDeQueda} />
 
         {/* Próxima manobra: informação dominante do cockpit. */}
         {modoCockpit && (
