@@ -65,7 +65,7 @@ public class LockNavigationActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        android.util.Log.i(ViagemSeguraService.LOG_LOCK, "LockNavigationActivity onCreate");
+        android.util.Log.i(ViagemSeguraService.LOG_LOCK, "LOCK_ACTIVITY_ON_CREATE");
 
         // API oficial. Abaixo da 27 só existe a flag de janela equivalente.
         // Chamada ANTES de qualquer conteúdo: a decisão de aparecer sobre o
@@ -112,7 +112,7 @@ public class LockNavigationActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        android.util.Log.i(ViagemSeguraService.LOG_LOCK, "LockNavigationActivity onResume");
+        android.util.Log.i(ViagemSeguraService.LOG_LOCK, "LOCK_ACTIVITY_ON_RESUME");
         final LockNavigationState.Quadro q = LockNavigationState.atual();
         if (!q.ativa || !q.permitida) {
             // Viagem terminou enquanto a tela estava apagada: não sobra tela
@@ -124,7 +124,26 @@ public class LockNavigationActivity extends Activity {
     }
 
     @Override
+    protected void onStart() {
+        super.onStart();
+        android.util.Log.i(ViagemSeguraService.LOG_LOCK, "LOCK_ACTIVITY_ON_START");
+    }
+
+    @Override
+    protected void onPause() {
+        android.util.Log.i(ViagemSeguraService.LOG_LOCK, "LOCK_ACTIVITY_ON_PAUSE");
+        super.onPause();
+    }
+
+    @Override
+    protected void onStop() {
+        android.util.Log.i(ViagemSeguraService.LOG_LOCK, "LOCK_ACTIVITY_ON_STOP");
+        super.onStop();
+    }
+
+    @Override
     protected void onDestroy() {
+        android.util.Log.i(ViagemSeguraService.LOG_LOCK, "LOCK_ACTIVITY_ON_DESTROY");
         LockNavigationState.removerOuvinte(ouvinte);
         LockNavigationState.removerFechamento(fechamento);
         principal.removeCallbacksAndMessages(null);
