@@ -400,12 +400,10 @@ export default function RealMap({
   // the Android/Capacitor WebView); fall back to the Lovable-managed key.
   const ownKey = import.meta.env.VITE_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
   const managedKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as
-    | string
-    | undefined;
+    string | undefined;
   const apiKey = (ownKey && ownKey.trim()) || managedKey;
   const channel = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID as
-    | string
-    | undefined;
+    string | undefined;
 
   const fallbackCenter = useMemo(() => center ?? DEFAULT_CENTER, []);
   const initialZoom = useRef(zoom).current;
