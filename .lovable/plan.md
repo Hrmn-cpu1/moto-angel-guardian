@@ -1,77 +1,89 @@
-# MOTO ANJO — Do APK debug ao Play Store com monetização
+# MOTO ANJO — Análise do app + caminho até a Play Store com monetização
 
-## Visão geral
+## Parte 1 — Análise: o que está bom
 
-Hoje o app gera apenas APK **debug** (não assinado para loja). Para chegar à Play Store monetizando faltam 4 frentes: release assinado, compliance da loja, funcionalidades pendentes do roadmap e a monetização em si.
+- **Base de testes sólida**: 31 arquivos de teste cobrindo SOS, GPS, telefone, rota, navegação bloqueada, login Google e camadas do mapa. Build e verificação de tipos passam limpos.
+- **Segurança**: nenhuma senha ou chave secreta está no código. As regras de acesso ao banco estão ativas nas tabelas críticas, e o SOS valida coordenada, precisão e evita disparo duplicado.
+- **Desempenho do mapa**: um único rastreador de GPS, marcadores atualizados sem recriar tudo, e limpeza correta ao sair da tela — nada de vazamento.
+- **Design consistente**: paleta e espaçamentos centralizados, alturas de botão dentro do recomendado para toque (46–50 px), e respeito às áreas seguras do celular (notch e barra de gestos) nas telas principais.
+- **Telas honestas**: quando não há dado, o cockpit mostra "—" ou "calculando" em vez de inventar número. Loading, erro e permissão negada têm tela própria.
+- **Acessibilidade no cockpit**: textos ocultos para leitor de tela e rótulos nos controles críticos (status do GPS, finalizar viagem, cancelar destino).
 
-## 1. Release assinado (obrigatório para publicar)
+## Parte 2 — Análise: falhas
 
-- Gerar **keystore de release** (guardado fora do repositório) e configurar `build.gradle` para `assembleRelease` / `bundleRelease`.
-- A Play Store exige **AAB** (Android App Bundle), não APK.
+### Graves (bloqueiam publicar com segurança)
+1. **Nada foi provado em aparelho real.** GPS em movimento, tela bloqueada, SOS ponta a ponta, login no APK — tudo passou só em teste de código. Para um app de emergência, isso é o risco número um.
+2. **O app é uma casca que depende de internet.** O APK carrega o site publicado; sem rede, o app inteiro cai — inclusive o botão de SOS.
+3. **Não existe versão assinada.** Só há build de teste. Sem chave de assinatura e sem AAB, não dá para enviar à loja.
+
+### Médias
+4. **Login pode escapar para a tela de login** numa corrida entre o retorno do Google e a checagem de sessão.
+5. **Sem recálculo de rota confirmado em campo** — se sair do caminho, a manobra pode ficar errada (o mecanismo foi implementado, mas não validado no aparelho).
+6. **Viagem não se recupera** se o Android matar o processo.
+7. **Alguns avisos de código** em Dashboard e Mapa (dependências de efeito faltando) que podem causar dados desatualizados na tela.
+8. **"Planos pagos — em breve"** aparece na tela de administração — anúncio de algo que não existe.
+
+### Menores
+9. **Dois arquivos gigantes**: Mapa (1.294 linhas) e Dashboard (723 linhas) concentram lógica demais — difícil de manter.
+10. **Cores escritas à mão** fora do sistema de design nos gráficos do admin e em alguns botões — se a paleta mudar, esses pontos ficam para trás.
+11. Sem trava de tela ligada durante navegação, sem confirmação de entrega do WhatsApp, backup do app sem regras de exclusão.
+12. Contraste de cores nunca foi medido (avaliação foi visual, não numérica).
+
+## Parte 3 — O que falta para virar APK na Play Store que monetiza
+
+### A. Release assinado (obrigatório)
+- Gerar **keystore de release** (fora do repositório) e configurar `assembleRelease` / `bundleRelease`.
+- A loja exige **AAB**, não APK.
 - Incrementar `versionCode` a cada envio (hoje: 12).
-- GitHub Actions: job de release que gera o AAB assinado usando secrets (keystore em base64 + senhas).
-- Recomendado: ativar **Play App Signing** (Google guarda a chave de assinatura; se perder a de upload, dá para recuperar).
+- CI gera o AAB assinado usando segredos do GitHub.
+- Ativar **Play App Signing** (Google guarda a chave; recuperável se perder).
 
-## 2. Compliance da Play Store (etapa que mais reprova)
+### B. Compliance da loja (onde mais se reprova)
+- **Política de privacidade em URL pública** — a página já existe no app; basta publicar e apontar na ficha.
+- **Justificativa de localização** — não usamos localização em segundo plano (decisão já tomada), o que simplifica a revisão.
+- **Formulário de segurança de dados**: localização, contatos, telefones de emergência.
+- **Classificação de conteúdo** (questionário).
+- **Teste fechado obrigatório**: contas novas precisam de **12+ testadores por 14 dias** antes da produção.
+- Ficha: descrição, screenshots, ícone 512, imagem de destaque 1024x500.
+- Conta de desenvolvedor: **US$ 25** (taxa única, paga por você ao Google).
 
-- **Política de privacidade em URL pública** — a página `/privacy` já existe no app; basta publicar e apontar a URL na ficha da loja.
-- **Justificativa de localização** — o app usa GPS; a Play exige declaração do uso. Não usamos `ACCESS_BACKGROUND_LOCATION` (decisão já tomada — o foreground service cobre), o que simplifica muito a revisão.
-- **Formulário de segurança de dados** (Data Safety): localização, contatos, telefone dos contatos de emergência.
-- **Classificação de conteúdo** (questionário IARC).
-- **Teste fechado obrigatório**: contas de desenvolvedor novas precisam rodar um teste fechado com **12+ testadores por 14 dias** antes de liberar produção.
-- Ficha da loja: descrição, screenshots, ícone 512, feature graphic 1024x500.
-- Conta Google Play Developer: **US$ 25** (taxa única, paga por você direto ao Google).
+### C. Monetização — decisão sua
+Regra importante: **apps na Play que vendem recursos digitais são obrigados a usar o Google Play Billing.** Stripe ou Paddle para desbloquear recursos do app Android reprova na revisão.
 
-## 3. Funcionalidades que o roadmap já prevê (NEXT_STEPS)
+Modelos:
 
-- **P0/P1 em aberto**: validação física da lock screen (P0.1c segue NOT PROVEN), SOS ponta a ponta, teste com dois aparelhos.
-- **P2**: push notifications (FCM) — importante para retenção e para o SOS chegar com app fechado.
-- Estes não bloqueiam a publicação, mas um app de segurança publicado com SOS não testado ponta a ponta é risco real.
+| Modelo | Observação |
+|---|---|
+| **Assinatura premium** (recomendado) | Receita recorrente; melhor encaixe |
+| Compra única | Simples, sem recorrência |
+| Grátis + anúncios | Combina mal com app de emergência |
 
-## 4. Monetização — decisão sua necessária
-
-Modelos possíveis para este app:
-
-| Modelo | Como funciona | Observação |
-|---|---|---|
-| **Assinatura premium** | Plano mensal/anual libera recursos (ex.: detecção de queda, histórico ilimitado, compartilhamento em tempo real) | Melhor encaixe; recorrente |
-| **Compra única** | Paga uma vez, libera tudo | Simples, mas sem receita recorrente |
-| **Grátis + anúncios** | Anúncios para usuários free | Combina mal com app de segurança/emergência |
-
-Sobre a tecnologia de pagamento, há uma decisão importante:
-
-- **Apps na Play Store que vendem recursos digitais são obrigados pelo Google a usar o Google Play Billing** (cobrança dentro do app). Não podemos usar Stripe/Paddle para desbloquear recursos do app Android — é contra a política da loja e reprova.
-- Stripe/Paddle só seriam opção se a assinatura fosse vendida **fora do app** (site), o que o Google restringe bastante.
-- Recomendação: **Google Play Billing** com um plano "Moto Anjo Premium" (mensal + anual), integrado via plugin Capacitor de purchases.
-
-O que eu implementaria nesta etapa de monetização:
-1. Definir o que é grátis vs premium (proposta abaixo — ajustável).
-2. Integrar Google Play Billing (plugin de in-app purchases para Capacitor).
-3. Tela de assinatura ("Seja Premium") + restauração de compra.
-4. Gate nos recursos premium conforme o status da assinatura.
-5. Você cria os produtos (mensal/anual) no Play Console — eu te passo os IDs exatos.
-
-Proposta inicial de divisão (você decide):
+Proposta de divisão (ajustável):
 - **Grátis**: SOS manual, mapa, contatos de emergência, navegação.
-- **Premium**: detecção automática de queda, compartilhamento de localização em tempo real, histórico e telemetria completos, navegação na tela de bloqueio.
+- **Premium**: detecção automática de queda, compartilhamento em tempo real, histórico e telemetria completos, navegação na tela bloqueada.
 
-## Ordem sugerida de execução
+Implementação: integrar Google Play Billing, tela "Seja Premium", restauração de compra e travas nos recursos premium. Você cria os produtos no Play Console — eu passo os IDs exatos.
 
-1. Fechar os testes físicos pendentes (lock screen, SOS) — confiança antes de cobrar.
-2. Keystore + AAB assinado no CI.
-3. Google Play Billing + tela Premium + gates.
-4. Ficha da loja + formulários de compliance + política publicada.
-5. Teste fechado (14 dias) → produção.
+## Ordem sugerida
+
+1. Corrigir as falhas médias de código (login, avisos de efeito, remover "em breve").
+2. Adicionar tela de emergência offline mínima (SOS funciona sem internet).
+3. Testes físicos no aparelho: GPS, tela bloqueada, SOS ponta a ponta.
+4. Keystore + AAB assinado no CI.
+5. Google Play Billing + tela Premium + travas.
+6. Ficha da loja + formulários + política publicada.
+7. Teste fechado (14 dias) → produção.
 
 ## O que preciso que você decida
 
-- Modelo de monetização (minha recomendação: assinatura premium via Play Billing).
+- Modelo de monetização (recomendo assinatura premium).
 - O que fica grátis vs premium.
-- Preços (ex.: R$ 14,90/mês, R$ 119,90/ano — sugestão).
-- Você já tem (ou vai criar) a conta Google Play Developer?
+- Preços (sugestão: R$ 14,90/mês, R$ 119,90/ano).
+- Já tem conta Google Play Developer ou vai criar?
+- Quer que eu comece pelas correções de código (item 1) ou direto pelo caminho da loja (item 4)?
 
 ## Detalhes técnicos
 
-- Keystore nunca entra no git; fica em secrets do GitHub Actions.
-- Play Billing exige AAB enviado ao Play Console com os produtos criados para testar compras (testers licenciados).
+- Keystore nunca entra no git; fica em segredos do CI.
+- Play Billing exige AAB no Play Console com produtos criados para testar compras.
 - Nada disso altera SOS, RLS, migrations ou OAuth já validados.
