@@ -174,20 +174,43 @@ function Community() {
   }, [posts, category, regionFilter]);
 
   const publish = async () => {
-    if (!text.trim() || !user) return;
-    const { error } = await supabase.from("community_posts").insert({
-      user_id: user.id,
-      author_name: user.name || user.email.split("@")[0],
-      category: postCategory,
-      region: postRegion.trim(),
-      text: text.trim(),
-    });
-    if (!error) {
+    if (publishing_.current) return;
+    const invalido = validarPublicacao(text);
+    if (invalido) {
+      setPublishError(invalido);
+      return;
+    }
+    publishing_.current = true;
+    setPublishing(true);
+    setPublishError(null);
+    setPublishOk(false);
+    try {
+      const row = await publicarNaComunidade({
+        text,
+        category: postCategory,
+        region: postRegion,
+        authorName: user?.name || user?.email?.split("@")[0],
+      });
+      // Confirmado pelo banco: mostra imediatamente e recarrega do servidor.
+      qc.setQueryData<FeedPost[]>(feedKey, (ps) => [
+        { ...row, likes: 0, liked: false, commentsCount: 0 },
+        ...(ps ?? []).filter((p) => p.id !== row.id),
+      ]);
+      void qc.invalidateQueries({ queryKey: feedKey });
       setText("");
       setPostRegion("");
       setComposing(false);
+      setPublishOk(true);
+      setTimeout(() => setPublishOk(false), 4000);
+    } catch (e) {
+      console.error("[Comunidade] publicação não concluída", e);
+      setPublishError(e instanceof Error ? e.message : "Não foi possível publicar.");
+    } finally {
+      publishing_.current = false;
+      setPublishing(false);
     }
   };
+
 
   const toggleLike = async (post: FeedPost) => {
     if (!user) return;
