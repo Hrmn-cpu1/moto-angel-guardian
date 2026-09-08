@@ -260,9 +260,14 @@ async function pluginGeolocation(): Promise<{
   if (!isNativeApp()) return null;
   try {
     const { Geolocation } = await import("@capacitor/geolocation");
-    return Geolocation as unknown as {
-      checkPermissions: () => Promise<EstadoPlugin>;
-      requestPermissions: (o?: unknown) => Promise<EstadoPlugin>;
+    // Capacitor returns a Proxy that synthesizes every method, including `then`.
+    // Returning it directly from async would invoke native Geolocation.then().
+    return {
+      checkPermissions: () => Geolocation.checkPermissions(),
+      requestPermissions: (options?: unknown) =>
+        Geolocation.requestPermissions(
+          options as Parameters<typeof Geolocation.requestPermissions>[0],
+        ),
     };
   } catch {
     return null;
@@ -311,6 +316,10 @@ export async function consultarPermissao(): Promise<LeituraPermissao> {
     // no WebView também funciona.
   }
 
+  return consultarPermissaoWeb(anterior);
+}
+
+async function consultarPermissaoWeb(anterior: LeituraPermissao): Promise<LeituraPermissao> {
   // ---- Navegador ----
   const perms = (navigator as Navigator & { permissions?: Permissions }).permissions;
   if (perms?.query) {
@@ -347,39 +356,36 @@ export async function pedirPermissao(): Promise<LeituraPermissao> {
     const existente = nativo
       ? await comTempoLimite(nativo.checkPermissions(), LIMITE_DE_CONSULTA_MS, null)
       : null;
-    if (!nativo || !existente) {
-      const leitura = estadoQuandoNaoSabemos(atual);
-      definirLeitura(leitura);
-      return leitura;
+    if (nativo && existente) {
+      if (statusDoPlugin(existente) === "concedida") {
+        const leitura: LeituraPermissao = { status: "concedida", origem: "nativo" };
+        definirLeituraDireta(leitura);
+        return leitura;
+      }
+      const status = await comTempoLimite(
+        (async (): Promise<StatusPermissao> => {
+          const r = await nativo.requestPermissions({
+            permissions: ["location", "coarseLocation"],
+          });
+          const status = statusDoPlugin(r);
+          if (status !== "desconhecido") definirLeituraDireta({ status, origem: "nativo" });
+          return status;
+        })(),
+        // A response arriving during the bounded web fallback still updates the permission.
+        15000,
+        "desconhecido",
+      );
+      if (status !== "desconhecido") {
+        const leitura: LeituraPermissao = { status, origem: "nativo" };
+        definirLeituraDireta(leitura);
+        return leitura;
+      }
     }
-    if (statusDoPlugin(existente) === "concedida") {
-      const leitura: LeituraPermissao = { status: "concedida", origem: "nativo" };
-      definirLeituraDireta(leitura);
-      return leitura;
-    }
-    const status = await comTempoLimite(
-      (async (): Promise<StatusPermissao> => {
-        const r = await nativo.requestPermissions({ permissions: ["location", "coarseLocation"] });
-        const status = statusDoPlugin(r);
-        if (status !== "desconhecido") definirLeituraDireta({ status, origem: "nativo" });
-        return status;
-      })(),
-      // Libera o botão se o diálogo demorar; uma resposta tardia ainda atualiza o estado.
-      15000,
-      "desconhecido",
-    );
-    if (status !== "desconhecido") {
-      const leitura: LeituraPermissao = { status, origem: "nativo" };
-      definirLeituraDireta(leitura);
-      return leitura;
-    }
-    // Uma ponte sem resposta não deve iniciar outra espera por GPS no WebView.
-    const leitura = estadoQuandoNaoSabemos(atual);
-    definirLeitura(leitura);
-    return leitura;
+    // Unknown bridge state is not a denial. Keep the bounded WebView fallback
+    // without consulting the same failed native bridge a second time.
   }
 
-  const existente = await consultarPermissao();
+  const existente = isNativeApp() ? await consultarPermissaoWeb(atual) : await consultarPermissao();
   if (existente.status === "concedida") return existente;
 
   let encerrado = false;
