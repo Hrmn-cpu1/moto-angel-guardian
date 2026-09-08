@@ -278,6 +278,36 @@ export type Database = {
         }
         Relationships: []
       }
+      native_protection_sessions: {
+        Row: {
+          device_id: string
+          expires_at: string
+          id: string
+          revoked_at: string | null
+          token_hash: string
+          trip_started_at: string
+          user_id: string
+        }
+        Insert: {
+          device_id: string
+          expires_at: string
+          id?: string
+          revoked_at?: string | null
+          token_hash: string
+          trip_started_at: string
+          user_id: string
+        }
+        Update: {
+          device_id?: string
+          expires_at?: string
+          id?: string
+          revoked_at?: string | null
+          token_hash?: string
+          trip_started_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       partners: {
         Row: {
           active: boolean
@@ -383,6 +413,27 @@ export type Database = {
         }
         Relationships: []
       }
+      sos_delivery_receipts: {
+        Row: {
+          occurred_at: string
+          provider_message_id: string
+          received_at: string
+          status: string
+        }
+        Insert: {
+          occurred_at: string
+          provider_message_id: string
+          received_at?: string
+          status: string
+        }
+        Update: {
+          occurred_at?: string
+          provider_message_id?: string
+          received_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       sos_events: {
         Row: {
           accuracy_m: number | null
@@ -443,6 +494,7 @@ export type Database = {
           companion: string | null
           created_at: string
           distance_km: number
+          distance_measured: boolean
           duration_seconds: number
           ended_at: string
           id: string
@@ -454,6 +506,7 @@ export type Database = {
           companion?: string | null
           created_at?: string
           distance_km?: number
+          distance_measured?: boolean
           duration_seconds?: number
           ended_at: string
           id?: string
@@ -465,6 +518,7 @@ export type Database = {
           companion?: string | null
           created_at?: string
           distance_km?: number
+          distance_measured?: boolean
           duration_seconds?: number
           ended_at?: string
           id?: string
@@ -505,11 +559,13 @@ export type Database = {
           error_message: string | null
           id: string
           last_status_at: string | null
+          next_attempt_at: string | null
           provider: string
           provider_message_id: string | null
           recipient_name: string
           recipient_phone: string
           request_id: string | null
+          retryable: boolean
           sent_at: string | null
           sos_event_id: string
           status: string
@@ -526,11 +582,13 @@ export type Database = {
           error_message?: string | null
           id?: string
           last_status_at?: string | null
+          next_attempt_at?: string | null
           provider?: string
           provider_message_id?: string | null
           recipient_name?: string
           recipient_phone: string
           request_id?: string | null
+          retryable?: boolean
           sent_at?: string | null
           sos_event_id: string
           status?: string
@@ -547,11 +605,13 @@ export type Database = {
           error_message?: string | null
           id?: string
           last_status_at?: string | null
+          next_attempt_at?: string | null
           provider?: string
           provider_message_id?: string | null
           recipient_name?: string
           recipient_phone?: string
           request_id?: string | null
+          retryable?: boolean
           sent_at?: string | null
           sos_event_id?: string
           status?: string
@@ -597,6 +657,29 @@ export type Database = {
           new_last_30d: number
           new_last_7d: number
           total_users: number
+        }[]
+      }
+      apply_sos_delivery_receipt: {
+        Args: { _provider_message_id: string }
+        Returns: boolean
+      }
+      claim_due_sos_notifications: {
+        Args: {
+          _claim_token: string
+          _max?: number
+          _only_failed?: boolean
+          _sos_event_id?: string
+        }
+        Returns: {
+          attempts: number
+          id: string
+          latitude: number
+          longitude: number
+          recipient_phone: string
+          rider_name: string
+          rider_phone: string
+          sos_event_id: string
+          triggered_at: string
         }[]
       }
       claim_sos_notifications: {
@@ -659,6 +742,49 @@ export type Database = {
         }
         Returns: boolean
       }
+      native_protection_cancel_pending: {
+        Args: { _request_id: string; _session_id: string; _user_id: string }
+        Returns: {
+          cancelled: boolean
+          sos_event_id: string
+          status: string
+        }[]
+      }
+      native_protection_create: {
+        Args: {
+          _device_id: string
+          _token_hash: string
+          _trip_started_at: string
+          _user_id: string
+        }
+        Returns: {
+          expires_at: string
+          session_id: string
+        }[]
+      }
+      native_protection_revoke: {
+        Args: { _session_id: string; _user_id: string }
+        Returns: boolean
+      }
+      native_protection_sos_open: {
+        Args: {
+          _accuracy_m: number
+          _fix_age_ms: number
+          _lat: number
+          _lng: number
+          _request_id: string
+          _source: string
+          _token_hash: string
+        }
+        Returns: {
+          queued: number
+          request_id: string
+          reused: boolean
+          sos_event_id: string
+          status: string
+          triggered_at: string
+        }[]
+      }
       nearby_alerts: {
         Args: {
           _hours?: number
@@ -717,6 +843,14 @@ export type Database = {
           apagadas: number
         }[]
       }
+      receive_sos_delivery: {
+        Args: {
+          _occurred_at: string
+          _provider_message_id: string
+          _status: string
+        }
+        Returns: boolean
+      }
       request_location_access: { Args: { _phone: string }; Returns: string }
       risk_heatmap: {
         Args: {
@@ -731,7 +865,19 @@ export type Database = {
           weight: number
         }[]
       }
+      run_sos_dispatch_schedule: { Args: never; Returns: number }
       set_location_sharing: { Args: { _enabled: boolean }; Returns: boolean }
+      settle_sos_dispatch: {
+        Args: {
+          _claim_token: string
+          _error?: string
+          _id: string
+          _outcome: string
+          _provider_message_id?: string
+          _retryable?: boolean
+        }
+        Returns: boolean
+      }
       settle_sos_notification: {
         Args: {
           _claim_token: string
@@ -783,6 +929,7 @@ export type Database = {
         }[]
       }
       sos_purge_history: { Args: never; Returns: number }
+      sos_receipt_rank: { Args: { _status: string }; Returns: number }
       sos_resolve: {
         Args: { _sos_event_id: string }
         Returns: {
