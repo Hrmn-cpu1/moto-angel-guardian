@@ -100,13 +100,23 @@ function Community() {
   const [openComments, setOpenComments] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, CommentRow[]>>({});
   const [commentDraft, setCommentDraft] = useState("");
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [publishOk, setPublishOk] = useState(false);
+  const publishing_ = useRef(false);
 
-  const { data: posts = [], isLoading: loading } = useQuery({
+  const {
+    data: posts = [],
+    isLoading: loading,
+    error: feedError,
+    refetch: refetchFeed,
+  } = useQuery({
     queryKey: feedKey,
     queryFn: fetchFeed,
     staleTime: 15_000,
     retry: 2,
   });
+
 
   useEffect(() => {
     // Realtime bursts (a post + its likes/comments) are coalesced so the feed
