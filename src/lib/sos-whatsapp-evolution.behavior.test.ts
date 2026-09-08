@@ -37,7 +37,7 @@ function fetcherWith(response: Response | Error) {
   });
 }
 
-test("v2 sendText uses server apikey, flat text and namespaced acceptance id", async () => {
+test("v2 sends one native SOS location card with context and namespaced acceptance id", async () => {
   const fetcher = fetcherWith(
     Response.json({ key: { id: "QA-message" }, status: "PENDING" }, { status: 201 }),
   );
@@ -50,7 +50,7 @@ test("v2 sendText uses server apikey, flat text and namespaced acceptance id", a
   expect(result).not.toHaveProperty("delivered");
   expect(fetcher).toHaveBeenCalledTimes(2);
   const [url, init] = fetcher.mock.calls[1];
-  expect(url).toBe("https://evolution.example.com/message/sendText/qa-instance");
+  expect(url).toBe("https://evolution.example.com/message/sendLocation/qa-instance");
   expect(init).toMatchObject({
     method: "POST",
     redirect: "manual",
@@ -59,10 +59,19 @@ test("v2 sendText uses server apikey, flat text and namespaced acceptance id", a
   expect(init?.signal).toBeInstanceOf(AbortSignal);
   const payload = JSON.parse(String(init?.body));
   expect(payload.number).toBe("5511999990000");
-  expect(payload.text).toContain("Piloto QA acionou um SOS");
-  expect(payload.text).toContain("https://maps.google.com/?q=-23.5,-46.6");
-  expect(payload.linkPreview).toBe(false);
-  expect(payload).not.toHaveProperty("textMessage");
+  expect(payload).toMatchObject({
+    latitude: -23.5,
+    longitude: -46.6,
+    name: "SOS Moto Anjo — Piloto QA",
+  });
+  expect(payload.address).toContain("SOS acionado");
+  expect(payload.address).toContain("11999990000");
+  expect(payload.address).toContain("08/09/2026");
+  expect(payload.address).toContain("17:00");
+  expect(payload).not.toHaveProperty("text");
+  expect(payload).not.toHaveProperty("url");
+  expect(JSON.stringify(payload)).not.toMatch(/https?:\/\/|maps.google/);
+  expect(fetcher.mock.calls.filter(([, request]) => request?.method === "POST")).toHaveLength(1);
   expect(JSON.stringify(payload)).not.toContain("fixture-secret");
 });
 
@@ -92,6 +101,23 @@ test("an old SOS cannot be sent directly even immediately after activation", asy
     fetcher,
   );
   expect(result).toMatchObject({ ok: false, retryable: false });
+  expect(fetcher).not.toHaveBeenCalled();
+});
+
+test.each([
+  [NaN, -46.6],
+  [91, -46.6],
+  [-91, -46.6],
+  [-23.5, Infinity],
+  [-23.5, 181],
+  [-23.5, -181],
+])("invalid native location (%s, %s) never reaches the provider", async (lat, lng) => {
+  const fetcher = vi.fn();
+  expect(await sendSosEvolution("11999990000", { ...data, lat, lng }, fetcher)).toMatchObject({
+    ok: false,
+    uncertain: false,
+    retryable: false,
+  });
   expect(fetcher).not.toHaveBeenCalled();
 });
 
@@ -131,7 +157,7 @@ test.each([301, 302, 303, 307, 308])(
 );
 
 test.each([301, 302, 303, 307, 308])(
-  "sendText HTTP %s never follows Location or retries uncertain POST",
+  "sendLocation HTTP %s never follows Location or retries uncertain POST",
   async (status) => {
     const fetcher = fetcherWith(
       new Response(null, {
@@ -155,7 +181,7 @@ test.each([301, 302, 303, 307, 308])(
   },
 );
 
-test("unreachable read-only preflight may retry, without calling sendText", async () => {
+test("unreachable read-only preflight may retry, without calling sendLocation", async () => {
   const fetcher = vi.fn<typeof fetch>(async () => {
     throw new Error("network");
   });
@@ -237,7 +263,7 @@ test.each([
 );
 
 test.each([408, 500, 502, 503])(
-  "sendText HTTP %s is uncertain and never auto retried",
+  "sendLocation HTTP %s is uncertain and never auto retried",
   async (status) => {
     const result = await sendSosEvolution(
       "11999990000",
@@ -349,7 +375,7 @@ test("incomplete Evolution setup never drains the durable queue", async () => {
 });
 
 test.each(["cancelled", "lost lease", "expired lease", "database unavailable"])(
-  "%s during connection preflight prevents sendText",
+  "%s during connection preflight prevents sendLocation",
   async (change) => {
     let changed = false;
     const { db, rpc } = database([notification], (table) => {

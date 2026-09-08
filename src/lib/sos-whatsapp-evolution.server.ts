@@ -1,5 +1,4 @@
 import {
-  buildSosMessage,
   isWhatsAppConfigured,
   normalizeE164,
   type SendResult,
@@ -12,7 +11,7 @@ import {
 } from "./sos-whatsapp-config.server.ts";
 import { evolutionPreflightDiagnostic } from "./sos-whatsapp-diagnostics.server.ts";
 
-/** Evolution 2.x sendText: response key.id confirms acceptance, never delivery. */
+/** One native location card per queue item; key.id confirms acceptance, never delivery. */
 export async function sendSosEvolution(
   recipientPhone: string,
   data: SosTemplateData,
@@ -40,6 +39,13 @@ export async function sendSosEvolution(
     return fail("SOS anterior à ativação automática. Confira o contato manual.");
   const number = normalizeE164(recipientPhone);
   if (!/^[1-9]\d{9,14}$/.test(number)) return fail("Telefone de destino inválido.");
+  if (
+    !Number.isFinite(data.lat) ||
+    Math.abs(data.lat) > 90 ||
+    !Number.isFinite(data.lng) ||
+    Math.abs(data.lng) > 180
+  )
+    return fail("Localização do SOS inválida.");
   const headers = { apikey: config.apiKey, "Content-Type": "application/json" };
   // A disconnected instance must not be mistaken for an accepted request.
   // This read-only preflight can safely retry; it has no external send side effect.
@@ -108,13 +114,23 @@ export async function sendSosEvolution(
   }
   try {
     const response = await fetcher(
-      `${config.baseUrl}/message/sendText/${encodeURIComponent(config.instance)}`,
+      `${config.baseUrl}/message/sendLocation/${encodeURIComponent(config.instance)}`,
       {
         method: "POST",
         headers,
         redirect: "manual",
         signal: AbortSignal.timeout(12000),
-        body: JSON.stringify({ number, text: buildSosMessage(data), linkPreview: false }),
+        body: JSON.stringify({
+          number,
+          latitude: data.lat,
+          longitude: data.lng,
+          name: `SOS Moto Anjo — ${data.name || "Motociclista"}`,
+          address: [
+            "SOS acionado. Tente entrar em contato com o motociclista.",
+            `Horário: ${data.when.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`,
+            `Telefone: ${data.phone || "não informado"}`,
+          ].join("\n"),
+        }),
       },
     );
     if (response.status >= 300 && response.status < 400)
