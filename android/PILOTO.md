@@ -67,14 +67,16 @@ comportamentais de permissão, 2 de GPS, 7 testes unitários de permissão, lint
 typecheck, build e revisão independente. A publicação da revisão web
 `2026-09-08-gps-permission-proxy-fix` foi confirmada em `release.json`.
 
-O Android desconectou do USB antes da última reabertura física. Esse aceite
-continua pendente de reconexão; não invalida as provas anteriores de login
-restaurado, rota, SOS manual e encerramento, nem confirma a correção no aparelho.
+Após reconectar o Galaxy A17, a reabertura física foi confirmada às 16:23:
+processo encerrado e iniciado novamente, mapa aberto com GPS verde e login
+preservado, sem novo toque em permitir localização. `checkPermissions` foi
+observado na ponte nativa; o processo novo não registrou `Geolocation.then()`
+nem erro fatal do Android.
 
 ## Aceites ainda pendentes
 
-- Reabertura física após a correção de permissão publicada; depois, conferir
-  continuidade da viagem ao navegar entre telas e após recriação do processo.
+- Conferir continuidade de uma viagem ativa ao navegar entre telas e após
+  recriação do processo; a reabertura sem viagem ativa já foi validada.
 - Primeira abertura sem rede mostra a página local e o retry volta à URL
   configurada. Conferir abertura do discador sem concluir uma ligação.
 - Um gesto cancelado no SOS da tela bloqueada não emite pedido. Um gesto

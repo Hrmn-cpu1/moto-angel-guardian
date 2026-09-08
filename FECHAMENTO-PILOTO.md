@@ -71,9 +71,11 @@ wrapper simples e fallback com tempo limitado. Passaram 9 testes comportamentais
 de permissão, 2 de GPS, 7 testes unitários de permissão, lint, typecheck e build,
 além de revisão independente. A revisão web publicada
 `2026-09-08-gps-permission-proxy-fix` foi confirmada em `release.json`.
-**A reabertura física após essa correção ainda está pendente:** o Android
-desconectou do USB na verificação final. As provas anteriores de restauração,
-rota, SOS manual e encerramento continuam válidas para os testes realizados.
+**Reabertura física confirmada às 16:23:** após reconectar o Galaxy A17, o
+processo foi encerrado e iniciado novamente. O app abriu diretamente no mapa,
+com indicador GPS verde e login preservado, sem tocar em permitir localização.
+A consulta nativa `checkPermissions` foi observada e o processo novo não
+registrou o erro `Geolocation.then()` nem erro fatal do Android.
 
 Distribuição pública verificada em 08/09/2026:
 [página para testadores](https://moto-angel-guardian.lovable.app/testar.html)
