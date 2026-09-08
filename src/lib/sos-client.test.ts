@@ -585,7 +585,7 @@ test("a API aceitar o envio também não é entrega", () => {
   assert.equal(estado, "aceita_pelo_provedor");
   assert.equal(claimsDelivery(estado), false);
   // O texto pede para AGUARDAR a confirmação — ou seja, ela ainda não veio.
-  assert.ok(sosDeliveryLabel(estado).toLowerCase().includes("aguarde confirmação"));
+  assert.ok(sosDeliveryLabel(estado).toLowerCase().includes("aguardando confirmação"));
   assert.ok(!sosDeliveryLabel(estado).toLowerCase().includes("entregue"));
 });
 
@@ -602,7 +602,7 @@ test("apenas status delivered/read vindos do webhook viram entrega", () => {
 test("falha do provedor aponta a saída manual em vez de mentir", () => {
   const estado = deliveryStateFromRow({ status: "failed" });
   assert.equal(estado, "recusada_pelo_provedor");
-  assert.ok(sosDeliveryLabel(estado).toLowerCase().includes("manual"));
+  assert.ok(sosDeliveryLabel(estado).toLowerCase().includes("botão enviar"));
 });
 
 /* ================================================================== *
@@ -640,7 +640,10 @@ test("prepared e opened mostram botão manual", () => {
 });
 
 test("os textos exigidos para sent e delivered estão exatos", () => {
-  assert.equal(sosDeliveryLabel("aceita_pelo_provedor"), "Aceito pela API — aguarde confirmação.");
+  assert.equal(
+    sosDeliveryLabel("aceita_pelo_provedor"),
+    "WhatsApp aceitou o aviso. Aguardando confirmação.",
+  );
   assert.equal(sosDeliveryLabel("entregue_confirmado"), "Entregue — confirmado pelo WhatsApp.");
 });
 

@@ -493,7 +493,7 @@ function Dashboard() {
             aria-label="Voltar ao app"
             className={`absolute left-3 top-[var(--ma-top)] ${camada(
               "cartoesDoMapa",
-            )} grid h-10 w-10 place-items-center rounded-xl bg-map-panel/90 text-gold shadow-map backdrop-blur-xl`}
+            )} grid h-11 w-11 place-items-center rounded-xl bg-map-panel/90 text-gold shadow-map backdrop-blur-xl`}
           >
             <ArrowLeft size={17} />
           </button>
@@ -526,7 +526,7 @@ function Dashboard() {
             anjos, apoio, riscos, trânsito). Nenhum handler mudou. */}
         <div
           className={`absolute right-3 ${
-            modoCockpit ? "top-[calc(var(--ma-top)+104px)]" : "top-[calc(var(--ma-top)+104px)]"
+            modoCockpit ? "top-[calc(var(--ma-top)+128px)]" : "top-[calc(var(--ma-top)+128px)]"
           } z-30 flex flex-col gap-2`}
         >
           <LayerToggle
@@ -705,9 +705,9 @@ function LayerToggle({
       onClick={onClick}
       aria-pressed={active}
       aria-label={label}
-      className={`flex h-10 w-10 items-center justify-center rounded-xl bg-map-panel/88 shadow-map backdrop-blur-xl transition ${
+      className={`flex h-11 w-11 items-center justify-center rounded-xl bg-map-panel/88 shadow-map backdrop-blur-xl transition ${
         active ? "text-gold" : "text-muted-foreground"
-      } ${destaque ? "ring-1 ring-gold/20" : ""} ${discreto ? "opacity-60" : ""}`}
+      } ${destaque ? "ring-1 ring-gold/20" : ""} ${discreto ? "border border-white/10" : ""}`}
     >
       {icon}
     </button>

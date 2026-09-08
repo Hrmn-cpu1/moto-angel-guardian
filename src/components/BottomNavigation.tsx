@@ -18,19 +18,23 @@ export function BottomNavigation() {
   const Tab = ({ to, label, icon: Icon }: { to: string; label: string; icon: typeof Home }) => (
     <Link
       to={to}
+      aria-current={isActive(to) ? "page" : undefined}
       className={cn(
-        "flex flex-1 flex-col items-center gap-0.5 py-2 text-[9px] font-semibold uppercase tracking-wider transition-colors",
-        isActive(to) ? "text-gold" : "text-muted-foreground hover:text-gold",
+        "relative flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[11px] font-semibold transition-colors",
+        isActive(to) ? "bg-gold/10 text-gold" : "text-muted-foreground hover:text-gold",
       )}
     >
-      <Icon size={19} strokeWidth={isActive(to) ? 2.4 : 1.9} />
+      <Icon size={20} strokeWidth={isActive(to) ? 2.4 : 1.9} />
       <span>{label}</span>
     </Link>
   );
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-gold/30 bg-[oklch(0.12_0_0)]">
-      <div className="relative mx-auto flex max-w-md items-stretch px-2 pb-[env(safe-area-inset-bottom)]">
+    <nav
+      aria-label="Navegação principal"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-map-panel/98 backdrop-blur-xl"
+    >
+      <div className="relative mx-auto flex max-w-md items-stretch gap-1 px-2 pb-[env(safe-area-inset-bottom)]">
         {tabs.map((it) => (
           <Tab key={it.to} {...it} />
         ))}

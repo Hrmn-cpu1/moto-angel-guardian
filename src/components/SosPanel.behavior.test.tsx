@@ -1,4 +1,4 @@
-import { render, cleanup, screen } from "@testing-library/react";
+import { render, cleanup, screen, fireEvent, waitFor } from "@testing-library/react";
 import { afterEach, expect, test, vi } from "vitest";
 import type { SosController } from "@/hooks/useSosController";
 import type { SosDeliveryState } from "@/lib/sos-client";
@@ -44,13 +44,13 @@ test("a realtime provider acceptance replaces the stale manual instruction witho
   expect(screen.getByText(manualTitle)).toBeTruthy();
   rerender(<SosPanel sos={controller(["aceita_pelo_provedor"])} />);
   expect(screen.queryByText(manualTitle)).toBeNull();
-  expect(screen.getByText("SOS registrado — aceito pela API; aguarde confirmação")).toBeTruthy();
+  expect(screen.getByText("Aviso aceito pelo WhatsApp. Aguardando confirmação")).toBeTruthy();
   expect(screen.queryByText("SOS registrado — entrega confirmada aos contatos")).toBeNull();
 });
 
 test.each([
   ["enviando", "SOS registrado — enviando avisos pelo WhatsApp"],
-  ["recusada_pelo_provedor", "SOS registrado — envio recusado; use os botões manuais"],
+  ["recusada_pelo_provedor", "Envio não realizado. Avise pelo botão Enviar"],
   ["envio_incerto", "SOS registrado — envio sem confirmação; verifique com o contato"],
   ["entregue_confirmado", "SOS registrado — entrega confirmada aos contatos"],
 ] as const)("title follows current recipient state %s", (state, expected) => {
@@ -76,5 +76,41 @@ test("delivery state never overrides cancellation in progress", () => {
     />,
   );
   expect(screen.getByText("Cancelando o alerta")).toBeTruthy();
-  expect(screen.queryByText("SOS registrado — aceito pela API; aguarde confirmação")).toBeNull();
+  expect(screen.queryByText("Aviso aceito pelo WhatsApp. Aguardando confirmação")).toBeNull();
+});
+
+test("modal keeps keyboard focus inside and Escape only closes the panel", () => {
+  const sos = controller(["aceita_pelo_provedor"]);
+  render(<SosPanel sos={sos} />);
+  const close = screen.getByRole("button", { name: "Fechar painel — o SOS continua aberto" });
+  const cancel = screen.getByRole("button", { name: /Cancelar SOS/ });
+  expect(document.activeElement).toBe(close);
+  fireEvent.keyDown(close, { key: "Tab", shiftKey: true });
+  expect(document.activeElement).toBe(cancel);
+  fireEvent.keyDown(cancel, { key: "Tab" });
+  expect(document.activeElement).toBe(close);
+  fireEvent.keyDown(close, { key: "Escape" });
+  expect(sos.closePanel).toHaveBeenCalledOnce();
+  expect(sos.cancel).not.toHaveBeenCalled();
+});
+
+test("accepted messages have no manual resend action, rejected messages do", () => {
+  const { rerender } = render(<SosPanel sos={controller(["aceita_pelo_provedor"])} />);
+  expect(screen.queryByRole("button", { name: /Enviar à mão/ })).toBeNull();
+  rerender(<SosPanel sos={controller(["recusada_pelo_provedor"])} />);
+  expect(screen.getByRole("button", { name: /Enviar à mão/ })).toBeTruthy();
+});
+
+test("realtime removal of a manual action restores focus inside the SOS", async () => {
+  const { rerender } = render(<SosPanel sos={controller(["recusada_pelo_provedor"])} />);
+  screen.getByRole("button", { name: /Enviar à mão/ }).focus();
+  rerender(<SosPanel sos={controller(["aceita_pelo_provedor"])} />);
+  await waitFor(() =>
+    expect(screen.getByRole("dialog").contains(document.activeElement)).toBe(true),
+  );
+  const outside = document.createElement("button");
+  document.body.append(outside);
+  outside.focus();
+  expect(screen.getByRole("dialog").contains(document.activeElement)).toBe(true);
+  outside.remove();
 });

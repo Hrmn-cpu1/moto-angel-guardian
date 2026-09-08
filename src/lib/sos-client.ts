@@ -385,9 +385,9 @@ export type SosDeliveryState =
 const DELIVERY_LABELS: Record<SosDeliveryState, string> = {
   preparada: "Mensagem pronta — ainda não saiu",
   aberta_no_whatsapp: "WhatsApp aberto — confirme o envio por lá",
-  enviando: "Enviando pela API — aguarde",
-  aceita_pelo_provedor: "Aceito pela API — aguarde confirmação.",
-  recusada_pelo_provedor: "A API do WhatsApp recusou. Envie pelo botão manual",
+  enviando: "Enviando aviso pelo WhatsApp…",
+  aceita_pelo_provedor: "WhatsApp aceitou o aviso. Aguardando confirmação.",
+  recusada_pelo_provedor: "Não foi possível enviar. Use o botão Enviar.",
   envio_incerto: "Envio sem confirmação. Verifique com o contato antes de reenviar.",
   entregue_confirmado: "Entregue — confirmado pelo WhatsApp.",
 };
@@ -461,9 +461,8 @@ export function sosPanelTitle(
   if (states.size > 1) return "SOS registrado — confira a situação de cada contato";
   if (states.has("enviando")) return "SOS registrado — enviando avisos pelo WhatsApp";
   if (states.has("aceita_pelo_provedor"))
-    return "SOS registrado — aceito pela API; aguarde confirmação";
-  if (states.has("recusada_pelo_provedor"))
-    return "SOS registrado — envio recusado; use os botões manuais";
+    return "Aviso aceito pelo WhatsApp. Aguardando confirmação";
+  if (states.has("recusada_pelo_provedor")) return "Envio não realizado. Avise pelo botão Enviar";
   if (states.has("envio_incerto"))
     return "SOS registrado — envio sem confirmação; verifique com o contato";
   if (states.has("entregue_confirmado")) return "SOS registrado — entrega confirmada aos contatos";

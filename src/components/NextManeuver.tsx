@@ -52,7 +52,7 @@ export function NextManeuver({
   return (
     <div
       data-testid="proxima-manobra"
-      className={`${camada("cartoesDoMapa")} grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-2xl bg-map-panel/96 p-2.5 shadow-map backdrop-blur-xl ${className ?? ""}`}
+      className={`${camada("cartoesDoMapa")} grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-2xl border border-white/10 bg-map-panel/96 p-3 shadow-map backdrop-blur-xl ${className ?? ""}`}
     >
       <span className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-gold text-primary-foreground">
         <Seta size={34} strokeWidth={2.6} />

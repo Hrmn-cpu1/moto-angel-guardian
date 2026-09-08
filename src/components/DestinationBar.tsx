@@ -30,20 +30,20 @@ export function DestinationBar({
       : null);
 
   return (
-    <div className={`absolute inset-x-4 top-[calc(var(--ma-top)+42px)] ${camada("cartoesDoMapa")}`}>
+    <div className={`absolute inset-x-4 top-[calc(var(--ma-top)+48px)] ${camada("cartoesDoMapa")}`}>
       <button
         type="button"
         onClick={onAbrirDestino}
-        className="flex h-12 w-full items-center gap-3 rounded-xl bg-map-panel/94 px-4 text-left shadow-map backdrop-blur-xl"
+        className="flex min-h-16 w-full items-center gap-3 rounded-2xl border border-white/10 bg-map-panel/96 px-4 py-3 text-left shadow-map backdrop-blur-xl"
       >
         <Search size={18} className="shrink-0 text-gold" />
         <span className="min-w-0 flex-1">
           <span className="block truncate font-display text-[15px] font-bold text-foreground">
-            {rotulo ? "Destino" : "Para onde vamos?"}
+            {rotulo ?? "Para onde vamos?"}
           </span>
-          {rotulo && (
-            <span className="block truncate text-[10px] text-muted-foreground">{rotulo}</span>
-          )}
+          <span className="block truncate text-xs text-muted-foreground">
+            {rotulo ? "Toque para alterar o destino" : "Escolha seu destino e prepare a viagem"}
+          </span>
         </span>
 
         {rota ? (
@@ -52,7 +52,7 @@ export function DestinationBar({
               <span className="block text-sm font-bold text-gold tabular-nums">
                 {rota.distanciaKm.toFixed(1).replace(".", ",")} km
               </span>
-              <span className="block text-[8px] uppercase tracking-widest text-muted-foreground">
+              <span className="block text-[10px] uppercase tracking-wide text-muted-foreground">
                 Distância
               </span>
             </span>
@@ -60,8 +60,8 @@ export function DestinationBar({
               <span className="block text-sm font-bold text-foreground tabular-nums">
                 {rota.duracaoMin} min
               </span>
-              <span className="block text-[8px] uppercase tracking-widest text-muted-foreground">
-                ETA
+              <span className="block text-[10px] uppercase tracking-wide text-muted-foreground">
+                Tempo
               </span>
             </span>
           </span>

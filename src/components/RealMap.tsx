@@ -475,6 +475,7 @@ export default function RealMap({
           disableDefaultUI: true,
           gestureHandling: interactive ? "greedy" : "none",
           zoomControl: interactive,
+          zoomControlOptions: { position: g.maps.ControlPosition.LEFT_CENTER },
           keyboardShortcuts: false,
           clickableIcons: false,
           backgroundColor: "#050505",

@@ -592,3 +592,12 @@
   background-size: 200% 100%;
   animation: shimmer 3.5s linear infinite;
 }
+
+/* Shared keyboard affordance for app controls, including floating map buttons. */
+@layer base {
+  button:focus-visible,
+  a:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 3px;
+  }
+}

@@ -1,4 +1,4 @@
-import { ShieldCheck, Square } from "lucide-react";
+import { ShieldCheck, Square, Volume2, VolumeX } from "lucide-react";
 import { camada } from "@/lib/layers";
 import type { Cardeal, Inclinacao } from "@/lib/ride-telemetry";
 
@@ -50,7 +50,7 @@ export function TelemetryStrip({
   return (
     <div
       data-testid="telemetria-compacta"
-      className={`${camada("painelInferior")} rounded-2xl bg-map-panel/96 px-3 py-2 shadow-map backdrop-blur-xl ${className ?? ""}`}
+      className={`${camada("painelInferior")} rounded-2xl border border-white/10 bg-map-panel/96 px-3 py-3 shadow-map backdrop-blur-xl ${className ?? ""}`}
     >
       <div className="flex items-center gap-2">
         <div className="grid min-w-0 flex-1 grid-cols-3 items-end gap-1">
@@ -66,25 +66,42 @@ export function TelemetryStrip({
         <button
           onClick={onFinalizar}
           aria-label="Finalizar viagem"
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-emergency/12 text-emergency"
+          className="flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 flex-col items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/5 text-foreground"
         >
           <Square size={13} />
+          <span className="text-[10px] font-semibold">Fim</span>
         </button>
       </div>
       {/* Copiloto: UMA linha, dentro da mesma faixa. Contexto de segurança —
           nunca repete a instrução de navegação, nunca inventa perigo. */}
-      {copiloto && (
-        <p
-          data-testid="copiloto-na-faixa"
-          className={`mt-2 flex items-center gap-1.5 border-t border-foreground/8 pt-2 text-[11px] font-semibold leading-tight ${
-            copilotoCritico ? "text-emergency" : "text-muted-foreground"
-          }`}
-        >
-          <ShieldCheck size={13} className={copilotoCritico ? "text-emergency" : "text-gold"} />
-          <span className="truncate">
-            <span className="text-gold">Copiloto</span> · {copiloto}
-          </span>
-        </p>
+      {(copiloto || vozSuportada) && (
+        <div className="mt-2 flex items-center gap-2 border-t border-white/10 pt-2">
+          {copiloto && (
+            <p
+              data-testid="copiloto-na-faixa"
+              className={`flex min-w-0 flex-1 items-center gap-1.5 text-xs font-semibold leading-tight ${
+                copilotoCritico ? "text-emergency" : "text-muted-foreground"
+              }`}
+            >
+              <ShieldCheck size={13} className={copilotoCritico ? "text-emergency" : "text-gold"} />
+              <span className="truncate">
+                <span className="text-gold">Copiloto</span> · {copiloto}
+              </span>
+            </p>
+          )}
+
+          {vozSuportada && (
+            <button
+              type="button"
+              onClick={onAlternarVoz}
+              aria-label="Alternar avisos por voz"
+              aria-pressed={vozLigada}
+              className="ml-auto grid h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 place-items-center rounded-xl border border-white/10 text-gold"
+            >
+              {vozLigada ? <Volume2 size={18} /> : <VolumeX size={18} />}
+            </button>
+          )}
+        </div>
       )}
 
       {/* Contexto que não merece pixel na faixa, mas segue disponível para
@@ -95,11 +112,6 @@ export function TelemetryStrip({
         {modo === "pilotando" ? "Em movimento" : "Parado"}
         {vozSuportada ? ` · Avisos por voz ${vozLigada ? "ligados" : "desligados"}` : ""}
       </span>
-      {vozSuportada && (
-        <button type="button" onClick={onAlternarVoz} className="sr-only">
-          Alternar avisos por voz
-        </button>
-      )}
     </div>
   );
 }
@@ -124,14 +136,10 @@ function Item({
             : "font-display text-[24px] font-bold text-foreground"
         }`}
       >
-        <span className="truncate">{valor}</span>
-        {sufixo && (
-          <span className="shrink-0 text-[11px] font-bold uppercase text-muted-foreground">
-            {sufixo}
-          </span>
-        )}
+        <span style={{ fontSize: valor.length > 4 ? "18px" : undefined }}>{valor}</span>
       </p>
-      <p className="mt-1 truncate text-[9px] font-bold uppercase leading-none tracking-[0.14em] text-muted-foreground">
+      <p className="mt-1 text-[10px] font-semibold uppercase leading-tight tracking-wide text-muted-foreground">
+        {sufixo && <span className="block">{sufixo}</span>}
         {rotulo}
       </p>
     </div>

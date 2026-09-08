@@ -34,15 +34,15 @@ export function HomeTopBar({
   const estadoSegundoPlano = tripActive && segundoPlano ? segundoPlano : null;
 
   return (
-    <header className="pointer-events-none absolute inset-x-4 top-[var(--ma-top)] z-30 grid h-9 grid-cols-[minmax(0,1fr)_auto] items-center">
+    <header className="pointer-events-none absolute inset-x-4 top-[var(--ma-top)] z-30 grid h-10 grid-cols-[minmax(0,1fr)_auto] items-center rounded-2xl border border-white/10 bg-map-panel/95 px-3 shadow-map backdrop-blur-xl">
       <div className="flex min-w-0 items-center gap-2">
         <Star size={17} className="shrink-0 fill-gold text-gold" aria-hidden="true" />
         <span className="truncate font-display text-[15px] font-extrabold text-foreground">
           Moto Anjo
         </span>
       </div>
-      <span className="flex shrink-0 items-center gap-1.5 text-[10px] font-bold text-foreground">
-        GPS
+      <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-semibold text-foreground">
+        {gpsOnline ? "GPS ativo" : "Buscando GPS"}
         <span
           className={`h-2 w-2 rounded-full ${gpsOnline ? "bg-success" : "bg-muted-foreground"}`}
           aria-label={gpsOnline ? "GPS ativo" : "GPS aguardando sinal"}

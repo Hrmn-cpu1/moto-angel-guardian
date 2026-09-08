@@ -22,8 +22,8 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // versionCode monotonico: cada APK que sai do CI precisa de um numero
         // maior que o anterior, senao a Play rejeita. 4 = primeiro RC Android.
-        versionCode 14
-        versionName "1.5.0-piloto"
+        versionCode 15
+        versionName "1.5.1-piloto"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
