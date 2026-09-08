@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Heart, MapPin, MessageCircle, Plus, Send, Trash2, Users } from "lucide-react";
+import { Heart, Loader2, MapPin, MessageCircle, Plus, Send, Trash2, Users } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Header } from "@/components/Header";
 import { GoldButton } from "@/components/GoldButton";
 import { supabase } from "@/integrations/supabase/client";
+import { publicarNaComunidade, validarPublicacao } from "@/lib/community-post";
 import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/_authenticated/community")({
@@ -98,8 +99,17 @@ function Community() {
   const [openComments, setOpenComments] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, CommentRow[]>>({});
   const [commentDraft, setCommentDraft] = useState("");
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [publishOk, setPublishOk] = useState(false);
+  const publishing_ = useRef(false);
 
-  const { data: posts = [], isLoading: loading } = useQuery({
+  const {
+    data: posts = [],
+    isLoading: loading,
+    error: feedError,
+    refetch: refetchFeed,
+  } = useQuery({
     queryKey: feedKey,
     queryFn: fetchFeed,
     staleTime: 15_000,
@@ -162,18 +172,40 @@ function Community() {
   }, [posts, category, regionFilter]);
 
   const publish = async () => {
-    if (!text.trim() || !user) return;
-    const { error } = await supabase.from("community_posts").insert({
-      user_id: user.id,
-      author_name: user.name || user.email.split("@")[0],
-      category: postCategory,
-      region: postRegion.trim(),
-      text: text.trim(),
-    });
-    if (!error) {
+    if (publishing_.current) return;
+    const invalido = validarPublicacao(text);
+    if (invalido) {
+      setPublishError(invalido);
+      return;
+    }
+    publishing_.current = true;
+    setPublishing(true);
+    setPublishError(null);
+    setPublishOk(false);
+    try {
+      const row = await publicarNaComunidade({
+        text,
+        category: postCategory,
+        region: postRegion,
+        authorName: user?.name || user?.email?.split("@")[0],
+      });
+      // Confirmado pelo banco: mostra imediatamente e recarrega do servidor.
+      qc.setQueryData<FeedPost[]>(feedKey, (ps) => [
+        { ...row, likes: 0, liked: false, commentsCount: 0 },
+        ...(ps ?? []).filter((p) => p.id !== row.id),
+      ]);
+      void qc.invalidateQueries({ queryKey: feedKey });
       setText("");
       setPostRegion("");
       setComposing(false);
+      setPublishOk(true);
+      setTimeout(() => setPublishOk(false), 4000);
+    } catch (e) {
+      console.error("[Comunidade] publicação não concluída", e);
+      setPublishError(e instanceof Error ? e.message : "Não foi possível publicar.");
+    } finally {
+      publishing_.current = false;
+      setPublishing(false);
     }
   };
 
@@ -321,10 +353,21 @@ function Community() {
               />
             </div>
             <div className="flex justify-end">
-              <GoldButton size="sm" onClick={publish}>
-                Publicar
+              <GoldButton size="sm" onClick={publish} disabled={publishing}>
+                {publishing ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin" /> Publicando…
+                  </>
+                ) : (
+                  "Publicar"
+                )}
               </GoldButton>
             </div>
+            {publishError && (
+              <p role="alert" className="text-[11px] text-emergency">
+                {publishError}
+              </p>
+            )}
             {!user && (
               <p className="text-[10px] uppercase tracking-widest text-emergency">
                 Entre na sua conta para publicar.
@@ -334,10 +377,33 @@ function Community() {
         </div>
       )}
 
+      {publishOk && (
+        <div className="px-5 pt-4">
+          <p
+            role="status"
+            className="rounded-xl border border-gold/40 bg-gold/10 px-4 py-3 text-xs font-semibold uppercase tracking-widest text-gold"
+          >
+            Publicação realizada
+          </p>
+        </div>
+      )}
+
       <div className="space-y-3 px-5 pt-4">
         {loading ? (
           <div className="glass-card rounded-2xl p-5 text-center text-xs uppercase tracking-widest text-muted-foreground">
             Carregando feed...
+          </div>
+        ) : feedError ? (
+          <div className="glass-card rounded-2xl p-5 text-center">
+            <p role="alert" className="text-sm text-emergency">
+              Não foi possível carregar as publicações.
+            </p>
+            <button
+              onClick={() => void refetchFeed()}
+              className="mt-3 text-[11px] uppercase tracking-widest text-gold"
+            >
+              Tentar novamente
+            </button>
           </div>
         ) : filtered.length === 0 ? (
           <div className="glass-card rounded-2xl p-5 text-center">
