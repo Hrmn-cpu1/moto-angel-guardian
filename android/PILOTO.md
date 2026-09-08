@@ -98,11 +98,19 @@ e teste de entrega autorizado antes de ligar o agendador.
 
 ## Distribuição do piloto
 
-A página `public/testar.html` e o APK em
-`public/downloads/moto-anjo-1.5.0-piloto.apk` estão preparados. A publicação e
-o download pela URL pública continuam pendentes de confirmação. O roteiro
-inclui login Google/e-mail, permissões, contato consentido e conclusão manual
-do aviso no WhatsApp; não representa validação do envio automático.
+Publicação verificada em 08/09/2026:
+[página para testadores](https://moto-angel-guardian.lovable.app/testar.html)
+com HTTP 200 e conteúdo idêntico a `public/testar.html`. O navegador mostrou
+o botão de download e o roteiro de instalação sem problemas visuais.
+
+O [APK 14 para download](https://moto-angel-guardian.lovable.app/downloads/moto-anjo-1.5.0-piloto.apk)
+foi baixado integralmente (9,3 MB). SHA-256 confirmado, igual ao APK instalado
+no aparelho do teste:
+`4f5034baad236e1d2b855929ea5ed5de95df145aed21b6a3a7e2eadffaf733c1`.
+
+O roteiro inclui login Google/e-mail, permissões, contato consentido e
+conclusão manual do aviso no WhatsApp; não representa validação do envio
+automático.
 
 Instalações antigas podem ter certificado diferente do APK debug distribuído.
 Não desinstalar para atualizar sem preservar os dados relevantes e confirmar

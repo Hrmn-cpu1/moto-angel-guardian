@@ -64,10 +64,14 @@ com testadores; não equivale a uma operação de SOS 100% validada.
   às 16:03. O histórico anterior foi preservado; a distância aparece como
   “não medida”, sem inventar deslocamento no teste parado.
 
-Distribuição preparada em `public/testar.html` e
-`public/downloads/moto-anjo-1.5.0-piloto.apk`. A publicação e o download pela
-URL pública ainda precisam ser confirmados; a existência dos arquivos no
-repositório não é prova de disponibilidade para testadores.
+Distribuição pública verificada em 08/09/2026:
+[página para testadores](https://moto-angel-guardian.lovable.app/testar.html)
+respondeu HTTP 200, com conteúdo idêntico a `public/testar.html`. A página
+foi conferida no navegador, com botão de download e instruções visíveis.
+O [APK 14](https://moto-angel-guardian.lovable.app/downloads/moto-anjo-1.5.0-piloto.apk)
+foi baixado integralmente (9,3 MB); seu SHA-256 corresponde ao APK instalado
+no teste físico:
+`4f5034baad236e1d2b855929ea5ed5de95df145aed21b6a3a7e2eadffaf733c1`.
 
 ## Aceites externos pendentes
 
