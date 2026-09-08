@@ -1,6 +1,7 @@
 /// <reference types="google.maps" />
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { MOTORCYCLE_MARKER_HTML } from "@/lib/motorcycle-marker";
 import { abrirNavegacaoExterna } from "@/lib/external-navigation";
 import { useServerFn } from "@tanstack/react-start";
 import { passosDoEnquadramento } from "@/lib/navigation-cue";
@@ -351,6 +352,7 @@ export default function RealMap({
   const enquadradoParaRef = useRef<string | null>(null);
   /** Último centro aplicado à câmera — evita tremor com o GPS parado. */
   const ultimoCentroRef = useRef<{ lat: number; lng: number } | null>(null);
+  const modoCameraRef = useRef<boolean | null>(null);
 
   /* A rota é calculada no SERVIDOR: a chave de navegador não autoriza
    * Directions (REQUEST_DENIED provado em campo). */
@@ -465,6 +467,11 @@ export default function RealMap({
         const map = new g.maps.Map(containerRef.current, {
           center: fallbackCenter,
           zoom: initialZoom,
+          renderingType: g.maps.RenderingType.VECTOR,
+          tilt: 45,
+          heading: 0,
+          tiltInteractionEnabled: interactive,
+          headingInteractionEnabled: interactive,
           disableDefaultUI: true,
           gestureHandling: interactive ? "greedy" : "none",
           zoomControl: interactive,
@@ -474,6 +481,8 @@ export default function RealMap({
           styles: DARK_STYLE,
         });
         mapRef.current = map;
+        modoCameraRef.current = null;
+        ultimoCentroRef.current = null;
         registrarEventoDeViagem("map.ready");
         setState((s) => (s === "error" || authFailed ? "error" : "ready"));
       })
@@ -656,12 +665,19 @@ export default function RealMap({
             const atual = centerRef.current ?? center;
             limites.extend({ lat: atual.lat, lng: atual.lng });
             pontosDoEnquadramento.forEach((p) => limites.extend(p));
-            map.fitBounds(limites, {
-              top: 150,
-              right: 60,
-              bottom: Math.max(120, paddingInferiorRef.current),
-              left: 60,
-            });
+            // fitBounds resets vector tilt/heading. During navigation keep
+            // the forward camera; only frame the complete route in preview.
+            if (!navegandoRef.current) {
+              g.maps.event.addListenerOnce(map, "idle", () => {
+                if (mapRef.current === map) map.setTilt(navegandoRef.current ? 55 : 45);
+              });
+              map.fitBounds(limites, {
+                top: 150,
+                right: 60,
+                bottom: Math.max(120, paddingInferiorRef.current),
+                left: 60,
+              });
+            }
           }
         }
 
@@ -788,6 +804,7 @@ export default function RealMap({
       class MotoUserLocationOverlay extends g.maps.OverlayView {
         private position: google.maps.LatLngLiteral;
         private heading: number | null;
+        private rotation = 0;
         private element: HTMLDivElement | null = null;
 
         constructor(position: google.maps.LatLngLiteral, heading: number | null) {
@@ -800,8 +817,7 @@ export default function RealMap({
           const element = document.createElement("div");
           element.className = "moto-user-location-marker";
           element.setAttribute("aria-label", "Sua localização atual");
-          element.innerHTML =
-            '<span class="moto-user-location-marker__halo"></span><span class="moto-user-location-marker__shield"><span class="moto-user-location-marker__star">★</span></span>';
+          element.innerHTML = MOTORCYCLE_MARKER_HTML;
           this.element = element;
           this.applyHeading();
           this.getPanes()?.overlayMouseTarget.appendChild(element);
@@ -815,6 +831,7 @@ export default function RealMap({
           );
           if (!point) return;
           this.element.style.transform = `translate3d(${point.x}px, ${point.y}px, 0)`;
+          this.applyHeading();
         }
 
         onRemove() {
@@ -833,12 +850,16 @@ export default function RealMap({
         }
 
         private applyHeading() {
-          const shield = this.element?.querySelector<HTMLElement>(
-            ".moto-user-location-marker__shield",
-          );
-          if (!shield) return;
-          shield.style.transform = `translate(-50%, -50%) rotate(${this.heading ?? 0}deg)`;
-          shield.classList.toggle("is-neutral", this.heading == null);
+          const bike = this.element?.querySelector<HTMLElement>(".moto-user-location-marker__bike");
+          if (!bike) return;
+          const cameraHeading =
+            this.getMap() instanceof g.maps.Map
+              ? ((this.getMap() as google.maps.Map).getHeading() ?? 0)
+              : 0;
+          const rotation =
+            this.heading == null ? 0 : ((this.heading - cameraHeading + 540) % 360) - 180;
+          this.rotation += ((((rotation - this.rotation) % 360) + 540) % 360) - 180;
+          bike.style.transform = `translate(-50%, -50%) rotate(${this.rotation}deg)`;
         }
       }
 
@@ -865,25 +886,41 @@ export default function RealMap({
       accuracyCircleRef.current.setCenter(center);
       if (accuracy != null) accuracyCircleRef.current.setRadius(accuracy);
     }
-    /* Câmera (V3).
-     *
-     * Fora da viagem, seguir é centralizar. Em navegação o centro do mapa vai
-     * para NORTE do motociclista, de modo que ele apareça no terço inferior e
-     * sobre tela para a estrada à frente. O cálculo é puro (`nav-camera.ts`) e
-     * imperativo: nenhum estado do React é tocado por tick de GPS, e a câmera
-     * só se move quando a posição realmente mudou. */
+    // A câmera vetorial inclina a estrada e, em viagem, olha na direção do GPS.
+    // Ao parar, preserva a última direção confiável; não inventa uma bússola.
     if (follow) {
+      const mudouModo = modoCameraRef.current !== navegando;
+      if (mudouModo) {
+        modoCameraRef.current = navegando;
+        map.setTilt(navegando ? 55 : 45);
+        if (navegando) map.setZoom(17.5);
+        else {
+          map.setHeading(0);
+          map.setZoom(initialZoom);
+        }
+        ultimoCentroRef.current = null;
+      }
+      if (navegando && heading != null && Number.isFinite(heading)) {
+        const atual = map.getHeading() ?? 0;
+        const diferenca = ((heading - atual + 540) % 360) - 180;
+        if (Math.abs(diferenca) >= 3) map.setHeading(heading);
+      }
       const zoomAtual = map.getZoom() ?? 16;
       const altura = containerRef.current?.clientHeight ?? 0;
       const alvo = navegando
-        ? centroAcimaDoUsuario(center, zoomAtual, deslocamentoDaCamera(altura))
+        ? centroAcimaDoUsuario(
+            center,
+            zoomAtual,
+            deslocamentoDaCamera(altura),
+            map.getHeading() ?? 0,
+          )
         : center;
       if (precisaMoverCamera(ultimoCentroRef.current, alvo)) {
         ultimoCentroRef.current = alvo;
-        map.panTo(alvo);
+        map.setCenter(alvo);
       }
     }
-  }, [center, state, accuracy, follow, navegando, heading]);
+  }, [center, state, accuracy, follow, navegando, heading, initialZoom]);
 
   /* POIs — reconciliação incremental por ID.
    *

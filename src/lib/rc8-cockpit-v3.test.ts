@@ -97,7 +97,7 @@ test("a telemetria mostra só velocidade, restante e chegada", () => {
 test("o mapa recebe o modo de navegação e usa a câmera pura", () => {
   const mapa = ler("src/components/RealMap.tsx");
   assert.match(mapa, /navegando = false/);
-  assert.match(mapa, /centroAcimaDoUsuario\(center, zoomAtual, deslocamentoDaCamera/);
+  assert.match(mapa, /centroAcimaDoUsuario\(\s*center,\s*zoomAtual,\s*deslocamentoDaCamera/);
   assert.match(mapa, /precisaMoverCamera\(ultimoCentroRef\.current, alvo\)/);
   const home = ler("src/routes/_authenticated/dashboard.tsx");
   assert.match(home, /navegando=\{modoCockpit\}/);
@@ -107,4 +107,22 @@ test("SOS e viagem seguem intocados na Home", () => {
   const home = ler("src/routes/_authenticated/dashboard.tsx");
   assert.match(home, /<SosFabControlado/);
   assert.match(home, /onFinalizar=\{\(\) => finalizar\(sosAtivo\)\}/);
+});
+
+test("câmera olha à frente ao navegar para leste, sul e oeste", () => {
+  const origem = { lat: -23.55, lng: -46.63 };
+  const leste = centroAcimaDoUsuario(origem, 17, 150, 90);
+  const sul = centroAcimaDoUsuario(origem, 17, 150, 180);
+  const oeste = centroAcimaDoUsuario(origem, 17, 150, 270);
+  assert.ok(leste.lng > origem.lng);
+  assert.ok(Math.abs(leste.lat - origem.lat) < 1e-9);
+  assert.ok(sul.lat < origem.lat);
+  assert.ok(Math.abs(sul.lng - origem.lng) < 1e-9);
+  assert.ok(oeste.lng < origem.lng);
+});
+
+test("câmera cruza o antimeridiano sem produzir longitude inválida", () => {
+  const centro = centroAcimaDoUsuario({ lat: 0, lng: 179.9999 }, 10, 150, 90);
+  assert.ok(centro.lng >= -180 && centro.lng <= 180);
+  assert.ok(centro.lng < 0);
 });

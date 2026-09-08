@@ -7,7 +7,7 @@
  * inferior da área útil — o mesmo comportamento de um navegador dedicado.
  *
  * Nada aqui inventa dado: recebe a posição real e devolve apenas para onde a
- * câmera deve olhar. Sem posição, quem chama não chama.
+ * câmera deve olhar. A direção recebida orienta o deslocamento à frente. Sem posição, quem chama não chama.
  */
 
 /** Fração da altura em que o usuário deve aparecer durante a navegação. */
@@ -46,13 +46,16 @@ export function centroAcimaDoUsuario(
   alvo: { lat: number; lng: number },
   zoom: number,
   deslocamentoPx: number,
+  heading = 0,
 ): { lat: number; lng: number } {
   if (!Number.isFinite(zoom) || !Number.isFinite(deslocamentoPx) || deslocamentoPx === 0) {
     return alvo;
   }
   const escala = Math.pow(2, zoom);
-  const y = latParaY(alvo.lat) - deslocamentoPx / escala;
-  return { lat: yParaLat(y), lng: alvo.lng };
+  const angulo = ((Number.isFinite(heading) ? heading : 0) * Math.PI) / 180;
+  const y = latParaY(alvo.lat) - (deslocamentoPx * Math.cos(angulo)) / escala;
+  const lng = alvo.lng + (deslocamentoPx * Math.sin(angulo) * 360) / (TAMANHO_DO_LADRILHO * escala);
+  return { lat: yParaLat(y), lng: lng >= -180 && lng <= 180 ? lng : ((lng + 540) % 360) - 180 };
 }
 
 /**
