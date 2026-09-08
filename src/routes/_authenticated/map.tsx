@@ -87,7 +87,7 @@ function MapPage() {
 
   useEffect(() => {
     if (!permissionGranted) return;
-    void capture();
+    void capture({ initial: true });
     startWatch();
     return () => stopWatch();
   }, [capture, permissionGranted, startWatch, stopWatch]);

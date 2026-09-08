@@ -357,7 +357,7 @@ function Dashboard() {
 
   useEffect(() => {
     if (!granted) return;
-    void capture();
+    void capture({ initial: true });
     startWatch();
     return () => stopWatch();
   }, [granted, capture, startWatch, stopWatch]);

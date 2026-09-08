@@ -98,35 +98,42 @@ export function useGeolocation() {
   /** Cancelador da assinatura compartilhada (não é mais um watchId próprio). */
   const cancelarRef = useRef<(() => void) | null>(null);
 
-  const capture = useCallback(async (): Promise<GeoCaptureResult> => {
-    const blocked = unavailableReason();
-    if (blocked) {
-      setError(blocked);
-      setPosition(null);
-      return { ok: false, error: blocked };
-    }
-    setLoading(true);
-    setError(null);
-    return new Promise<GeoCaptureResult>((resolve) => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const p = toPosition(pos);
-          setPosition(p);
-          setLoading(false);
-          resolve({ ok: true, position: p });
-        },
-        (err) => {
-          const geoError = toGeoError(err);
-          setError(geoError);
-          setPosition(null);
-          setLoading(false);
-          resolve({ ok: false, error: geoError });
-        },
-        // maximumAge: 0 obriga leitura nova — nada de fix reciclado num SOS.
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
-      );
-    });
-  }, []);
+  const capture = useCallback(
+    async (options?: { initial?: boolean }): Promise<GeoCaptureResult> => {
+      const blocked = unavailableReason();
+      if (blocked) {
+        setError(blocked);
+        setPosition(null);
+        return { ok: false, error: blocked };
+      }
+      setLoading(true);
+      setError(null);
+      return new Promise<GeoCaptureResult>((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const p = toPosition(pos);
+            setPosition((current) =>
+              options?.initial && current && current.timestamp >= p.timestamp ? current : p,
+            );
+            setLoading(false);
+            resolve({ ok: true, position: p });
+          },
+          (err) => {
+            const geoError = toGeoError(err);
+            setError(geoError);
+            if (!options?.initial) setPosition(null);
+            setLoading(false);
+            resolve({ ok: false, error: geoError });
+          },
+          // maximumAge: 0 obriga leitura nova — nada de fix reciclado num SOS.
+          options?.initial
+            ? { enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 }
+            : { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+        );
+      });
+    },
+    [],
+  );
 
   const share = useCallback(async (text: string, url?: string) => {
     if (typeof navigator === "undefined") return false;

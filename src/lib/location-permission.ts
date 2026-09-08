@@ -243,6 +243,11 @@ export function _resetarPermissao(): void {
 
 type EstadoPlugin = { location?: string; coarseLocation?: string };
 
+function statusDoPlugin(estado: EstadoPlugin): StatusPermissao {
+  if (estado.location === "granted" || estado.coarseLocation === "granted") return "concedida";
+  return traduzirEstadoNativo(estado.location ?? estado.coarseLocation);
+}
+
 /**
  * Mesmo padrão de `native.ts`: import dinâmico do pacote que o projeto já
  * tem, e não adivinhação de `window.Capacitor.Plugins.*`. No navegador a
@@ -292,7 +297,7 @@ export async function consultarPermissao(): Promise<LeituraPermissao> {
         const nativo = await pluginGeolocation();
         if (!nativo) return "desconhecido";
         const r = await nativo.checkPermissions();
-        return traduzirEstadoNativo(r.location ?? r.coarseLocation);
+        return statusDoPlugin(r);
       })(),
       LIMITE_DE_CONSULTA_MS,
       "desconhecido",
@@ -337,15 +342,29 @@ export async function consultarPermissao(): Promise<LeituraPermissao> {
 
 export async function pedirPermissao(): Promise<LeituraPermissao> {
   if (isNativeApp()) {
+    // Consultar não depende de um fix: uma autorização existente libera a tela.
+    const nativo = await comTempoLimite(pluginGeolocation(), LIMITE_DE_CONSULTA_MS, null);
+    const existente = nativo
+      ? await comTempoLimite(nativo.checkPermissions(), LIMITE_DE_CONSULTA_MS, null)
+      : null;
+    if (!nativo || !existente) {
+      const leitura = estadoQuandoNaoSabemos(atual);
+      definirLeitura(leitura);
+      return leitura;
+    }
+    if (statusDoPlugin(existente) === "concedida") {
+      const leitura: LeituraPermissao = { status: "concedida", origem: "nativo" };
+      definirLeituraDireta(leitura);
+      return leitura;
+    }
     const status = await comTempoLimite(
       (async (): Promise<StatusPermissao> => {
-        const nativo = await pluginGeolocation();
-        if (!nativo) return "desconhecido";
         const r = await nativo.requestPermissions({ permissions: ["location", "coarseLocation"] });
-        return traduzirEstadoNativo(r.location ?? r.coarseLocation);
+        const status = statusDoPlugin(r);
+        if (status !== "desconhecido") definirLeituraDireta({ status, origem: "nativo" });
+        return status;
       })(),
-      // O diálogo do sistema espera a pessoa responder: aqui o limite é
-      // generoso, e serve só para o caso de o plugin não existir.
+      // Libera o botão se o diálogo demorar; uma resposta tardia ainda atualiza o estado.
       15000,
       "desconhecido",
     );
@@ -354,9 +373,25 @@ export async function pedirPermissao(): Promise<LeituraPermissao> {
       definirLeituraDireta(leitura);
       return leitura;
     }
+    // Uma ponte sem resposta não deve iniciar outra espera por GPS no WebView.
+    const leitura = estadoQuandoNaoSabemos(atual);
+    definirLeitura(leitura);
+    return leitura;
   }
 
+  const existente = await consultarPermissao();
+  if (existente.status === "concedida") return existente;
+
+  let encerrado = false;
+  let cancelarEscuta = () => {};
   const pedidoWeb = new Promise<LeituraPermissao>((resolve) => {
+    cancelarEscuta = assinarPermissao((leitura) => {
+      // A Permissions API pode confirmar antes de o GPS conseguir um fix.
+      if (!encerrado && leitura.status === "concedida") {
+        encerrado = true;
+        resolve(leitura);
+      }
+    });
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       const leitura: LeituraPermissao = { status: "indisponivel", origem: "nenhuma" };
       definirLeitura(leitura);
@@ -365,6 +400,7 @@ export async function pedirPermissao(): Promise<LeituraPermissao> {
     }
     navigator.geolocation.getCurrentPosition(
       () => {
+        if (encerrado) return;
         // Uma posição voltou: é a prova mais forte que existe de que a
         // permissão está de pé. Entra sem reconciliação.
         const leitura: LeituraPermissao = { status: "concedida", origem: "web" };
@@ -372,6 +408,7 @@ export async function pedirPermissao(): Promise<LeituraPermissao> {
         resolve(leitura);
       },
       (err) => {
+        if (encerrado) return;
         const leitura: LeituraPermissao = {
           status: traduzirErroDeGps(err.code, err.PERMISSION_DENIED),
           origem: "web",
@@ -379,13 +416,15 @@ export async function pedirPermissao(): Promise<LeituraPermissao> {
         definirLeituraDireta(leitura);
         resolve(leitura);
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 30000 },
     );
   });
 
   // Se a plataforma não responder, saímos do "solicitando" com um estado que
   // tem botão funcional. Nunca ficamos presos.
   const resultado = await comTempoLimite(pedidoWeb, LIMITE_DE_PEDIDO_MS, null);
+  encerrado = true;
+  cancelarEscuta();
   if (resultado) return resultado;
   const desistencia = estadoQuandoNaoSabemos(atual);
   definirLeituraDireta(desistencia);
