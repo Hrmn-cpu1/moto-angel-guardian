@@ -1,4 +1,4 @@
-# Android — piloto 1.4.0 (13)
+# Android — piloto 1.5.0 (14)
 
 O APK carrega a URL publicada configurada por `MOTOANJO_WEB_URL`; o frontend
 testado localmente só aparece no aparelho depois de publicado nessa URL.
@@ -44,8 +44,30 @@ variáveis, a tarefa release produz saída **sem assinatura**.
   da detecção e do countdown, além da captura de sensores e GPS.
 - Finalizar a viagem encerra serviço, sensores e navegação de bloqueio.
 
-O serviço Android captura os sensores, mas o motor de detecção e o countdown
-ainda executam no JavaScript da WebView. A execução contínua com a WebView
-suspensa **não está garantida por esta arquitetura**. A notificação diz
-“Viagem ativa”, sem afirmar proteção ou entrega de alertas. A página local e
-a compilação do APK não substituem esse aceite físico.
+O serviço Android agora executa o motor de detecção, countdown e registro HTTP
+independentemente da WebView. A credencial tem escopo restrito a abrir SOS na
+viagem por até 12 horas e fica criptografada pelo Android Keystore. A API usa
+o mesmo registro e a mesma fila do SOS web. Reabrir a WebView preserva a
+viagem e o pedido pendente até reconciliar o estado do servidor.
+
+`WAKE_LOCK` mantém o processamento durante a viagem, com prazo renovado
+somente enquanto o serviço está ativo; parar a viagem libera o recurso.
+O GPS mantém intervalo conservador com distância mínima zero para também
+confirmar imobilidade com fixes novos. Impactos entre emissões preservam o
+pico. GPS ausente, impreciso ou antigo não confirma uma queda. Essas mudanças
+precisam de medição de bateria e continuidade no aparelho real.
+
+O diagnóstico disponível no APK debug mostra um countdown de 15 segundos e
+permite cancelar/confirmar **sem criar pedido nem usar a rede**. Ele verifica
+o caminho local; não prova entrega de mensagem.
+
+O usuário confirmou em 08/09/2026 que ainda não existe conta oficial Meta para
+o produto. O envio automático permanece desligado. Registrar um SOS não
+significa avisar contatos: o compartilhamento manual precisa ser concluído
+no WhatsApp. A ativação futura exige remetente, template aprovado, webhook
+e teste de entrega autorizado antes de ligar o agendador.
+
+O Galaxy A17 observado usa APK 10, assinado com certificado diferente do debug
+local. Não desinstalar para atualizar sem preservar os dados e combinar a
+reentrada na conta. O aparelho deixou de aparecer no USB antes da instalação
+e do teste físico; build e testes automatizados não substituem esse aceite.

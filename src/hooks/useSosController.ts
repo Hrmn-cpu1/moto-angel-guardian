@@ -70,6 +70,7 @@ export interface SosController {
   markOpened: (id: string) => void;
   closePanel: () => void;
   shareNative: () => Promise<void>;
+  refresh: () => void;
 }
 
 type NotificationRow = {
@@ -109,6 +110,8 @@ export function useSosRuntime(): SosController {
   const [rows, setRows] = useState<NotificationRow[]>([]);
   const [opened, setOpened] = useState<Record<string, boolean>>({});
   const [profileName, setProfileName] = useState("Motociclista");
+  const [recoveryTick, setRecoveryTick] = useState(0);
+  const refresh = useCallback(() => setRecoveryTick((tick) => tick + 1), []);
 
   /**
    * Lock de concorrência.
@@ -122,6 +125,7 @@ export function useSosRuntime(): SosController {
   /** Mantido entre tentativas para que o retry seja idempotente. */
   const pendingRequestIdRef = useRef<string | null>(null);
   const mountedRef = useRef(true);
+  const recoveryEpochRef = useRef(0);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -162,6 +166,8 @@ export function useSosRuntime(): SosController {
   useEffect(() => {
     let cancelado = false;
 
+    if (inFlightRef.current) return;
+    const epoch = recoveryEpochRef.current;
     const local = loadActiveSos();
     if (local) {
       setSosEventId(local.sosEventId);
@@ -188,7 +194,13 @@ export function useSosRuntime(): SosController {
       // fazer. Em qualquer falha, o botão volta a funcionar.
       try {
         const { data, error } = await supabase.rpc("sos_active_event");
-        if (cancelado || !mountedRef.current) return;
+        if (
+          cancelado ||
+          !mountedRef.current ||
+          epoch !== recoveryEpochRef.current ||
+          inFlightRef.current
+        )
+          return;
 
         if (error) {
           // Offline ou servidor fora: mantém o que veio do snapshot local e
@@ -197,13 +209,11 @@ export function useSosRuntime(): SosController {
         }
 
         const ativo = Array.isArray(data) ? data[0] : null;
+        setErrorMessage(null);
         if (!ativo) {
           // O banco diz que não há SOS aberto: o snapshot local é resto de um
           // alerta já cancelado, possivelmente em outro aparelho.
           clearActiveSos();
-          if (!local) {
-            return;
-          }
           setSosEventId(null);
           setRequestId(null);
           setFix(null);
@@ -236,6 +246,17 @@ export function useSosRuntime(): SosController {
           accuracy: ativo.accuracy_m != null ? Number(ativo.accuracy_m) : null,
           triggeredAt: new Date(ativo.triggered_at).getTime(),
         });
+      } catch {
+        // A network exception is uncertainty, never evidence that an SOS was closed.
+        if (
+          !cancelado &&
+          mountedRef.current &&
+          epoch === recoveryEpochRef.current &&
+          !inFlightRef.current
+        )
+          setErrorMessage(
+            "Não foi possível conferir o SOS no servidor. Tentaremos novamente ao reconectar.",
+          );
       } finally {
         if (!cancelado && mountedRef.current) setRecovering(false);
       }
@@ -244,7 +265,7 @@ export function useSosRuntime(): SosController {
     return () => {
       cancelado = true;
     };
-  }, []);
+  }, [recoveryTick]);
 
   /* ---------------------------------------------------------------- *
    * Notificações do evento atual, em tempo real
@@ -327,6 +348,7 @@ export function useSosRuntime(): SosController {
    * Acionamento
    * ---------------------------------------------------------------- */
   const executar = useCallback(async () => {
+    recoveryEpochRef.current += 1;
     setErrorMessage(null);
     setDegradedWarning(null);
     setOpen(true);
@@ -529,8 +551,10 @@ export function useSosRuntime(): SosController {
    * ---------------------------------------------------------------- */
   const cancel = useCallback(() => {
     const id = sosEventId;
+    recoveryEpochRef.current += 1;
 
     const limpar = () => {
+      recoveryEpochRef.current += 1;
       clearActiveSos();
       pendingRequestIdRef.current = null;
       setSosEventId(null);
@@ -552,10 +576,12 @@ export function useSosRuntime(): SosController {
 
     setPhase("cancelando");
     void (async () => {
-      const { error } = await supabase.rpc("sos_cancel", {
-        _sos_event_id: id,
-        _reason: "Cancelado pelo usuário no app",
-      });
+      const { error } = await Promise.resolve(
+        supabase.rpc("sos_cancel", {
+          _sos_event_id: id,
+          _reason: "Cancelado pelo usuário no app",
+        }),
+      ).catch(() => ({ error: new Error("Cancelamento não confirmado") }));
       if (error) {
         // O alerta continua aberto no servidor: não fingir que fechou.
         setPhase("aguardando_envio");
@@ -616,6 +642,7 @@ export function useSosRuntime(): SosController {
     markOpened,
     closePanel,
     shareNative,
+    refresh,
   };
 }
 

@@ -55,6 +55,8 @@ public class LockNavigationActivity extends Activity {
     private TextView telemetria;
     private TextView risco;
     private TextView sos;
+    private TextView cancelarQueda;
+    private NativeProtection.Listener protectionListener;
     private MapaTilesView mapa;
 
     private LockNavigationState.Ouvinte ouvinte;
@@ -79,6 +81,9 @@ public class LockNavigationActivity extends Activity {
         }
 
         setContentView(montarTela());
+        protectionListener = state -> runOnUiThread(() -> aplicarProtecao(state));
+        NativeProtection.get(this).addListener(protectionListener);
+        aplicarProtecao(NativeProtection.get(this).snapshot());
 
         final LockNavigationState.Quadro inicial = LockNavigationState.atual();
         // REGRESSÃO CORRIGIDA (P0): antes exigíamos `inicial.ativa`, isto é, um
@@ -152,6 +157,7 @@ public class LockNavigationActivity extends Activity {
     protected void onDestroy() {
         LockDiagnostics.registrar(this, "LOCK_ACTIVITY_ON_DESTROY");
         LockNavigationState.marcarActivity(false);
+        NativeProtection.get(this).removeListener(protectionListener);
         if (mapa != null) mapa.encerrar();
         LockNavigationState.removerOuvinte(ouvinte);
         LockNavigationState.removerFechamento(fechamento);
@@ -233,6 +239,14 @@ public class LockNavigationActivity extends Activity {
         lpSos.topMargin = dp(16);
         raiz.addView(sos, lpSos);
         sos.setOnTouchListener(this::aoTocarSos);
+        cancelarQueda = texto("Estou bem — cancelar alerta", 16, "#FFFFFF", true);
+        cancelarQueda.setPadding(dp(16), dp(18), dp(16), dp(18));
+        cancelarQueda.setGravity(Gravity.CENTER);
+        cancelarQueda.setVisibility(View.GONE);
+        cancelarQueda.setOnClickListener(view -> {
+            try { NativeProtection.get(this).cancelAlert(); } catch (Exception ignored) { }
+        });
+        raiz.addView(cancelarQueda);
 
         final TextView abrirApp = texto("Abrir aplicativo e conferir SOS", 14, "#D4AF37", true);
         abrirApp.setGravity(Gravity.CENTER);
@@ -251,9 +265,9 @@ public class LockNavigationActivity extends Activity {
     /**
      * SOS na tela de bloqueio.
      *
-     * Não abre um segundo caminho de emergência: publica o pedido, e quem
-     * dispara é o MESMO controlador de SOS do app. Se o app não puder atender
-     * naquele instante, o texto diz a verdade em vez de fingir envio.
+     * O executor nativo registra pela mesma RPC usada pelo aplicativo.
+     * A Activity acompanha a confirmação sem precisar acordar a WebView.
+     * Sem configuração nativa, mantém o encaminhamento legado como pendente.
      */
     private boolean aoTocarSos(View v, MotionEvent e) {
         if (sosPedido) return true;
@@ -270,7 +284,10 @@ public class LockNavigationActivity extends Activity {
                 if (gestoSos.release(SystemClock.elapsedRealtime())) {
                     sosPedido = true;
                     sos.setText("PEDIDO PENDENTE · CONFIRA NO APP");
-                    LockNavigationState.pedirSos();
+                    if (NativeProtection.get(this).configured() || NativeProtection.get(this).snapshot().optBoolean("diagnostic")) {
+                        try { NativeProtection.get(this).requestHelp("manual"); }
+                        catch (Exception ignored) { sos.setText("NÃO CONFIRMADO · ABRA O APP"); sosPedido = false; }
+                    } else LockNavigationState.pedirSos();
                 } else {
                     sos.setText("SEGURE PARA PEDIR SOCORRO");
                 }
@@ -278,6 +295,21 @@ public class LockNavigationActivity extends Activity {
             default:
                 return false;
         }
+    }
+
+    private void aplicarProtecao(com.getcapacitor.JSObject state) {
+        if (sos == null || cancelarQueda == null) return;
+        final String phase = state.optString("phase", "normal");
+        final boolean countdown = "countdown".equals(phase);
+        cancelarQueda.setVisibility(countdown ? View.VISIBLE : View.GONE);
+        if (countdown) {
+            long seconds = Math.max(0, (state.optLong("countdownEndsAt") - System.currentTimeMillis() + 999) / 1000);
+            sos.setText((state.optBoolean("diagnostic") ? "TESTE SEM ENVIO · " : "POSSÍVEL QUEDA · ") + seconds + "s · SEGURE PARA AJUDA");
+            sosPedido = false;
+        } else if ("registering".equals(phase)) { sos.setText("REGISTRANDO SOS…"); sosPedido = true; }
+        else if ("registered".equals(phase)) { sos.setText("SOS REGISTRADO · CONFIRA ENTREGA NO APP"); sosPedido = true; }
+        else if ("failed".equals(phase)) { sos.setText(state.optBoolean("needsReconfiguration") ? "ABRA O APP PARA REATIVAR O SOS" : "SOS NÃO CONFIRMADO · SEGURE PARA TENTAR"); sosPedido = false; }
+        else if ("cancelled".equals(phase) || "normal".equals(phase)) { sos.setText("SEGURE PARA PEDIR SOCORRO"); sosPedido = false; }
     }
 
     private TextView texto(String valor, int sp, String cor, boolean negrito) {

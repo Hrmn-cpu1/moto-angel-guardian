@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { queueCompletedTrip, syncCompletedTrips } from "@/lib/trip-history-sync";
+import { readNativeProtection, stopNativeProtection } from "@/lib/native-protection";
 import {
   assinarEstadoDoServico,
   consultarEstadoDoServico,
@@ -129,6 +130,7 @@ export async function reconciliarComServico(): Promise<void> {
 
 export function useTrip() {
   const [viagem, setViagem] = useState<Viagem>(viagemAtual);
+  const [hydrated, setHydrated] = useState(hidratado);
   // Estado REAL do serviço de primeiro plano — nunca deduzido do estado da
   // viagem. Viagem ativa e serviço recusado é uma combinação possível, e é
   // exatamente ela que a tela precisa conseguir mostrar.
@@ -157,6 +159,7 @@ export function useTrip() {
     registrarEventoDeViagem("app.boot");
     if (sessaoAnteriorTerminouMal()) registrarEventoDeViagem("session.previous.unfinished");
     setViagem(viagemAtual);
+    setHydrated(true);
     // Voltar para a tela não pode herdar um estado velho: quem sabe se o
     // serviço está de pé é o Android.
     void reconciliarComServico().catch(() => undefined);
@@ -203,30 +206,50 @@ export function useTrip() {
     publicar(iniciarViagem(viagemAtual, Date.now()));
   }, []);
   const cancelar = useCallback(() => publicar(cancelarPreparacao(viagemAtual)), []);
-  const finalizar = useCallback(async (sosAtivo: boolean) => {
-    if (finalizando || viagemAtual.estado !== "ativa" || viagemAtual.iniciadaEm == null) return;
-    finalizando = true;
-    try {
-      await queueCompletedTrip(viagemAtual.iniciadaEm);
-      publicar(finalizarViagem(viagemAtual, sosAtivo));
-      toast.success(
-        "Viagem encerrada. O compartilhamento mantém a sua escolha; confira em Compartilhar.",
-      );
-      try {
-        await syncCompletedTrips();
-      } catch {
-        toast.warning(
-          "Viagem salva neste aparelho. O histórico será sincronizado quando a conexão voltar.",
-        );
-      }
-    } catch {
-      toast.error(
-        "Não foi possível salvar a viagem. Ela continua aberta; tente finalizar novamente.",
-      );
-    } finally {
-      finalizando = false;
-    }
-  }, []);
+  const finalizar = useCallback(finalizarViagemAtual, []);
 
-  return { viagem, servico, definirDestino, iniciar, cancelar, finalizar };
+  return { viagem, hydrated, servico, definirDestino, iniciar, cancelar, finalizar };
+}
+
+/** Shared by the trip button and logout; false leaves the trip and account active. */
+export async function finalizarViagemAtual(sosAtivo = false): Promise<boolean> {
+  if (finalizando) return false;
+  if (viagemAtual.estado !== "ativa") return true;
+  if (viagemAtual.iniciadaEm == null) return false;
+  finalizando = true;
+  let nativeStopped = false;
+  try {
+    const native = await readNativeProtection();
+    if (
+      !native.diagnostic &&
+      ((native.requestId && !native.sosEventId) || native.phase === "countdown")
+    ) {
+      toast.error("Confira e cancele o SOS pendente antes de finalizar a viagem.");
+      return false;
+    }
+    await stopNativeProtection({ preservePending: true });
+    nativeStopped = true;
+    await queueCompletedTrip(viagemAtual.iniciadaEm);
+    publicar(finalizarViagem(viagemAtual, sosAtivo));
+    toast.success(
+      "Viagem encerrada. O compartilhamento mantém a sua escolha; confira em Compartilhar.",
+    );
+    try {
+      await syncCompletedTrips();
+    } catch {
+      toast.warning(
+        "Viagem salva neste aparelho. O histórico será sincronizado quando a conexão voltar.",
+      );
+    }
+    return true;
+  } catch {
+    toast.error(
+      nativeStopped
+        ? "Não foi possível salvar a viagem; ela continua aberta com proteção limitada. Tente novamente."
+        : "Não foi possível encerrar a viagem. Confira o SOS pendente e tente novamente.",
+    );
+    return false;
+  } finally {
+    finalizando = false;
+  }
 }

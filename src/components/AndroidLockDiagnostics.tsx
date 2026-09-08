@@ -8,6 +8,7 @@ import {
   type EventoDiagnosticoLock,
 } from "@/lib/trip-service";
 import { toast } from "sonner";
+import { startNativeProtectionDiagnostic } from "@/lib/native-protection";
 
 function tempoRelativo(quandoMs: number): string {
   const segundos = Math.max(0, Math.floor((Date.now() - quandoMs) / 1000));
@@ -70,6 +71,19 @@ export function AndroidLockDiagnostics({ onClose }: { onClose: () => void }) {
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          <OutlineButton
+            onClick={async () => {
+              try {
+                await startNativeProtectionDiagnostic();
+                onClose();
+                toast.info("Teste de 15 segundos iniciado. Nenhum SOS será enviado.");
+              } catch {
+                toast.error("Inicie uma viagem no APK atualizado para testar o temporizador.");
+              }
+            }}
+          >
+            Testar alerta local — sem enviar SOS
+          </OutlineButton>
           {eventos.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">
               Nenhum evento registrado.

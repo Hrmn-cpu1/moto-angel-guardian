@@ -109,11 +109,10 @@ public class ViagemSeguraService extends Service {
     private String distanciaAtual = "";
     private String manobraAtual = "";
 
-    /** Intervalo mínimo entre posições. Conservador de propósito: o produto
-     *  precisa de trajeto, não de amostragem contínua — GPS a 1 Hz durante um
-     *  turno inteiro come a bateria que o motoboy vai precisar no fim do dia. */
+    /** Cinco segundos entre posições; distância mínima zero mantém leituras
+     *  após a parada, necessárias para confirmar imobilidade. */
     private static final long INTERVALO_MS = 5000L;
-    private static final float DISTANCIA_M = 10f;
+    private static final float DISTANCIA_M = 0f; // Stationary fixes are necessary to confirm a stop.
 
     private LocationManager gerenciador;
     private LocationListener ouvinteDePosicao;
@@ -144,11 +143,10 @@ public class ViagemSeguraService extends Service {
      * Registrando o SensorEventListener DENTRO do serviço de primeiro plano,
      * a aquisição segue o ciclo de vida da viagem, não o da página.
      *
-     * O QUE ESTA CAMADA FAZ: ler, normalizar (m/s² lineares e graus/s) e
-     * entregar no máximo 5 amostras por segundo.
-     * O QUE ELA NÃO FAZ: decidir se houve queda. A decisão continua sendo do
-     * `CrashDetectionEngine` no JS, e o SOS continua sendo o único que já
-     * existe. Nada de segundo pipeline de emergência aqui.
+     * Lê e normaliza os sensores, preserva picos por janela e alimenta o
+     * NativeProtection no próprio serviço. A ponte também recebe amostras
+     * para diagnóstico; o executor automático Android não depende do JS.
+     * O registro continua usando o mesmo sos_open e a mesma fila do servidor.
      * ============================================================== */
 
     /** ~5 Hz. Amostrar mais rápido não melhora a detecção e custa bateria. */
@@ -200,6 +198,7 @@ public class ViagemSeguraService extends Service {
     private float ultimoAccel = -1f;
     private float ultimoGyro = -1f;
     private long ultimaEntregaMovimento = 0L;
+    private final MotionPeakWindow motionPeaks = new MotionPeakWindow();
 
     /** Um listener por serviço. Idempotente: chamar duas vezes não empilha. */
     private void iniciarSensores() {
@@ -244,6 +243,7 @@ public class ViagemSeguraService extends Service {
                     // o motor, que trabalha com picos e não com precisão fina.
                     final double linear = aceleracaoLinear ? m : Math.abs(m - GRAVIDADE);
                     ultimoAccel = (float) linear;
+                    motionPeaks.acceleration(linear);
                 } else if (tipo == Sensor.TYPE_GYROSCOPE) {
                     if (e.values.length < 3) return;
                     final double r = Math.sqrt(
@@ -251,6 +251,7 @@ public class ViagemSeguraService extends Service {
                                     + e.values[1] * e.values[1]
                                     + e.values[2] * e.values[2]);
                     ultimoGyro = (float) Math.toDegrees(r);
+                    motionPeaks.rotation(ultimoGyro);
                 } else {
                     return;
                 }
@@ -261,25 +262,25 @@ public class ViagemSeguraService extends Service {
                 if (agora - ultimaEntregaMovimento < PERIODO_MOVIMENTO_MS) return;
                 ultimaEntregaMovimento = agora;
 
+                final double[] peak = motionPeaks.drain();
+                NativeProtection.get(ViagemSeguraService.this).motion(peak[0], peak[1], agora);
                 final MovimentoNativo d = ouvinteDeMovimento;
-                if (d == null) return;
-                d.aoReceber(ultimoAccel, ultimoGyro, agora, System.currentTimeMillis());
+                if (d != null) d.aoReceber((float) peak[0], (float) peak[1], agora, System.currentTimeMillis());
             }
 
             @Override
             public void onAccuracyChanged(Sensor sensor, int accuracy) {}
         };
 
-        // SENSOR_DELAY_GAME (~50 Hz) na fonte, com throttle nosso na saída: o
-        // pico de uma queda dura poucos milissegundos e some em taxa baixa.
-        if (sensorAceleracao != null) {
-            sensores.registerListener(ouvinteSensores, sensorAceleracao, SensorManager.SENSOR_DELAY_GAME);
-        }
-        if (sensorGiroscopio != null) {
-            sensores.registerListener(ouvinteSensores, sensorGiroscopio, SensorManager.SENSOR_DELAY_GAME);
-        }
-        capturandoMovimento = true;
-        movimentoAtivoAgora = true;
+        // Sensor a ~50 Hz; MotionPeakWindow preserva impactos curtos na saída
+        // de 5 Hz. A disponibilidade reflete o registro real no Android.
+        boolean accelerationRegistered = sensorAceleracao != null && sensores.registerListener(ouvinteSensores, sensorAceleracao, SensorManager.SENSOR_DELAY_GAME);
+        boolean gyroRegistered = sensorGiroscopio != null && sensores.registerListener(ouvinteSensores, sensorGiroscopio, SensorManager.SENSOR_DELAY_GAME);
+        temAceleracaoAgora = accelerationRegistered;
+        temGiroscopioAgora = gyroRegistered;
+        capturandoMovimento = accelerationRegistered || gyroRegistered;
+        movimentoAtivoAgora = capturandoMovimento;
+        NativeProtection.get(this).sensors(accelerationRegistered);
     }
 
     /** Sem isto o sensor continua ligado depois da viagem, drenando bateria. */
@@ -300,6 +301,8 @@ public class ViagemSeguraService extends Service {
         ultimoAccel = -1f;
         ultimoGyro = -1f;
         ultimaEntregaMovimento = 0L;
+        motionPeaks.drain();
+        NativeProtection.get(this).sensors(false);
     }
 
 
@@ -365,6 +368,16 @@ public class ViagemSeguraService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         final String acao = intent == null ? null : intent.getAction();
+        if (NativeProtection.ACTION_CANCEL.equals(acao) || NativeProtection.ACTION_HELP.equals(acao)) {
+            // A stale notification action must never restart a finished trip.
+            if (emPrimeiroPlano) {
+                try {
+                    if (NativeProtection.ACTION_CANCEL.equals(acao)) NativeProtection.get(this).cancelAlert();
+                    else NativeProtection.get(this).requestHelp("manual");
+                } catch (Exception ignored) { /* Snapshot retains the actual request state. */ }
+            } else stopSelf();
+            return START_NOT_STICKY;
+        }
         LockDiagnostics.registrar(this, "SERVICE_STARTED");
 
         if (ACAO_PARAR.equals(acao)) {
@@ -400,6 +413,7 @@ public class ViagemSeguraService extends Service {
                 }
                 emPrimeiroPlano = true;
                 iniciarCaptura();
+                NativeProtection.get(this).tripStarted();
                 registrarReceptorDeTela();
             } catch (Exception e) {
                 // API 31+ recusa subir FGS a partir do segundo plano
@@ -479,6 +493,7 @@ public class ViagemSeguraService extends Service {
             @Override
             public void onLocationChanged(Location l) {
                 if (l == null) return;
+                NativeProtection.get(ViagemSeguraService.this).position(l);
                 // Com a tela apagada a WebView congela e para de publicar
                 // quadros. O marcador do bloqueio anda com ESTE GPS, que já
                 // existe — nenhum segundo LocationManager é criado.
@@ -753,6 +768,7 @@ public class ViagemSeguraService extends Service {
     }
 
     private void pararTudo() {
+        NativeProtection.get(this).tripStopped();
         pararCaptura();
         removerReceptorDeTela();
         // Viagem encerrada fecha a navegação de bloqueio; nada de tela

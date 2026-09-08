@@ -209,6 +209,6 @@ test("a queda usa o SOS existente, não um segundo sistema", () => {
 });
 
 test("os sensores só rodam com a viagem ativa", () => {
-  assert.match(home, /ativo: viagemAtiva/);
+  assert.match(home, /ativo: hydrated && viagemAtiva && !nativeState.supported/);
   assert.match(hook, /if \(!ativo \|\| !deteccaoLigada\) \{/);
 });

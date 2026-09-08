@@ -225,14 +225,23 @@ export class CrashDetectionEngine {
     }
 
     if (m.estado === "candidate") {
-      const parado = a.speedKmh == null || a.speedKmh <= this.lim.velocidadeParado;
+      if (a.t - Math.max(m.tImpacto ?? 0, m.tQueda ?? 0) > 30_000) {
+        this.mem = this.zerar();
+        return this.resultado("assinatura antiga descartada");
+      }
+      if (a.speedKmh == null || !fixConfiavel) {
+        m.tImovel = null;
+        return this.resultado("aguardando GPS confiável para confirmar imobilidade");
+      }
+      const parado = a.speedKmh <= this.lim.velocidadeParado;
       if (!parado) {
         // Voltou a andar: era freada, buraco ou ruído. Sem alarme.
         this.mem = this.zerar();
         this.mem.velocidadeMax = a.speedKmh ?? 0;
         return this.resultado("voltou a se mover: assinatura descartada");
       }
-      if (m.tImovel != null && a.t - m.tImovel >= this.lim.imobilidade) {
+      if (m.tImovel == null) m.tImovel = a.t;
+      if (a.t - m.tImovel >= this.lim.imobilidade) {
         m.estado = "countdown";
         m.sinais.add("imobilidade");
         return this.resultado("possivel queda: impacto/rotacao + parada + imobilidade");

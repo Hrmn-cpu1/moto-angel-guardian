@@ -159,6 +159,40 @@ test("impacto + queda de velocidade + imobilidade vira candidato a queda", () =>
   assert.ok(r.sinais.includes("imobilidade"));
 });
 
+test("perder o GPS depois do impacto não confirma imobilidade", () => {
+  const amostras = serieDeQueda();
+  for (let i = 13; i < amostras.length; i++) amostras[i].speedKmh = null;
+  assert.notEqual(rodar(amostras).estado, "countdown");
+});
+
+test("GPS impreciso depois do impacto não confirma imobilidade", () => {
+  const amostras = serieDeQueda();
+  for (let i = 13; i < amostras.length; i++) amostras[i].accuracyM = 400;
+  assert.notEqual(rodar(amostras).estado, "countdown");
+});
+
+test("GPS que retorna minutos depois não ressuscita um impacto antigo", () => {
+  const engine = new CrashDetectionEngine();
+  engine.processarSerie(serieDeQueda().slice(0, 13));
+  engine.processar({ t: 40_000, speedKmh: null, accuracyM: null, accelMs2: 0, gyroDegS: 0 });
+  for (let t = 60_000; t <= 80_000; t += 500) {
+    assert.equal(
+      engine.processar({ t, speedKmh: 0, accuracyM: 10, accelMs2: 0, gyroDegS: 0 }).estado,
+      "normal",
+    );
+  }
+});
+
+test("o retorno do GPS exige uma nova janela completa de imobilidade", () => {
+  const engine = new CrashDetectionEngine();
+  const amostras = serieDeQueda();
+  for (let i = 13; i <= 20; i++) amostras[i].speedKmh = null;
+  assert.notEqual(engine.processarSerie(amostras.slice(0, 25)).estado, "countdown");
+  const ultimo = amostras[24];
+  for (let i = 1; i <= 12; i++) engine.processar({ ...ultimo, t: ultimo.t + i * 500 });
+  assert.equal(engine.processar({ ...ultimo, t: ultimo.t + 6500 }).estado, "countdown");
+});
+
 test("mesma assinatura, mas a pessoa volta a andar: sem alarme", () => {
   const r = rodar(
     serie([

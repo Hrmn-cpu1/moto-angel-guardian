@@ -765,12 +765,12 @@ test("NATIVO: sem permissão o serviço para em vez de derrubar o app", () => {
   assert.ok(/catch \(SecurityException/.test(servico), "permissão pode cair no meio");
 });
 
-test("NATIVO: frequência conservadora, não amostragem contínua", () => {
+test("NATIVO: GPS com intervalo conservador também confirma imobilidade", () => {
   const servico = lerSemComentarios(`${ANDROID_JAVA}/ViagemSeguraService.java`);
   const intervalo = Number(/INTERVALO_MS = (\d+)L/.exec(servico)?.[1] ?? 0);
   assert.ok(intervalo >= 3000, `${intervalo} ms é agressivo demais para um turno inteiro`);
   const distancia = Number(/DISTANCIA_M = (\d+)f/.exec(servico)?.[1] ?? 0);
-  assert.ok(distancia >= 5, "sem filtro de distância o GPS acorda parado no semáforo");
+  assert.equal(distancia, 0, "o motor precisa de fixes novos também quando a moto fica parada");
 });
 
 test("NATIVO: a ponte não cria segunda fonte de verdade da viagem", () => {

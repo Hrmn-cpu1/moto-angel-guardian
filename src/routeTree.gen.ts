@@ -43,6 +43,7 @@ import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as ApiInternalSosDispatchRouteImport } from './routes/api/internal/sos-dispatch'
+import { Route as ApiNativeSosRouteImport } from './routes/api/native/sos'
 import { Route as ApiPublicAuthBeaconRouteImport } from './routes/api/public/auth-beacon'
 import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp-webhook'
 import { Route as AuthCallbackIndexRouteImport } from './routes/auth.callback.index'
@@ -221,6 +222,11 @@ const ApiInternalSosDispatchRoute = ApiInternalSosDispatchRouteImport.update({
   path: '/api/internal/sos-dispatch',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiNativeSosRoute = ApiNativeSosRouteImport.update({
+  id: '/api/native/sos',
+  path: '/api/native/sos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicAuthBeaconRoute = ApiPublicAuthBeaconRouteImport.update({
   id: '/api/public/auth-beacon',
   path: '/api/public/auth-beacon',
@@ -277,6 +283,7 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/internal/sos-dispatch': typeof ApiInternalSosDispatchRoute
+  '/api/native/sos': typeof ApiNativeSosRoute
   '/api/public/auth-beacon': typeof ApiPublicAuthBeaconRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/auth/callback/': typeof AuthCallbackIndexRoute
@@ -315,6 +322,7 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/internal/sos-dispatch': typeof ApiInternalSosDispatchRoute
+  '/api/native/sos': typeof ApiNativeSosRoute
   '/api/public/auth-beacon': typeof ApiPublicAuthBeaconRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/auth/callback': typeof AuthCallbackIndexRoute
@@ -356,6 +364,7 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/internal/sos-dispatch': typeof ApiInternalSosDispatchRoute
+  '/api/native/sos': typeof ApiNativeSosRoute
   '/api/public/auth-beacon': typeof ApiPublicAuthBeaconRoute
   '/api/public/whatsapp-webhook': typeof ApiPublicWhatsappWebhookRoute
   '/auth/callback/': typeof AuthCallbackIndexRoute
@@ -397,6 +406,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/api/internal/sos-dispatch'
+    | '/api/native/sos'
     | '/api/public/auth-beacon'
     | '/api/public/whatsapp-webhook'
     | '/auth/callback/'
@@ -435,6 +445,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/api/internal/sos-dispatch'
+    | '/api/native/sos'
     | '/api/public/auth-beacon'
     | '/api/public/whatsapp-webhook'
     | '/auth/callback'
@@ -475,6 +486,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/api/internal/sos-dispatch'
+    | '/api/native/sos'
     | '/api/public/auth-beacon'
     | '/api/public/whatsapp-webhook'
     | '/auth/callback/'
@@ -502,6 +514,7 @@ export interface RootRouteChildren {
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiInternalSosDispatchRoute: typeof ApiInternalSosDispatchRoute
+  ApiNativeSosRoute: typeof ApiNativeSosRoute
   ApiPublicAuthBeaconRoute: typeof ApiPublicAuthBeaconRoute
   ApiPublicWhatsappWebhookRoute: typeof ApiPublicWhatsappWebhookRoute
 }
@@ -746,6 +759,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiInternalSosDispatchRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/native/sos': {
+      id: '/api/native/sos'
+      path: '/api/native/sos'
+      fullPath: '/api/native/sos'
+      preLoaderRoute: typeof ApiNativeSosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/auth-beacon': {
       id: '/api/public/auth-beacon'
       path: '/api/public/auth-beacon'
@@ -850,6 +870,7 @@ const rootRouteChildren: RootRouteChildren = {
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiInternalSosDispatchRoute: ApiInternalSosDispatchRoute,
+  ApiNativeSosRoute: ApiNativeSosRoute,
   ApiPublicAuthBeaconRoute: ApiPublicAuthBeaconRoute,
   ApiPublicWhatsappWebhookRoute: ApiPublicWhatsappWebhookRoute,
 }

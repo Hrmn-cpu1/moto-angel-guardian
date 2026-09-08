@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
-import { Mail, Lock, AlertCircle, MessageCircle } from "lucide-react";
+import { Mail, Lock, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { BrandMark } from "@/components/BrandMark";
 import { GoldButton } from "@/components/GoldButton";
@@ -88,18 +88,6 @@ function Login() {
           className="glass-card flex w-full items-center justify-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-foreground transition hover:border-gold"
         >
           <GoogleG /> Continuar com Google
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            toast("Entrar com WhatsApp", {
-              description:
-                "A autenticação por WhatsApp está em preparação. Use Google ou e-mail por enquanto.",
-            })
-          }
-          className="glass-card flex w-full items-center justify-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-foreground transition hover:border-gold"
-        >
-          <MessageCircle size={18} className="text-success" /> Continuar com WhatsApp
         </button>
         <div className="flex items-center gap-3 py-1 text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
           <span className="h-px flex-1 bg-border" /> ou com e-mail{" "}

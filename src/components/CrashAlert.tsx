@@ -8,7 +8,13 @@ import type { DeteccaoQueda } from "@/hooks/useCrashDetection";
  * duas respostas possíveis. Silêncio = SOS, pelo MESMO caminho do botão
  * manual.
  */
-export function CrashAlert({ deteccao }: { deteccao: DeteccaoQueda }) {
+export function CrashAlert({
+  deteccao,
+  diagnostic = false,
+}: {
+  deteccao: DeteccaoQueda;
+  diagnostic?: boolean;
+}) {
   if (deteccao.estado !== "countdown") return null;
   return (
     <div
@@ -19,13 +25,15 @@ export function CrashAlert({ deteccao }: { deteccao: DeteccaoQueda }) {
       <ShieldAlert size={44} className="text-emergency" />
       <div className="text-center">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-emergency">
-          Possível queda detectada
+          {diagnostic ? "Teste local — sem envio" : "Possível queda detectada"}
         </p>
         <p className="mt-2 text-4xl font-black tabular-nums text-foreground">
           {deteccao.segundos ?? 0}s
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Sem resposta, o SOS será acionado automaticamente.
+          {diagnostic
+            ? "Este teste verifica o temporizador. Nenhum SOS será enviado."
+            : "Sem resposta, o SOS será acionado automaticamente."}
         </p>
       </div>
       <div className="flex w-full max-w-sm flex-col gap-3">

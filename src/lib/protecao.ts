@@ -1,10 +1,9 @@
 /**
  * O que a tela pode AFIRMAR sobre proteção.
  *
- * Regra (P0 RC5+ §6): "Protegido" é uma promessa. Ela só pode aparecer quando
- * existe evidência — viagem ativa E serviço de primeiro plano confirmado pelo
- * Android. GPS ligado não é proteção: é sinal. localStorage não é proteção:
- * é lembrança. Promise resolvida não é proteção: é intenção.
+ * O serviço ativo não confirma sensores, capacidade de registrar SOS ou entrega
+ * aos contatos. Este resumo afirma apenas que a viagem está ativa; o runtime
+ * nativo informa separadamente o estado da proteção automática.
  */
 
 export interface EntradaDeProtecao {
@@ -17,16 +16,11 @@ export interface EntradaDeProtecao {
   servicoAtivo: boolean;
 }
 
-export type RotuloDeProtecao = "Compartilhando" | "Protegido" | "Viagem ativa" | "GPS ativo" | "Sem GPS";
+export type RotuloDeProtecao = "Compartilhando" | "Viagem ativa" | "GPS ativo" | "Sem GPS";
 
 export function rotuloDeProtecao(e: EntradaDeProtecao): RotuloDeProtecao {
   if (e.sharing) return "Compartilhando";
-  if (e.viagemAtiva) {
-    // Sem serviço no aparelho (web/navegador) a viagem existe, mas não há
-    // segundo plano a prometer: dizemos o que é verdade.
-    if (e.temServico) return e.servicoAtivo ? "Protegido" : "Viagem ativa";
-    return "Viagem ativa";
-  }
+  if (e.viagemAtiva) return "Viagem ativa";
   if (!e.gpsOnline) return "Sem GPS";
   return "GPS ativo";
 }

@@ -5,6 +5,9 @@ import type { User as AppUser } from "@/types";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 import { classifyAuthError, authFailure } from "@/lib/auth-errors";
 import { isNativeApp } from "@/lib/native";
+import { stopNativeProtection } from "@/lib/native-protection";
+import { finalizarViagemAtual, resetTripRuntime } from "@/hooks/useTrip";
+import { salvarViagem, VIAGEM_INICIAL } from "@/lib/trip";
 import { nextInternoOuIndefinido } from "@/lib/redirect-seguro";
 import {
   getNativeAuthSnapshot,
@@ -119,6 +122,10 @@ function startAuthStore() {
         setState({ user: u, loading: false }),
       );
     } else {
+      // An external sign-out must not leave GPS or a previous owner's trip running.
+      resetTripRuntime();
+      salvarViagem(VIAGEM_INICIAL);
+      void stopNativeProtection().catch(() => undefined);
       setState({ user: null, loading: false });
     }
   });
@@ -223,7 +230,11 @@ export function useAuth() {
   }, []);
 
   const logout = useCallback(async () => {
-    await supabase.auth.signOut();
+    if (!(await finalizarViagemAtual()))
+      throw new Error("Confira o SOS pendente e finalize a viagem antes de sair.");
+    await stopNativeProtection({ preservePending: true });
+    const { error } = await supabase.auth.signOut();
+    if (error) throw new Error("Não foi possível sair da conta. Tente novamente.");
     setState({ user: null, loading: false });
   }, []);
 

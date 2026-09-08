@@ -92,6 +92,7 @@ let ouvinteMovimento: ((e: DeviceMotionEvent) => void) | null = null;
 /** Última leitura de cada fonte. O motor recebe as duas juntas. */
 let ultimaVelocidadeKmh: number | null = null;
 let ultimaPrecisaoM: number | null = null;
+let ultimoGpsEm = 0;
 let ultimoAccel: number | null = null;
 let ultimoGyro: number | null = null;
 let ultimaEntrega = 0;
@@ -148,7 +149,7 @@ function entregar(agora: number, tempo = agora) {
   ultimaEntrega = tempo;
   const amostra: AmostraSensor = {
     t: tempo,
-    speedKmh: ultimaVelocidadeKmh,
+    speedKmh: agora >= ultimoGpsEm && agora - ultimoGpsEm <= 15_000 ? ultimaVelocidadeKmh : null,
     accelMs2: ultimoAccel,
     gyroDegS: ultimoGyro,
     accuracyM: ultimaPrecisaoM,
@@ -199,6 +200,7 @@ function ligar() {
   }
 
   cancelarNativo = ouvirPosicaoNativa((p) => {
+    ultimoGpsEm = p.quandoMs;
     ultimaVelocidadeKmh = p.velocidadeMs >= 0 ? p.velocidadeMs * 3.6 : null;
     ultimaPrecisaoM = p.precisaoM >= 0 ? p.precisaoM : null;
     entregar(Date.now());
@@ -207,8 +209,9 @@ function ligar() {
   cancelarGps = assinarPosicao({
     aoReceber: (pos) => {
       const c = pos.coords;
-      if (c.speed != null && c.speed >= 0) ultimaVelocidadeKmh = c.speed * 3.6;
-      if (typeof c.accuracy === "number") ultimaPrecisaoM = c.accuracy;
+      ultimoGpsEm = pos.timestamp;
+      ultimaVelocidadeKmh = c.speed != null && c.speed >= 0 ? c.speed * 3.6 : null;
+      ultimaPrecisaoM = typeof c.accuracy === "number" ? c.accuracy : null;
       entregar(Date.now());
     },
   });
@@ -231,6 +234,7 @@ function desligar() {
   sensoresNativos = { aceleracao: false, giroscopio: false, capturando: false };
   ultimaVelocidadeKmh = null;
   ultimaPrecisaoM = null;
+  ultimoGpsEm = 0;
   ultimoAccel = null;
   ultimoGyro = null;
   ultimaEntrega = 0;

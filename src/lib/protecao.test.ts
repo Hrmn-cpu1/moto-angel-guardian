@@ -10,7 +10,7 @@ const base = {
   servicoAtivo: false,
 };
 
-test('"Protegido" exige serviço nativo confirmado, não apenas GPS', () => {
+test('serviço nativo confirmado permite afirmar apenas "Viagem ativa"', () => {
   assert.equal(rotuloDeProtecao(base), "GPS ativo");
   assert.equal(rotuloDeProtecao({ ...base, gpsOnline: false }), "Sem GPS");
   assert.equal(
@@ -19,7 +19,7 @@ test('"Protegido" exige serviço nativo confirmado, não apenas GPS', () => {
   );
   assert.equal(
     rotuloDeProtecao({ ...base, viagemAtiva: true, temServico: true, servicoAtivo: true }),
-    "Protegido",
+    "Viagem ativa",
   );
 });
 

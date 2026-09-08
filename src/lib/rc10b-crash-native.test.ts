@@ -314,21 +314,13 @@ test("sensor ausente não vira valor simulado no Android", () => {
 
 test("o plugin encaminha movimento sem abrir um segundo SOS", () => {
   assert.match(pluginJava, /notifyListeners\("movimento"/);
-  // P0.1c: a tela de bloqueio pode PEDIR socorro, e o plugin encaminha esse
-  // pedido como evento. O que continua proibido é a camada nativa ABRIR um
-  // SOS por conta própria — o acionamento segue único, no JS.
+  // The bridge delegates to the single native executor. It never owns a
+  // second database/provider pipeline; NativeProtection uses the same sos_open.
   assert.ok(
     !/sos_open|whatsapp|supabase|HttpURLConnection/i.test(pluginJava),
     "a camada nativa não pode abrir SOS por conta própria",
   );
-  const mencoes = pluginJava.match(/[sS][oO][sS]/g) ?? [];
-  for (const linha of pluginJava.split("\n").filter((l) => /[sS][oO][sS]/.test(l))) {
-    assert.ok(
-      /notifyListeners|definirCanalDeSos|LockNavigationState|\*|\/\//.test(linha),
-      `SOS no plugin só como encaminhamento: ${linha.trim()}`,
-    );
-  }
-  assert.ok(mencoes.length > 0);
+  assert.match(pluginJava, /NativeProtection.get\(getContext\(\)\)/);
 });
 
 test("o app pode perguntar ao Android o que existe de hardware", () => {

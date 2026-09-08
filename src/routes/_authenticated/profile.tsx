@@ -53,6 +53,7 @@ function ProfilePage() {
   const { user, loading, updateUser, logout } = useAuth();
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState<User | null>(null);
   const { isAdmin } = useIsAdmin(user?.id);
   /* Navegação na tela bloqueada (P0.1c). Padrão LIGADO e documentado em
@@ -73,13 +74,26 @@ function ProfilePage() {
     setDraft(user);
     setEditing(true);
   };
-  const save = () => {
-    if (draft) updateUser(draft);
-    setEditing(false);
+  const save = async () => {
+    if (!draft || saving) return;
+    setSaving(true);
+    try {
+      await updateUser(draft);
+      setEditing(false);
+      toast.success("Dados atualizados.");
+    } catch {
+      toast.error("Não foi possível salvar. Suas alterações continuam no formulário.");
+    } finally {
+      setSaving(false);
+    }
   };
-  const doLogout = () => {
-    logout();
-    navigate({ to: "/welcome" });
+  const doLogout = async () => {
+    try {
+      await logout();
+      await navigate({ to: "/welcome" });
+    } catch {
+      toast.error("Não foi possível sair. Tente novamente.");
+    }
   };
 
   return (
@@ -128,7 +142,6 @@ function ProfilePage() {
             {(
               [
                 ["name", "Nome completo"],
-                ["email", "E-mail"],
                 ["phone", "Telefone"],
                 ["bikeModel", "Modelo"],
                 ["plate", "Placa"],
@@ -150,7 +163,9 @@ function ProfilePage() {
             ))}
             <div className="grid grid-cols-2 gap-2 pt-2">
               <OutlineButton onClick={() => setEditing(false)}>Cancelar</OutlineButton>
-              <GoldButton onClick={save}>Salvar</GoldButton>
+              <GoldButton onClick={save} disabled={saving}>
+                {saving ? "Salvando..." : "Salvar"}
+              </GoldButton>
             </div>
           </div>
         ) : (
@@ -172,11 +187,7 @@ function ProfilePage() {
             label="Contatos de confiança"
             onClick={() => navigate({ to: "/contacts" })}
           />
-          <Row
-            icon={Lock}
-            label="Privacidade"
-            onClick={() => toast("Configurações de privacidade em breve.")}
-          />
+          <Row icon={Lock} label="Privacidade" onClick={() => navigate({ to: "/sharing" })} />
           <button
             onClick={() => {
               const proximo = !navBloqueio;

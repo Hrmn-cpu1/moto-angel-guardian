@@ -1197,6 +1197,7 @@ test("ANDROID: nenhuma permissão sem justificativa escrita", () => {
     "POST_NOTIFICATIONS",
     "FOREGROUND_SERVICE",
     "FOREGROUND_SERVICE_LOCATION",
+    "WAKE_LOCK",
   ];
   assert.deepEqual(
     [...new Set(permissoes)].sort(),

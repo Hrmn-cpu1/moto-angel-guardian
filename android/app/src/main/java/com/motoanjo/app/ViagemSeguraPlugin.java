@@ -58,6 +58,8 @@ import java.util.List;
 )
 public class ViagemSeguraPlugin extends Plugin {
 
+    private NativeProtection.Listener protectionListener;
+
     private static final String ALIAS_NOTIFICACAO = "notificacoes";
 
     /** A partir daqui POST_NOTIFICATIONS é permissão de runtime (Android 13). */
@@ -72,6 +74,8 @@ public class ViagemSeguraPlugin extends Plugin {
      */
     @Override
     public void load() {
+        protectionListener = state -> notifyListeners("protecaoNativa", state);
+        NativeProtection.get(getContext()).addListener(protectionListener);
         ViagemSeguraService.definirOuvinte((lat, lng, precisaoM, velocidadeMs, quandoMs) -> {
             final JSObject p = new JSObject();
             p.put("lat", lat);
@@ -85,8 +89,8 @@ public class ViagemSeguraPlugin extends Plugin {
         ViagemSeguraService.definirOuvinteDeEstado((ativo, visivel, motivo) ->
                 notifyListeners("estado", montarEstado(ativo, visivel, motivo)));
 
-        // P0.1b: movimento capturado pelo serviço, não pela WebView. O plugin
-        // continua sendo só cano — quem decide se houve queda é o motor no JS.
+        // Observação para diagnóstico. A decisão Android já aconteceu no
+        // executor nativo; a WebView não precisa executar estes callbacks.
         ViagemSeguraService.definirOuvinteDeMovimento((accelMs2, gyroDegS, monotonicoMs, quandoMs) -> {
             final JSObject m = new JSObject();
             m.put("accelMs2", accelMs2);
@@ -96,16 +100,81 @@ public class ViagemSeguraPlugin extends Plugin {
             notifyListeners("movimento", m);
         });
 
-        // P0.1c: SOS pedido na tela de bloqueio. NÃO abre um segundo caminho
-        // de emergência — apenas avisa o app, e quem dispara é o mesmo
-        // controlador de SOS que o botão manual já usa.
+        // Usa o executor Android configurado; versões sem configuração ainda
+        // podem encaminhar o pedido legado para a interface JS.
         LockNavigationState.definirCanalDeSos(() -> {
+            if (NativeProtection.get(getContext()).configured()) {
+                try { NativeProtection.get(getContext()).requestHelp("manual"); } catch (Exception ignored) { }
+                return;
+            }
             final JSObject pedido = new JSObject();
             pedido.put("quandoMs", System.currentTimeMillis());
             // Retém durante a montagem do listener; o app descarta pedidos
             // expirados e só aceita durante uma viagem ativa.
             notifyListeners("sosTelaBloqueada", pedido, true);
         });
+    }
+
+    @Override
+    protected void handleOnDestroy() {
+        NativeProtection.get(getContext()).removeListener(protectionListener);
+        ViagemSeguraService.definirOuvinte(null);
+        ViagemSeguraService.definirOuvinteDeMovimento(null);
+        ViagemSeguraService.definirOuvinteDeEstado(null);
+        // Native service remains its own executor even if the WebView is destroyed.
+        LockNavigationState.definirCanalDeSos(null);
+        super.handleOnDestroy();
+    }
+
+    @PluginMethod
+    public void configurarProtecaoNativa(PluginCall call) {
+        try {
+            call.resolve(NativeProtection.get(getContext()).configure(
+                    call.getString("token"), call.getString("endpoint"), call.getString("expiresAt"),
+                    call.getString("userId"), call.getLong("tripStartedAt", 0L),
+                    call.getBoolean("enabled", false), call.getString("sessionId"), getBridge().getConfig().getServerUrl()));
+        } catch (Exception e) { call.reject("Não foi possível configurar a proteção nativa."); }
+    }
+
+    @PluginMethod
+    public void estadoProtecaoNativa(PluginCall call) { call.resolve(NativeProtection.get(getContext()).snapshot()); }
+
+    @PluginMethod
+    public void atualizarProtecaoNativa(PluginCall call) {
+        call.resolve(NativeProtection.get(getContext()).updateExternalSos(call.getString("sosEventId"), call.getString("closedEventId")));
+    }
+
+    @PluginMethod
+    public void cancelarAlertaNativo(PluginCall call) {
+        try { call.resolve(NativeProtection.get(getContext()).cancelAlert()); }
+        catch (Exception e) { call.reject("Confira e cancele o SOS no aplicativo."); }
+    }
+
+    @PluginMethod
+    public void solicitarSosNativo(PluginCall call) {
+        try { call.resolve(NativeProtection.get(getContext()).requestHelp("manual")); }
+        catch (Exception e) { call.reject("Não foi possível iniciar o pedido nativo."); }
+    }
+
+    @PluginMethod
+    public void limparProtecaoNativa(PluginCall call) {
+        try {
+            boolean expected = call.getData().has("expectedSessionId") || call.getData().has("expectedRequestId");
+            NativeProtection.get(getContext()).clear(call.getBoolean("preservePending", false),
+                    expected ? call.getString("expectedSessionId", "") : null,
+                    expected ? call.getString("expectedRequestId", "") : null);
+            call.resolve(NativeProtection.get(getContext()).snapshot());
+        } catch (IllegalArgumentException e) {
+            call.reject("A proteção mudou. Confira o pedido atual antes de limpar.", "NATIVE_PROTECTION_CHANGED");
+        } catch (IllegalStateException e) {
+            call.reject("Há um SOS pendente. Confira ou cancele o pedido antes de encerrar a viagem.", "NATIVE_SOS_PENDING");
+        }
+    }
+
+    @PluginMethod
+    public void iniciarDiagnosticoProtecaoNativa(PluginCall call) {
+        try { call.resolve(NativeProtection.get(getContext()).startDiagnostic()); }
+        catch (Exception e) { call.reject("Diagnóstico indisponível. Inicie uma viagem no APK de teste."); }
     }
 
     @PluginMethod
