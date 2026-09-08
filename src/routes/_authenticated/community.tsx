@@ -356,10 +356,21 @@ function Community() {
               />
             </div>
             <div className="flex justify-end">
-              <GoldButton size="sm" onClick={publish}>
-                Publicar
+              <GoldButton size="sm" onClick={publish} disabled={publishing}>
+                {publishing ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin" /> Publicando…
+                  </>
+                ) : (
+                  "Publicar"
+                )}
               </GoldButton>
             </div>
+            {publishError && (
+              <p role="alert" className="text-[11px] text-emergency">
+                {publishError}
+              </p>
+            )}
             {!user && (
               <p className="text-[10px] uppercase tracking-widest text-emergency">
                 Entre na sua conta para publicar.
@@ -369,12 +380,36 @@ function Community() {
         </div>
       )}
 
+      {publishOk && (
+        <div className="px-5 pt-4">
+          <p
+            role="status"
+            className="rounded-xl border border-gold/40 bg-gold/10 px-4 py-3 text-xs font-semibold uppercase tracking-widest text-gold"
+          >
+            Publicação realizada
+          </p>
+        </div>
+      )}
+
       <div className="space-y-3 px-5 pt-4">
         {loading ? (
           <div className="glass-card rounded-2xl p-5 text-center text-xs uppercase tracking-widest text-muted-foreground">
             Carregando feed...
           </div>
+        ) : feedError ? (
+          <div className="glass-card rounded-2xl p-5 text-center">
+            <p role="alert" className="text-sm text-emergency">
+              Não foi possível carregar as publicações.
+            </p>
+            <button
+              onClick={() => void refetchFeed()}
+              className="mt-3 text-[11px] uppercase tracking-widest text-gold"
+            >
+              Tentar novamente
+            </button>
+          </div>
         ) : filtered.length === 0 ? (
+
           <div className="glass-card rounded-2xl p-5 text-center">
             <Users size={28} className="mx-auto text-gold" />
             <p className="mt-3 text-sm text-muted-foreground">
