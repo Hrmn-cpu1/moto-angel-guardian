@@ -33,16 +33,44 @@ no ambiente e executa `./gradlew bundleRelease`. As quatro variáveis são
 obrigatórias em conjunto; não há chave privada no repositório. Sem essas
 variáveis, a tarefa release produz saída **sem assinatura**.
 
-## Aceite pendente no aparelho
+## Aceite físico observado em 08/09/2026
 
-- Instalação, login e retorno ao aplicativo; viagem ao navegar entre telas.
+No Galaxy A17 com Android 16, o APK 14 substituiu a instalação anterior após
+autorização do usuário. O backup relevante foi restaurado, preservando o
+login. Foram concedidas localização precisa e notificações.
+
+A jornada observada incluiu cadastro de um contato de teste consentido,
+destino por endereço, cálculo da rota, início da viagem e registro de SOS
+manual com GPS recente. O app abriu o WhatsApp apenas para o destinatário
+autorizado. A mensagem foi prefixada com “TESTE AUTORIZADO” e identificada
+como não sendo uma emergência real; o WhatsApp exibiu “Entregue”. Essa é
+prova de envio manual concluído e entrega observada nesse teste.
+
+O diagnóstico local de 15 segundos foi visto durante a contagem, em
+12 segundos, e expirou sem criar SOS. O bloqueio de tela foi exercitado
+brevemente, sem medição rigorosa da duração com tela apagada.
+
+O cancelamento do SOS exibiu confirmação e removeu o marcador do mapa.
+Finalizar a viagem exibiu confirmação; a inspeção ADB posterior não encontrou
+`ViagemSeguraService` em execução. O histórico mostrou viagem concluída de
+4 min 34 s e SOS às 16:03, preservando os registros anteriores. A distância
+permaneceu “não medida” no teste parado. Esses resultados permitem continuar
+o piloto, sem declarar toda a proteção automática validada.
+
+## Aceites ainda pendentes
+
+- Continuidade da viagem ao navegar entre telas e após recriação do processo.
 - Primeira abertura sem rede mostra a página local e o retry volta à URL
   configurada. Conferir abertura do discador sem concluir uma ligação.
 - Um gesto cancelado no SOS da tela bloqueada não emite pedido. Um gesto
   completo mostra pedido pendente; conferir o registro real no aplicativo.
-- Tela bloqueada e economia de bateria: medir continuidade do processamento
-  da detecção e do countdown, além da captura de sensores e GPS.
-- Finalizar a viagem encerra serviço, sensores e navegação de bloqueio.
+- **NOT PROVEN:** períodos longos com tela apagada, economia de bateria e
+  perda/retorno de rede. Medir detecção, countdown, sensores e GPS nessas
+  condições; o diagnóstico local breve não comprova continuidade prolongada.
+- Conferir interrupção das emissões de sensores e da navegação de bloqueio
+  após finalizar; a ausência do serviço foi observada no teste acima.
+- **NOT PROVEN:** calibração do motor e detecção confiável de acidentes reais.
+  Os testadores devem permanecer parados e não simular quedas.
 
 O serviço Android agora executa o motor de detecção, countdown e registro HTTP
 independentemente da WebView. A credencial tem escopo restrito a abrir SOS na
@@ -61,13 +89,23 @@ O diagnóstico disponível no APK debug mostra um countdown de 15 segundos e
 permite cancelar/confirmar **sem criar pedido nem usar a rede**. Ele verifica
 o caminho local; não prova entrega de mensagem.
 
-O usuário confirmou em 08/09/2026 que ainda não existe conta oficial Meta para
-o produto. O envio automático permanece desligado. Registrar um SOS não
+**NOT PROVEN: envio automático.** O usuário confirmou em 08/09/2026 que ainda
+não existe conta oficial Meta para o produto. O envio automático permanece
+desligado. Registrar um SOS não
 significa avisar contatos: o compartilhamento manual precisa ser concluído
 no WhatsApp. A ativação futura exige remetente, template aprovado, webhook
 e teste de entrega autorizado antes de ligar o agendador.
 
-O Galaxy A17 observado usa APK 10, assinado com certificado diferente do debug
-local. Não desinstalar para atualizar sem preservar os dados e combinar a
-reentrada na conta. O aparelho deixou de aparecer no USB antes da instalação
-e do teste físico; build e testes automatizados não substituem esse aceite.
+## Distribuição do piloto
+
+A página `public/testar.html` e o APK em
+`public/downloads/moto-anjo-1.5.0-piloto.apk` estão preparados. A publicação e
+o download pela URL pública continuam pendentes de confirmação. O roteiro
+inclui login Google/e-mail, permissões, contato consentido e conclusão manual
+do aviso no WhatsApp; não representa validação do envio automático.
+
+Instalações antigas podem ter certificado diferente do APK debug distribuído.
+Não desinstalar para atualizar sem preservar os dados relevantes e confirmar
+como entrar novamente na conta. A substituição autorizada com restauração de
+backup funcionou no aparelho deste teste; isso não garante migração automática
+em todos os dispositivos.

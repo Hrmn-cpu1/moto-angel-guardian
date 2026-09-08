@@ -1,7 +1,8 @@
 # Moto Anjo — piloto Android 1.5.0 (14)
 
-Atualização de 08/09/2026. O código, o backend e o APK foram preparados para
-validação física. Não equivale a uma operação de SOS 100% validada.
+Atualização de 08/09/2026. O APK 14 passou pela jornada física de viagem e
+SOS manual com um contato autorizado. Há evidência para continuar o piloto
+com testadores; não equivale a uma operação de SOS 100% validada.
 
 ## Jornada implementada
 
@@ -41,19 +42,46 @@ validação física. Não equivale a uma operação de SOS 100% validada.
 - Registro operacional:
   [Saraiva OS](https://airtable.com/appGIS6XGbfscwWdd/tblleZDTyqFjS8qZx/recavYltApeKOEm6C).
 
+## Prova física de 08/09/2026
+
+- Galaxy A17 com Android 16: APK 14 instalado por substituição autorizada
+  pelo usuário. O backup relevante foi restaurado e o login permaneceu ativo.
+- Localização precisa e notificações autorizadas. Mapa com posição real,
+  contato de teste consentido cadastrado, destino por endereço com rota
+  calculada e viagem iniciada no aplicativo.
+- Diagnóstico local de 15 segundos: countdown observado em 12 segundos e
+  encerrado sem gerar SOS. O bloqueio de tela foi exercitado brevemente;
+  não houve medição rigorosa do tempo de execução com a tela apagada.
+- SOS manual registrado com GPS recente. O aplicativo abriu o WhatsApp
+  somente para o destinatário autorizado. A mensagem foi identificada como
+  “TESTE AUTORIZADO”, com aviso de que não era uma emergência real.
+- O WhatsApp mostrou “Entregue” para essa mensagem manual. Isso comprova a
+  entrega observada nesse teste, sem validar o envio automático da Meta.
+- Cancelamento do SOS: confirmação na interface e remoção do marcador no
+  mapa. Finalização da viagem: confirmação na interface e ausência de
+  `ViagemSeguraService` na inspeção ADB posterior.
+- Histórico: “Viagem concluída” com duração de 4 min 34 s e registro do SOS
+  às 16:03. O histórico anterior foi preservado; a distância aparece como
+  “não medida”, sem inventar deslocamento no teste parado.
+
+Distribuição preparada em `public/testar.html` e
+`public/downloads/moto-anjo-1.5.0-piloto.apk`. A publicação e o download pela
+URL pública ainda precisam ser confirmados; a existência dos arquivos no
+repositório não é prova de disponibilidade para testadores.
+
 ## Aceites externos pendentes
 
-1. O usuário confirmou que ainda não existe conta oficial Meta para o produto.
+1. **NOT PROVEN:** envio automático. O usuário confirmou que ainda não
+   existe conta oficial Meta para o produto.
    O envio automático permanece desligado. Configurar remetente, template e
    webhook; comprovar entrega autorizada antes de ativar o agendador. O
    compartilhamento manual precisa ser concluído no WhatsApp.
-2. O Galaxy A17/Android 16 apareceu com APK 10, mas desconectou antes do QA.
-   Não foi instalado o APK 14 nem enviado SOS real. Reconectar e manter o
-   aparelho desbloqueado; preservar dados e login ao resolver a diferença de
-   assinatura entre o APK instalado e o debug local. Provar tela bloqueada,
-   perda/retorno de rede, cancelamento, registro, envio manual e encerramento.
-3. Medir bateria e continuidade em diferentes aparelhos. Os testes sintéticos
-   do motor não demonstram detecção confiável de acidentes reais.
+2. **NOT PROVEN:** continuidade por períodos longos com tela apagada,
+   economia de bateria e perda/retorno de rede. O diagnóstico breve e a
+   jornada manual não comprovam esses cenários.
+3. **NOT PROVEN:** calibração e detecção confiável de acidentes reais.
+   Medir bateria e continuidade em diferentes aparelhos; os testes
+   sintéticos do motor não substituem validação de campo especializada.
 4. Distribuição Play Store requer chave, AAB assinado e conta/ficha da loja;
    este APK é de piloto e usa assinatura debug.
 
