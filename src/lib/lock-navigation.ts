@@ -32,6 +32,21 @@ export const LOCK_NAV_PADRAO = true;
 /** Traçado longo não cabe nem ajuda: 120 pares já desenham a forma da rota. */
 export const MAX_PONTOS_TRACADO = 120;
 
+/** Route guidance stops updating outside the map; keep trip/SOS, discard stale cues. */
+export function pausarOrientacaoBloqueada(
+  quadro: QuadroNavegacaoBloqueada,
+): QuadroNavegacaoBloqueada {
+  return {
+    ...quadro,
+    manobra: "Abra Início para retomar a navegação",
+    distanciaManobra: "",
+    restante: "",
+    eta: "",
+    risco: "",
+    rota: [],
+  };
+}
+
 type Armazenamento = Pick<Storage, "getItem" | "setItem">;
 
 function armazenamento(): Armazenamento | null {

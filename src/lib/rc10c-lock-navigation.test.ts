@@ -238,7 +238,10 @@ test("LOCK.17: um SOS só — o da tela de bloqueio delega ao pipeline existente
   assert.match(plugin, /notifyListeners\("sosTelaBloqueada"/);
 
   const home = ler("src/routes/_authenticated/dashboard.tsx");
-  assert.match(home, /ouvirSosDaTelaBloqueada\(\(\) => \{[\s\S]{0,200}sos\.trigger\(sos\.holdMs\)/);
+  assert.match(
+    readFileSync("src/components/ProtectionRuntime.tsx", "utf8"),
+    /ouvirSosDaTelaBloqueada\(\(\) => \{[\s\S]{0,200}trigger\(holdMs\)/,
+  );
 });
 
 test("LOCK.18: sem segundo mapa e sem segundo GPS na tela de bloqueio", () => {

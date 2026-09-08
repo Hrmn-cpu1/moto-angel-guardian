@@ -1,5 +1,5 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { ArrowLeft, Crosshair, Layers, Navigation } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -12,6 +12,8 @@ import { LocationPermissionGate } from "@/components/LocationPermissionGate";
 import { useLocationPermission } from "@/hooks/useLocationPermission";
 import { useTecladoVirtual } from "@/hooks/useTecladoVirtual";
 import { useAuth } from "@/hooks/useAuth";
+import { useContacts } from "@/hooks/useContacts";
+import { useLiveShare } from "@/hooks/useLiveShare";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useAlerts } from "@/hooks/useAlerts";
 import { useNearbyRiders } from "@/hooks/useNearbyRiders";
@@ -21,8 +23,6 @@ import { rotuloDoDestino } from "@/lib/trip";
 import { useCockpitTelemetry } from "@/hooks/useCockpitTelemetry";
 import { useSafetyCopilot } from "@/hooks/useSafetyCopilot";
 import { useSosController } from "@/hooks/useSosController";
-import { useCrashDetection } from "@/hooks/useCrashDetection";
-import { CrashAlert } from "@/components/CrashAlert";
 import { ChamadaViagemSegura, CockpitDeViagem, PreparacaoDeViagem } from "@/components/RideCockpit";
 import { DestinoDialog } from "@/components/DestinoDialog";
 import { NextManeuver } from "@/components/NextManeuver";
@@ -37,7 +37,6 @@ import {
   montarAtualizacaoDaViagem,
   servicoDisponivel,
   limparNavegacaoBloqueada,
-  ouvirSosDaTelaBloqueada,
   publicarNavegacaoBloqueada,
   type PermissaoNotificacao,
 } from "@/lib/trip-service";
@@ -47,6 +46,7 @@ import {
   preferenciaTelaBloqueada,
   quadrosIguais,
   QUADRO_VAZIO,
+  pausarOrientacaoBloqueada,
 } from "@/lib/lock-navigation";
 import { APARENCIA, distanciaCurta } from "@/lib/map-events";
 import { useRiskZones } from "@/hooks/useRiskZones";
@@ -105,6 +105,8 @@ function Dashboard() {
   // Viagem Segura: fonte única, no módulo. Trocar de aba não mata a viagem
   // (RC3 seções 8 e 39).
   const { viagem, servico, definirDestino, iniciar, cancelar, finalizar } = useTrip();
+  const { contacts, loading: contactsLoading } = useContacts();
+  const sharingState = useLiveShare();
   const viagemAtiva = viagem.estado === "ativa";
   // Cockpit é um MODO de tela, não o app inteiro: sair dele não toca na
   // viagem (nem no serviço nativo, nem na rota, nem no destino).
@@ -118,14 +120,6 @@ function Dashboard() {
   // há sos_event_id. É isso que "finalizar viagem" não pode destruir.
   const sosAtivo =
     sos.phase === "aguardando_envio" || sos.phase === "sem_contatos" || sos.sosEventId != null;
-  // P0.1: detecção de queda ligada a sensores REAIS. O hook não abre um
-  // segundo caminho de emergência: no fim da máquina de estados ele chama o
-  // MESMO `sos.trigger` do botão manual.
-  const deteccaoDeQueda = useCrashDetection({
-    ativo: viagemAtiva,
-    sosAtivo,
-    aoAcionarSos: () => sos.trigger(sos.holdMs),
-  });
   const { aviso, vozLigada, vozSuportada, alternarVoz } = useSafetyCopilot({
     alerts,
     pois,
@@ -345,18 +339,16 @@ function Dashboard() {
     else void limparNavegacaoBloqueada();
   }, [quadroBloqueado, ultimoQuadro]);
 
-  // Fim da viagem (ou saída da tela) não pode deixar navegação de pé.
-  useEffect(() => () => void limparNavegacaoBloqueada(), []);
-
-  /* O SOS da tela de bloqueio usa o MESMO controlador do botão manual.
-     Nada de segundo pipeline de emergência: aqui só chega o pedido. */
-  useEffect(() => {
-    if (!viagemAtiva) return;
-    return ouvirSosDaTelaBloqueada(() => {
-      registrarEventoDeViagem("sos.lockscreen.request");
-      sos.trigger(sos.holdMs);
-    });
-  }, [viagemAtiva, sos.trigger, sos.holdMs]);
+  const quadroAtual = useRef(quadroBloqueado);
+  quadroAtual.current = quadroBloqueado;
+  useEffect(
+    () => () => {
+      if (quadroAtual.current.ativa) {
+        void publicarNavegacaoBloqueada(pausarOrientacaoBloqueada(quadroAtual.current));
+      }
+    },
+    [],
+  );
 
   // Ao (re)entrar em viagem, a navegação volta a ser a tela dominante.
   useEffect(() => {
@@ -519,8 +511,6 @@ function Dashboard() {
           </button>
         )}
 
-        <CrashAlert deteccao={deteccaoDeQueda} />
-
         {/* Próxima manobra: informação dominante do cockpit. */}
         {modoCockpit && (
           <NextManeuver
@@ -632,7 +622,9 @@ function Dashboard() {
           <PreparacaoDeViagem
             viagem={viagem}
             gpsOk={!!position}
-            contato={null}
+            contato={contactsLoading ? "Consultando contatos…" : (contacts[0]?.name ?? null)}
+            compartilhando={sharingState.sharing}
+            compartilhamentoConfirmado={sharingState.confirmed}
             segundoPlano={segundoPlanoNaPreparacao}
             rota={rota}
             estadoDaRota={estadoDaRota}

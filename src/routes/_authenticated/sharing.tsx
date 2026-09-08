@@ -35,7 +35,7 @@ export const Route = createFileRoute("/_authenticated/sharing")({
 
 function SharingPage() {
   const { position, capture, share } = useGeolocation();
-  const { sharing, toggle, lastSync, error } = useLiveShare();
+  const { sharing, toggle, lastSync, error, loading, saving, confirmed } = useLiveShare();
   const { contacts } = useContacts();
   const { pending, approved, approve, revoke, requestAccess, requesting } = useLocationShares();
   const riders = useRiderVisibility();
@@ -93,7 +93,13 @@ function SharingPage() {
             <Radio size={26} />
           </div>
           <p className="mt-3 text-sm font-bold uppercase tracking-[0.16em] text-foreground">
-            {sharing ? "Transmitindo posição" : "Compartilhamento desligado"}
+            {loading
+              ? "Verificando compartilhamento"
+              : error
+                ? "Verifique o compartilhamento"
+                : sharing
+                  ? "Compartilhamento ligado"
+                  : "Compartilhamento desligado"}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             {sharing
@@ -150,8 +156,14 @@ function SharingPage() {
             {riders.erro && <p className="mt-2 text-[11px] text-emergency">{riders.erro}</p>}
           </div>
           <div className="mt-4 space-y-2">
-            <GoldButton onClick={toggle}>
-              {sharing ? "Parar compartilhamento" : "Iniciar compartilhamento"}
+            <GoldButton onClick={toggle} disabled={loading || saving}>
+              {saving
+                ? "Confirmando…"
+                : !confirmed
+                  ? "Confirmar interrupção"
+                  : sharing
+                    ? "Parar compartilhamento"
+                    : "Iniciar compartilhamento"}
             </GoldButton>
             <div className="grid grid-cols-2 gap-2">
               <OutlineButton

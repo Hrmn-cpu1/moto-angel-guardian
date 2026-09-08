@@ -99,6 +99,8 @@ export interface DispatchSosResult {
   claimed: number;
   accepted: number;
   failed: number;
+  unknown?: number;
+  disabled?: boolean;
 }
 
 /**
@@ -106,8 +108,8 @@ export interface DispatchSosResult {
  *
  * Ordem obrigatória: CLAIM atômico primeiro, chamada externa depois. A função
  * `claim_sos_notifications` usa FOR UPDATE SKIP LOCKED, então dois processos
- * concorrentes nunca pegam a mesma linha e o contato não recebe a mensagem
- * duplicada.
+ * concorrentes não pegam a mesma linha. Resultados externos incertos ficam
+ * suspensos para reconciliação, sem reenvio automático.
  *
  * `accepted` significa que a API aceitou o payload — e nada além disso. A
  * confirmação de entrega só chega pelo webhook de status, que é o único
@@ -131,61 +133,10 @@ export const dispatchSosNotifications = createServerFn({ method: "POST" })
       return { sosEventId: sos.id, claimed: 0, accepted: 0, failed: 0 };
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("name, phone")
-      .eq("id", userId)
-      .maybeSingle();
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { buildSosMessage, sendWhatsAppText } = await import("./sos.server");
-
-    const claimToken = crypto.randomUUID();
-    const { data: claimed, error: claimErr } = await supabaseAdmin.rpc("claim_sos_notifications", {
-      _sos_event_id: sos.id,
-      _claim_token: claimToken,
-      _only_failed: data.onlyFailed,
-      _max: 20,
+    const { dispatchDueSosNotifications } = await import("./sos-dispatch.server");
+    const result = await dispatchDueSosNotifications({
+      sosEventId: sos.id,
+      onlyFailed: data.onlyFailed,
     });
-    if (claimErr) {
-      console.error("[sos] claim falhou", claimErr);
-      throw new Error("Não foi possível reservar os envios.");
-    }
-
-    const linhas = claimed ?? [];
-    if (linhas.length === 0) {
-      return { sosEventId: sos.id, claimed: 0, accepted: 0, failed: 0 };
-    }
-
-    const body = buildSosMessage({
-      name: profile?.name ?? "Motociclista",
-      phone: profile?.phone ?? "",
-      lat: Number(sos.latitude),
-      lng: Number(sos.longitude),
-      when: new Date(sos.triggered_at as string),
-    });
-
-    let accepted = 0;
-    let failed = 0;
-
-    await Promise.all(
-      linhas.map(async (n) => {
-        const result = await sendWhatsAppText(n.recipient_phone, body);
-        if (result.ok) accepted += 1;
-        else failed += 1;
-        const { error: settleErr } = await supabaseAdmin.rpc("settle_sos_notification", {
-          _id: n.id,
-          _claim_token: claimToken,
-          _ok: result.ok,
-          _provider_message_id: result.ok ? (result.providerMessageId ?? undefined) : undefined,
-          _error: result.ok ? undefined : result.error,
-        });
-        if (settleErr) console.error("[sos] settle falhou", n.id, settleErr);
-      }),
-    );
-
-    // O status do evento é ciclo de vida (active / cancelled / resolved) e não
-    // resultado de envio. Quem guarda o resultado é whatsapp_notifications, e
-    // é por isso que o alerta continua recuperável depois de um F5.
-    return { sosEventId: sos.id, claimed: linhas.length, accepted, failed };
+    return { sosEventId: sos.id, ...result };
   });

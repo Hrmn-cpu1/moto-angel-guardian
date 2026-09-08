@@ -183,7 +183,7 @@ test("origem do acionamento é a existente, sem pipeline novo", () => {
 
 const sensores = readFileSync("src/lib/crash-sensors.ts", "utf8");
 const hook = readFileSync("src/hooks/useCrashDetection.ts", "utf8");
-const home = readFileSync("src/routes/_authenticated/dashboard.tsx", "utf8");
+const home = readFileSync("src/components/ProtectionRuntime.tsx", "utf8");
 
 /** Remove comentários: o que importa é o CÓDIGO, não a prosa que o explica. */
 function semComentarios(fonte: string): string {
@@ -210,5 +210,5 @@ test("a queda usa o SOS existente, não um segundo sistema", () => {
 
 test("os sensores só rodam com a viagem ativa", () => {
   assert.match(home, /ativo: viagemAtiva/);
-  assert.match(hook, /if \(!ativo \|\| !deteccaoLigada\) return;/);
+  assert.match(hook, /if \(!ativo \|\| !deteccaoLigada\) \{/);
 });

@@ -37,18 +37,30 @@ test("mensagem não quebra quando o perfil não tem telefone", () => {
   assert.ok(msg.includes("não informado"));
 });
 
-test("isWhatsAppConfigured só é verdadeiro com as DUAS credenciais", () => {
-  const t = process.env.WHATSAPP_ACCESS_TOKEN;
-  const i = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  delete process.env.WHATSAPP_ACCESS_TOKEN;
-  delete process.env.WHATSAPP_PHONE_NUMBER_ID;
-  assert.equal(isWhatsAppConfigured(), false);
-  process.env.WHATSAPP_ACCESS_TOKEN = "x";
-  assert.equal(isWhatsAppConfigured(), false, "token sozinho não basta");
-  process.env.WHATSAPP_PHONE_NUMBER_ID = "y";
-  assert.equal(isWhatsAppConfigured(), true);
-  if (t) process.env.WHATSAPP_ACCESS_TOKEN = t;
-  else delete process.env.WHATSAPP_ACCESS_TOKEN;
-  if (i) process.env.WHATSAPP_PHONE_NUMBER_ID = i;
-  else delete process.env.WHATSAPP_PHONE_NUMBER_ID;
+test("isWhatsAppConfigured exige ativação e template além das credenciais", () => {
+  const keys = [
+    "SOS_DELIVERY_ENABLED",
+    "WHATSAPP_ACCESS_TOKEN",
+    "WHATSAPP_PHONE_NUMBER_ID",
+    "WHATSAPP_SOS_TEMPLATE_NAME",
+    "WHATSAPP_SOS_TEMPLATE_LANGUAGE",
+    "WHATSAPP_GRAPH_VERSION",
+  ];
+  const previous = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
+  try {
+    keys.forEach((k) => delete process.env[k]);
+    process.env.WHATSAPP_ACCESS_TOKEN = "fixture";
+    process.env.WHATSAPP_PHONE_NUMBER_ID = "123";
+    assert.equal(isWhatsAppConfigured(), false);
+    process.env.SOS_DELIVERY_ENABLED = "true";
+    process.env.WHATSAPP_SOS_TEMPLATE_NAME = "sos_test";
+    process.env.WHATSAPP_SOS_TEMPLATE_LANGUAGE = "pt_BR";
+    process.env.WHATSAPP_GRAPH_VERSION = "v23.0";
+    assert.equal(isWhatsAppConfigured(), true);
+  } finally {
+    for (const key of keys) {
+      if (previous[key] === undefined) delete process.env[key];
+      else process.env[key] = previous[key];
+    }
+  }
 });

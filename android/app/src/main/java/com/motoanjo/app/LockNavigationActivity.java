@@ -59,7 +59,7 @@ public class LockNavigationActivity extends Activity {
 
     private LockNavigationState.Ouvinte ouvinte;
     private Runnable fechamento;
-    private long pressionadoEm = 0L;
+    private final SosHoldGesture gestoSos = new SosHoldGesture(SEGURAR_SOS_MS);
     private boolean sosPedido = false;
     private boolean primeiroDesenho = false;
 
@@ -137,6 +137,7 @@ public class LockNavigationActivity extends Activity {
 
     @Override
     protected void onPause() {
+        gestoSos.cancel();
         LockDiagnostics.registrar(this, "LOCK_ACTIVITY_ON_PAUSE");
         super.onPause();
     }
@@ -165,7 +166,7 @@ public class LockNavigationActivity extends Activity {
             // Prova de que a tela já mostra navegação real, não moldura vazia.
             LockDiagnostics.registrar(this, "FIRST_STATE_RENDER");
         }
-        manobra.setText(q.manobra.isEmpty() ? "Siga em frente" : q.manobra);
+        manobra.setText(q.manobra.isEmpty() ? "Consulte a rota no aplicativo" : q.manobra);
         distancia.setText(q.distanciaManobra);
         distancia.setVisibility(q.distanciaManobra.isEmpty() ? View.GONE : View.VISIBLE);
         destino.setText(q.destino);
@@ -233,6 +234,17 @@ public class LockNavigationActivity extends Activity {
         raiz.addView(sos, lpSos);
         sos.setOnTouchListener(this::aoTocarSos);
 
+        final TextView abrirApp = texto("Abrir aplicativo e conferir SOS", 14, "#D4AF37", true);
+        abrirApp.setGravity(Gravity.CENTER);
+        abrirApp.setPadding(dp(12), dp(16), dp(12), dp(16));
+        abrirApp.setOnClickListener(v -> {
+            // Ação explícita. A MainActivity respeita o bloqueio do aparelho.
+            final android.content.Intent abrir = new android.content.Intent(this, MainActivity.class);
+            abrir.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP | android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            startActivity(abrir);
+        });
+        raiz.addView(abrirApp);
+
         return raiz;
     }
 
@@ -247,15 +259,17 @@ public class LockNavigationActivity extends Activity {
         if (sosPedido) return true;
         switch (e.getAction()) {
             case MotionEvent.ACTION_DOWN:
-                pressionadoEm = SystemClock.elapsedRealtime();
+                gestoSos.press(SystemClock.elapsedRealtime());
                 sos.setText("SEGURANDO…");
                 return true;
-            case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
-                final long segurado = SystemClock.elapsedRealtime() - pressionadoEm;
-                if (segurado >= SEGURAR_SOS_MS) {
+                gestoSos.cancel();
+                sos.setText("SEGURE PARA PEDIR SOCORRO");
+                return true;
+            case MotionEvent.ACTION_UP:
+                if (gestoSos.release(SystemClock.elapsedRealtime())) {
                     sosPedido = true;
-                    sos.setText("SOCORRO ACIONADO");
+                    sos.setText("PEDIDO PENDENTE · CONFIRA NO APP");
                     LockNavigationState.pedirSos();
                 } else {
                     sos.setText("SEGURE PARA PEDIR SOCORRO");

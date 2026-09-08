@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -83,7 +91,7 @@ type NotificationRow = {
  * Sequência: guarda -> GPS novo -> validação do fix -> registro idempotente ->
  * envio manual pelo WhatsApp (e automático só quando o servidor tem credencial).
  */
-export function useSosController(): SosController {
+export function useSosRuntime(): SosController {
   const { capture } = useGeolocation();
   const { contacts } = useContacts();
   const qc = useQueryClient();
@@ -437,7 +445,11 @@ export function useSosController(): SosController {
           const d = await dispatchSosNotifications({
             data: { sosEventId: res.sosEventId, onlyFailed: false },
           });
-          if (d.accepted > 0 && d.failed === 0) {
+          if ((d.unknown ?? 0) > 0) {
+            toast.warning(
+              `${d.unknown} envio(s) sem confirmação. Verifique com o contato antes de reenviar.`,
+            );
+          } else if (d.accepted > 0 && d.failed === 0) {
             toast.success(`Envio aceito pela API do WhatsApp (${d.accepted}).`);
           } else if (d.accepted > 0) {
             toast.warning(`${d.accepted} aceito(s), ${d.failed} recusado(s). Envie o resto à mão.`);
@@ -445,7 +457,9 @@ export function useSosController(): SosController {
             toast.error("A API do WhatsApp recusou os envios. Use os botões abaixo.");
           }
         } catch {
-          toast.error("O envio automático falhou. Use os botões abaixo.");
+          toast.warning(
+            "Não foi possível confirmar o envio automático. Verifique com o contato antes de reenviar.",
+          );
         }
       }
     } catch (e) {
@@ -603,4 +617,12 @@ export function useSosController(): SosController {
     closePanel,
     shareNative,
   };
+}
+
+// One runtime per authenticated session. Buttons only consume its state.
+export const SosContext = createContext<SosController | null>(null);
+export function useSosController(): SosController {
+  const value = useContext(SosContext);
+  if (!value) throw new Error("SOS requer a sessão autenticada.");
+  return value;
 }

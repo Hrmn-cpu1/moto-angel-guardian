@@ -28,11 +28,21 @@ function ContactsPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", relation: "" });
 
-  const submit = () => {
+  const [saving, setSaving] = useState(false);
+  const submit = async () => {
+    if (saving) return;
     if (!form.name.trim() || !form.phone.trim()) return;
-    add({ ...form, isPrimary: contacts.length === 0 });
-    setForm({ name: "", phone: "", relation: "" });
-    setOpen(false);
+    setSaving(true);
+    try {
+      await add({ ...form, isPrimary: contacts.length === 0 });
+      setForm({ name: "", phone: "", relation: "" });
+      setOpen(false);
+      toast.success("Contato salvo.");
+    } catch {
+      toast.error("Não foi possível salvar o contato. Confira os dados e tente novamente.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const doShare = async (name: string, phone: string) => {
@@ -141,7 +151,9 @@ function ContactsPage() {
               />
               <div className="grid grid-cols-2 gap-2 pt-2">
                 <OutlineButton onClick={() => setOpen(false)}>Cancelar</OutlineButton>
-                <GoldButton onClick={submit}>Salvar</GoldButton>
+                <GoldButton onClick={() => void submit()} disabled={saving}>
+                  {saving ? "Salvando…" : "Salvar"}
+                </GoldButton>
               </div>
             </div>
           </div>

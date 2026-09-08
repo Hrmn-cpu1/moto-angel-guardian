@@ -29,6 +29,8 @@ interface PreparacaoProps {
   viagem: Viagem;
   gpsOk: boolean;
   contato: string | null;
+  compartilhando?: boolean;
+  compartilhamentoConfirmado?: boolean;
   /**
    * Estado do segundo plano ANTES de começar — é aqui que ainda dá para
    * resolver. `null` fora do Android: nada a prometer onde não há serviço.
@@ -52,6 +54,8 @@ export function PreparacaoDeViagem({
   viagem,
   gpsOk,
   contato,
+  compartilhando = false,
+  compartilhamentoConfirmado = false,
   segundoPlano = null,
   rota = null,
   estadoDaRota = "sem_destino",
@@ -103,9 +107,26 @@ export function PreparacaoDeViagem({
           <ShieldCheck size={15} /> Iniciar viagem segura
         </button>
       </div>
-      <div className="sr-only">
+      <div className="mt-2 text-[11px] leading-relaxed text-muted-foreground" role="status">
         GPS {gpsOk ? "ativo" : "sem sinal"}. Contato {contato ?? "nenhum"}. Segundo plano{" "}
         {segundoPlano?.rotulo ?? "indisponível"}.
+        <p>
+          {!compartilhamentoConfirmado
+            ? "Estado do compartilhamento não confirmado. Confira em Compartilhar."
+            : compartilhando
+              ? "Localização compartilhada com as pessoas autorizadas."
+              : "Compartilhamento de localização desligado."}
+        </p>
+        {!contato && (
+          <a href="/contacts" className="font-semibold text-gold underline">
+            Adicionar contato de emergência
+          </a>
+        )}
+        {(!gpsOk || !contato || segundoPlano?.ok === false) && (
+          <p className="text-gold">
+            Há pendências. A viagem pode começar, mas os recursos indicados acima estão limitados.
+          </p>
+        )}
       </div>
       <button
         onClick={onCancelar}

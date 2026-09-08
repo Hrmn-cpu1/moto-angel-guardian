@@ -136,15 +136,10 @@ export interface SosFix {
 }
 
 export type SosFixRejection =
-  | "sem_fix"
-  | "coordenada_invalida"
-  | "fix_antigo"
-  | "fix_impreciso"
-  | "fix_simulado";
+  "sem_fix" | "coordenada_invalida" | "fix_antigo" | "fix_impreciso" | "fix_simulado";
 
 export type SosFixResult =
-  | { ok: true; fix: SosFix }
-  | { ok: false; reason: SosFixRejection; message: string };
+  { ok: true; fix: SosFix } | { ok: false; reason: SosFixRejection; message: string };
 
 const FIX_MESSAGES: Record<SosFixRejection, string> = {
   sem_fix: "Sem leitura de GPS. Vá para um lugar aberto e toque em tentar de novo.",
@@ -235,10 +230,7 @@ export function validateSosFix(input: RawFix | null | undefined, now = Date.now(
  * ------------------------------------------------------------------ */
 
 export type TriggerBlock =
-  | "em_andamento"
-  | "sos_ja_ativo"
-  | "acionado_ha_pouco"
-  | "hold_incompleto";
+  "em_andamento" | "sos_ja_ativo" | "acionado_ha_pouco" | "hold_incompleto";
 
 export interface TriggerGuardInput {
   /** Uma chamada ainda não terminou (lock de concorrência). */
@@ -253,8 +245,7 @@ export interface TriggerGuardInput {
 }
 
 export type TriggerGuardResult =
-  | { allowed: true }
-  | { allowed: false; reason: TriggerBlock; message: string };
+  { allowed: true } | { allowed: false; reason: TriggerBlock; message: string };
 
 const BLOCK_MESSAGES: Record<TriggerBlock, string> = {
   em_andamento: "O acionamento já está em curso.",
@@ -388,6 +379,7 @@ export type SosDeliveryState =
   | "enviando"
   | "aceita_pelo_provedor"
   | "recusada_pelo_provedor"
+  | "envio_incerto"
   | "entregue_confirmado";
 
 const DELIVERY_LABELS: Record<SosDeliveryState, string> = {
@@ -396,6 +388,7 @@ const DELIVERY_LABELS: Record<SosDeliveryState, string> = {
   enviando: "Enviando pela API — aguarde",
   aceita_pelo_provedor: "Aceito pela API — aguarde confirmação.",
   recusada_pelo_provedor: "A API do WhatsApp recusou. Envie pelo botão manual",
+  envio_incerto: "Envio sem confirmação. Verifique com o contato antes de reenviar.",
   entregue_confirmado: "Entregue — confirmado pelo WhatsApp.",
 };
 
@@ -417,7 +410,10 @@ export function sosDeliveryLabel(state: SosDeliveryState): string {
  */
 export function allowsManualSend(state: SosDeliveryState): boolean {
   return (
-    state === "preparada" || state === "aberta_no_whatsapp" || state === "recusada_pelo_provedor"
+    state === "preparada" ||
+    state === "aberta_no_whatsapp" ||
+    state === "recusada_pelo_provedor" ||
+    state === "envio_incerto"
   );
 }
 
@@ -441,6 +437,8 @@ export function deliveryStateFromRow(
       return "enviando";
     case "failed":
       return "recusada_pelo_provedor";
+    case "unknown":
+      return "envio_incerto";
     default:
       return openedByUser ? "aberta_no_whatsapp" : "preparada";
   }

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <title>Moto Anjo — conexão indisponível</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: max(32px, env(safe-area-inset-top)) 24px max(32px, env(safe-area-inset-bottom));
+        background: #080b10;
+        color: #f5f7fa;
+        font:
+          18px/1.5 system-ui,
+          sans-serif;
+      }
+      main {
+        max-width: 480px;
+        margin: 6vh auto;
+      }
+      .brand {
+        color: #d4af37;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+      }
+      h1 {
+        font-size: 32px;
+        line-height: 1.15;
+        margin: 28px 0 20px;
+      }
+      p {
+        color: #c5cbd5;
+      }
+      a {
+        display: block;
+        margin: 12px 0;
+        padding: 17px 20px;
+        border: 1px solid #4d5666;
+        border-radius: 12px;
+        color: #fff;
+        text-decoration: none;
+        font-weight: 650;
+      }
+      a:focus-visible {
+        outline: 3px solid #d4af37;
+        outline-offset: 3px;
+      }
+      .emergency {
+        background: #a51d2d;
+        border-color: #a51d2d;
+      }
+      small {
+        display: block;
+        color: #b4bcc8;
+        font-size: 15px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="brand">MOTO ANJO</div>
+      <h1>Não foi possível abrir o aplicativo.</h1>
+      <p>
+        Verifique sua conexão e tente novamente. Esta tela não registra SOS nem envia avisos aos
+        seus contatos.
+      </p>
+      <p>Em uma emergência no Brasil, abra o discador:</p>
+      <a class="emergency" href="tel:192">SAMU · 192</a>
+      <a href="tel:193">Bombeiros · 193</a>
+      <a href="tel:190">Polícia · 190</a>
+      <small
+        >Você confirma a ligação no telefone. Os botões não enviam sua localização e dependem do
+        serviço de chamadas do aparelho.</small
+      >
+      <a id="retry" href="https://moto-angel-guardian.lovable.app">Tentar abrir o Moto Anjo</a>
+    </main>
+  </body>
+</html>

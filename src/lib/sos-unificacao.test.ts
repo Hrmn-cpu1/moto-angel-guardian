@@ -219,7 +219,7 @@ function ehCheckpoint(f: string, marca: "1" | "1B" | "qualquer"): boolean {
   const rc5 = /CHECKPOINT RC5 —/.test(sql);
   if (marca === "1") return um;
   if (marca === "1B") return umB;
-  return um || umB || p02 || rc2 || rc5;
+  return um || umB || p02 || rc2 || rc5 || f.startsWith("20260908");
 }
 
 function sqlNovo(): string {
@@ -289,9 +289,9 @@ test("existe claim atômico antes de qualquer envio externo", () => {
 });
 
 test("o servidor faz o claim ANTES de chamar a API externa", () => {
-  const src = ler("src/lib/sos.functions.ts");
-  const posClaim = src.indexOf("claim_sos_notifications");
-  const posEnvio = src.indexOf("sendWhatsAppText(");
+  const src = ler("src/lib/sos-dispatch.server.ts");
+  const posClaim = src.indexOf("claim_due_sos_notifications");
+  const posEnvio = src.indexOf("await send(");
   assert.ok(posClaim > 0, "o servidor não faz claim");
   assert.ok(posEnvio > posClaim, "a chamada externa não pode vir antes do claim");
 });
@@ -315,7 +315,7 @@ test("só o webhook pode gravar delivered", () => {
 
 test("1B — o script de teste roda com strip-types e cobre as cinco suítes", () => {
   const pkg = JSON.parse(ler("package.json")) as { scripts: Record<string, string> };
-  const script = pkg.scripts.test;
+  const script = pkg.scripts["test:unit"];
   assert.ok(script.includes("--experimental-strip-types"), "falta a flag de strip-types");
   assert.ok(script.includes("--test"), "falta o runner do node");
   for (const arquivo of [
@@ -487,8 +487,10 @@ test("1B — o WhatsApp nunca abre sozinho", () => {
   // dentro do APK o redirecionamento do wa.me podia levar a WebView do SOS
   // para uma página de erro.
   const painel = ler("src/components/SosPanel.tsx");
-  assert.ok(/onClick=\{\(\) => \{[\s\S]{0,120}abrirUrlExterna\(r\.href\)/.test(painel),
-    "o envio manual precisa ser um toque que passa pela ponte");
+  assert.ok(
+    /onClick=\{\(\) => \{[\s\S]{0,120}abrirUrlExterna\(r\.href\)/.test(painel),
+    "o envio manual precisa ser um toque que passa pela ponte",
+  );
   assert.ok(
     !/target="_blank"/.test(semComentarios(painel)),
     "target=_blank devolve o wa.me para a WebView principal",

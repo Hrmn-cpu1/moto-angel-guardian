@@ -37,13 +37,16 @@ export const stashNativeSession = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => StashSchema.parse(data))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin.rpc("purge_native_auth_codes");
+    const { validateNativeSession } = await import("./native-auth.server");
+    const session = await validateNativeSession(data.access_token, data.refresh_token);
+    const { error: purgeError } = await supabaseAdmin.rpc("purge_native_auth_codes");
+    if (purgeError) throw new Error("Não foi possível preparar o login. Tente novamente.");
     const code = randomBytes(32).toString("base64url");
     const { error } = await supabaseAdmin.from("native_auth_codes").insert({
       code,
       code_challenge: data.code_challenge,
-      access_token: data.access_token,
-      refresh_token: data.refresh_token,
+      access_token: session.access_token,
+      refresh_token: session.refresh_token,
     });
     if (error) throw new Error("Não foi possível concluir o login. Tente novamente.");
     return { code };
@@ -54,17 +57,16 @@ export const exchangeNativeCode = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => ExchangeSchema.parse(data))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row } = await supabaseAdmin
+    // DELETE RETURNING é uma operação atômica: só um concorrente recebe a sessão.
+    const { data: row, error } = await supabaseAdmin
       .from("native_auth_codes")
-      .select("code, code_challenge, access_token, refresh_token, expires_at, used_at")
+      .delete()
       .eq("code", data.code)
+      .select("code_challenge, access_token, refresh_token, expires_at, used_at")
       .maybeSingle();
 
-    // Consome o código sempre — mesmo em falha — para impedir força bruta.
-    if (row) {
-      await supabaseAdmin.from("native_auth_codes").delete().eq("code", data.code);
-    }
-    if (!row || row.used_at || new Date(row.expires_at).getTime() < Date.now()) {
+    if (error) throw new Error("Não foi possível concluir o login. Tente novamente.");
+    if (!row || row.used_at || new Date(row.expires_at).getTime() <= Date.now()) {
       throw new Error("Código de login expirado. Entre novamente.");
     }
     if (sha256Base64Url(data.code_verifier) !== row.code_challenge) {

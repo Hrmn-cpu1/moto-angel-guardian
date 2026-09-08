@@ -1,5 +1,18 @@
 apply plugin: 'com.android.application'
 
+// A chave de publicação pertence ao responsável pela distribuição. Não há
+// chave de release gerada ou credencial gravada no repositório.
+def releaseSigning = [
+    file: System.getenv('MOTOANJO_KEYSTORE_FILE'),
+    storePassword: System.getenv('MOTOANJO_KEYSTORE_PASSWORD'),
+    alias: System.getenv('MOTOANJO_KEY_ALIAS'),
+    keyPassword: System.getenv('MOTOANJO_KEY_PASSWORD')
+]
+def hasReleaseSigning = releaseSigning.values().every { it != null && !it.isEmpty() }
+if (releaseSigning.values().any { it != null && !it.isEmpty() } && !hasReleaseSigning) {
+    throw new GradleException('Configuração de assinatura incompleta: forneça as quatro variáveis MOTOANJO_KEY*.')
+}
+
 android {
     namespace "com.motoanjo.app"
     compileSdk rootProject.ext.compileSdkVersion
@@ -9,8 +22,8 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // versionCode monotonico: cada APK que sai do CI precisa de um numero
         // maior que o anterior, senao a Play rejeita. 4 = primeiro RC Android.
-        versionCode 12
-        versionName "1.3.12-lockfix-reroute"
+        versionCode 13
+        versionName "1.4.0-piloto"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -19,8 +32,19 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile file(releaseSigning.file)
+                storePassword releaseSigning.storePassword
+                keyAlias releaseSigning.alias
+                keyPassword releaseSigning.keyPassword
+            }
+        }
+    }
     buildTypes {
         release {
+            if (hasReleaseSigning) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

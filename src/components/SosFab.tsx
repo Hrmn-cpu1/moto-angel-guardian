@@ -1,6 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
 import { SosHoldButton } from "@/components/SosHoldButton";
-import { SosPanel } from "@/components/SosPanel";
 import { useSosController } from "@/hooks/useSosController";
 import { cn } from "@/lib/utils";
 
@@ -40,8 +38,6 @@ export function SosFabControlado({
   compact = false,
   oculto = false,
 }: Props & { sos: ReturnType<typeof useSosController> }) {
-  const navigate = useNavigate();
-
   return (
     <>
       {!oculto && (
@@ -56,11 +52,6 @@ export function SosFabControlado({
           )}
         />
       )}
-      <SosPanel
-        sos={sos}
-        layout="overlay"
-        onAddContacts={() => void navigate({ to: "/contacts" })}
-      />
     </>
   );
 }

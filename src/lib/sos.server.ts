@@ -1,11 +1,16 @@
 // Server-only helpers for SOS/WhatsApp dispatch.
 // This file is filename-blocked from client bundles by the "*.server.ts" pattern.
 
-const META_GRAPH_URL = "https://graph.facebook.com/v20.0";
-
-/** True only when both Meta WhatsApp Cloud API secrets are present on the server. */
+/** Explicit enablement and approved template configuration are required. */
 export function isWhatsAppConfigured(): boolean {
-  return Boolean(process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID);
+  return Boolean(
+    process.env.SOS_DELIVERY_ENABLED === "true" &&
+    process.env.WHATSAPP_ACCESS_TOKEN &&
+    /^\d+$/.test(process.env.WHATSAPP_PHONE_NUMBER_ID ?? "") &&
+    /^[a-z0-9_]+$/.test(process.env.WHATSAPP_SOS_TEMPLATE_NAME ?? "") &&
+    /^[a-z]{2}(?:_[A-Z]{2})?$/.test(process.env.WHATSAPP_SOS_TEMPLATE_LANGUAGE ?? "") &&
+    /^v\d+\.0$/.test(process.env.WHATSAPP_GRAPH_VERSION ?? ""),
+  );
 }
 
 export function normalizeE164(input: string): string {
@@ -51,61 +56,106 @@ export function buildSosMessage(params: {
 }
 
 export type SendResult =
-  | { ok: true; providerMessageId: string | null; httpStatus: number; latencyMs: number }
-  | { ok: false; error: string; httpStatus: number; latencyMs: number };
-
-export async function sendWhatsAppText(recipientPhone: string, body: string): Promise<SendResult> {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  const started = Date.now();
-  if (!token || !phoneNumberId) {
-    return {
-      ok: false,
-      error:
-        "WhatsApp credentials not configured (WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID).",
-      httpStatus: 0,
-      latencyMs: 0,
+  | { ok: true; providerMessageId: string; httpStatus: number; latencyMs: number }
+  | {
+      ok: false;
+      error: string;
+      httpStatus: number;
+      latencyMs: number;
+      uncertain?: boolean;
+      retryable?: boolean;
     };
-  }
+
+export interface SosTemplateData {
+  name: string;
+  phone: string;
+  lat: number;
+  lng: number;
+  when: Date;
+}
+
+/** Positional body parameters must match the approved template, in this order. */
+export function sosTemplateParameters(data: SosTemplateData): string[] {
+  return [
+    data.name,
+    `https://maps.google.com/?q=${data.lat},${data.lng}`,
+    data.when.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
+    data.phone || "não informado",
+  ];
+}
+
+/** No free-form fallback: emergencies usually begin outside a service window. */
+export async function sendSosTemplate(
+  recipientPhone: string,
+  data: SosTemplateData,
+  fetcher: typeof fetch = fetch,
+): Promise<SendResult> {
+  const started = Date.now();
+  const fail = (
+    error: string,
+    httpStatus = 0,
+    uncertain = false,
+    retryable = false,
+  ): SendResult => ({
+    ok: false,
+    error,
+    httpStatus,
+    latencyMs: Date.now() - started,
+    uncertain,
+    retryable,
+  });
+  if (!isWhatsAppConfigured())
+    return fail("Envio automático desativado ou template não configurado.");
   const to = normalizeE164(recipientPhone);
-  if (!to) {
-    return { ok: false, error: "Invalid recipient phone.", httpStatus: 0, latencyMs: 0 };
-  }
+  if (!/^[1-9]\d{9,14}$/.test(to)) return fail("Telefone de destino inválido.");
   try {
-    const res = await fetch(`${META_GRAPH_URL}/${phoneNumberId}/messages`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
+    const res = await fetcher(
+      `https://graph.facebook.com/${process.env.WHATSAPP_GRAPH_VERSION}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+      {
+        method: "POST",
+        signal: AbortSignal.timeout(12_000),
+        headers: {
+          Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to,
+          type: "template",
+          template: {
+            name: process.env.WHATSAPP_SOS_TEMPLATE_NAME,
+            language: { code: process.env.WHATSAPP_SOS_TEMPLATE_LANGUAGE },
+            components: [
+              {
+                type: "body",
+                parameters: sosTemplateParameters(data).map((text) => ({ type: "text", text })),
+              },
+            ],
+          },
+        }),
       },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        recipient_type: "individual",
-        to,
-        type: "text",
-        text: { preview_url: true, body },
-      }),
-    });
-    const latencyMs = Date.now() - started;
-    const text = await res.text();
+    );
     if (!res.ok) {
-      console.error(
-        `[whatsapp] send failed to=${to} status=${res.status} latency=${latencyMs}ms body=${text}`,
+      // Only an explicit rate rejection is retried. 5xx can hide an accepted send.
+      return fail(
+        `WhatsApp HTTP ${res.status}.`,
+        res.status,
+        res.status >= 500,
+        res.status === 429,
       );
-      return { ok: false, error: `HTTP ${res.status}: ${text}`, httpStatus: res.status, latencyMs };
     }
-    let providerMessageId: string | null = null;
-    try {
-      const parsed = JSON.parse(text) as { messages?: Array<{ id?: string }> };
-      providerMessageId = parsed.messages?.[0]?.id ?? null;
-    } catch {
-      // ignore parse error, still success
-    }
-    return { ok: true, providerMessageId, httpStatus: res.status, latencyMs };
-  } catch (e) {
-    const latencyMs = Date.now() - started;
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error(`[whatsapp] network error to=${to} latency=${latencyMs}ms err=${msg}`);
-    return { ok: false, error: `Network error: ${msg}`, httpStatus: 0, latencyMs };
+    const parsed: unknown = await res.json();
+    const id = (parsed as { messages?: Array<{ id?: unknown }> })?.messages?.[0]?.id;
+    if (typeof id !== "string" || !id)
+      return fail("Provedor não confirmou o identificador do envio.", res.status, true);
+    return {
+      ok: true,
+      providerMessageId: id,
+      httpStatus: res.status,
+      latencyMs: Date.now() - started,
+    };
+  } catch {
+    return fail("Não foi possível confirmar o resultado do envio.", 0, true);
   }
 }

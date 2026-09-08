@@ -76,9 +76,12 @@ export function useCrashDetection(opcoes: OpcoesDeteccaoQueda): DeteccaoQueda {
   acionarRef.current = aoAcionarSos;
   const sosAtivoRef = useRef(sosAtivo);
   sosAtivoRef.current = sosAtivo;
+  const ativoRef = useRef(ativo);
+  ativoRef.current = ativo;
 
   const dispararSeDevido = useCallback(
     (estadoAtual: EstadoQueda) => {
+      if (!ativoRef.current) return;
       const decisao = decidirAcionamento({
         deteccaoLigada,
         modoDiagnostico,
@@ -95,7 +98,16 @@ export function useCrashDetection(opcoes: OpcoesDeteccaoQueda): DeteccaoQueda {
 
   // Captura física. Um único assinante por montagem; a fonte é singleton.
   useEffect(() => {
-    if (!ativo || !deteccaoLigada) return;
+    if (!ativo || !deteccaoLigada) {
+      engine.current?.reset();
+      inicioCountdown.current = null;
+      jaAcionou.current = false;
+      setEstado("normal");
+      setSegundos(null);
+      setSensoresDisponiveis(false);
+      setFonte("nenhuma");
+      return;
+    }
     setSensoresDisponiveis(movimentoDisponivel());
     void pedirPermissaoDeMovimento().then((r) => setSensoresDisponiveis(r === "disponivel"));
     // O serviço nativo tem a palavra final: ele lê o hardware de verdade e
@@ -134,7 +146,8 @@ export function useCrashDetection(opcoes: OpcoesDeteccaoQueda): DeteccaoQueda {
 
   // Countdown: relógio próprio, porque o sensor pode parar de emitir.
   useEffect(() => {
-    if (estado !== "countdown" || inicioCountdown.current == null) return;
+    if (!ativo || !deteccaoLigada || estado !== "countdown" || inicioCountdown.current == null)
+      return;
     const tick = () => {
       const restante = segundosRestantes(inicioCountdown.current!, Date.now());
       setSegundos(restante);
@@ -148,7 +161,7 @@ export function useCrashDetection(opcoes: OpcoesDeteccaoQueda): DeteccaoQueda {
     tick();
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
-  }, [estado, dispararSeDevido]);
+  }, [ativo, deteccaoLigada, estado, dispararSeDevido]);
 
   const cancelar = useCallback(() => {
     const r = engine.current!.cancelar();

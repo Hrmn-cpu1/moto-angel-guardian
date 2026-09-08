@@ -1,6 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
 import { SosHoldButton } from "@/components/SosHoldButton";
-import { SosPanel } from "@/components/SosPanel";
 import { useSosController } from "@/hooks/useSosController";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +16,6 @@ interface Props {
  */
 export function MapSosButton({ className }: Props) {
   const sos = useSosController();
-  const navigate = useNavigate();
 
   return (
     <>
@@ -28,11 +25,6 @@ export function MapSosButton({ className }: Props) {
         disabled={sos.busy || sos.recovering}
         onHoldComplete={(heldMs) => sos.trigger(heldMs)}
         className={cn("absolute bottom-4 right-4 z-20", className)}
-      />
-      <SosPanel
-        sos={sos}
-        layout="inline"
-        onAddContacts={() => void navigate({ to: "/contacts" })}
       />
     </>
   );

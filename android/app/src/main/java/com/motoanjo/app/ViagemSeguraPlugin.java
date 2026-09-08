@@ -99,8 +99,13 @@ public class ViagemSeguraPlugin extends Plugin {
         // P0.1c: SOS pedido na tela de bloqueio. NÃO abre um segundo caminho
         // de emergência — apenas avisa o app, e quem dispara é o mesmo
         // controlador de SOS que o botão manual já usa.
-        LockNavigationState.definirCanalDeSos(() ->
-                notifyListeners("sosTelaBloqueada", new JSObject()));
+        LockNavigationState.definirCanalDeSos(() -> {
+            final JSObject pedido = new JSObject();
+            pedido.put("quandoMs", System.currentTimeMillis());
+            // Retém durante a montagem do listener; o app descarta pedidos
+            // expirados e só aceita durante uma viagem ativa.
+            notifyListeners("sosTelaBloqueada", pedido, true);
+        });
     }
 
     @PluginMethod

@@ -706,8 +706,14 @@ export function ouvirSosDaTelaBloqueada(cb: () => void): () => void {
   let handle: ListenerHandle | null = null;
   let cancelado = false;
 
-  const aoReceber = () => {
+  const aoReceber = (evento?: { quandoMs?: number }) => {
     if (cancelado) return;
+    // Retained native requests must not turn into a new emergency much later.
+    if (
+      evento?.quandoMs != null &&
+      (Date.now() - evento.quandoMs > 60_000 || evento.quandoMs > Date.now() + 5_000)
+    )
+      return;
     try {
       cb();
     } catch (error) {

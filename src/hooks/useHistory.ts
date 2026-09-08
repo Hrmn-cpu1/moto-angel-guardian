@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { HistoryItem } from "@/types";
@@ -41,6 +41,10 @@ export function useHistory() {
   const invalidate = useCallback(() => {
     void qc.invalidateQueries({ queryKey: historyKey });
   }, [qc]);
+  useEffect(() => {
+    window.addEventListener("moto-anjo:history-synced", invalidate);
+    return () => window.removeEventListener("moto-anjo:history-synced", invalidate);
+  }, [invalidate]);
 
   const addMutation = useMutation({
     mutationFn: async (item: Omit<HistoryItem, "id" | "timestamp">) => {
@@ -54,7 +58,7 @@ export function useHistory() {
         const distance = Number(meta.distance ?? 0);
         const now = new Date();
         const started = new Date(now.getTime() - duration * 1000);
-        await supabase.from("trips").insert({
+        const { error } = await supabase.from("trips").insert({
           user_id: user.id,
           started_at: started.toISOString(),
           ended_at: now.toISOString(),
@@ -63,6 +67,7 @@ export function useHistory() {
           avg_speed: duration > 0 ? distance / (duration / 3600) : 0,
           companion: (meta.companion as string) || null,
         });
+        if (error) throw error;
       }
       // Não existe mais caminho de INSERT em sos_events pelo cliente: um SOS
       // só nasce por sos_open, que valida a coordenada, exige request_id e

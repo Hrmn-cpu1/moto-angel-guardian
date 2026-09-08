@@ -813,7 +813,9 @@ public class ViagemSeguraService extends Service {
          *   3. destino.
          * O texto expandido mostra o resto, sem repetir a linha principal.
          */
-        final StringBuilder linha = new StringBuilder("Protegido");
+        // O serviço confirma captura; não confirma execução do motor JS com
+        // a WebView suspensa nem entrega de mensagens de emergência.
+        final StringBuilder linha = new StringBuilder("Viagem ativa");
         if (!alertaAtual.isEmpty()) {
             linha.append(" · ").append(alertaAtual);
             if (!distanciaAtual.isEmpty()) linha.append(" a ").append(distanciaAtual);

@@ -180,7 +180,7 @@ jobs:
 
       - name: Montar APK debug
         working-directory: android
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew :app:testDebugUnitTest assembleDebug --stacktrace
 
       - name: Metadados e SHA-256
         id: meta
@@ -205,6 +205,8 @@ jobs:
             echo "sha256: $(sha256sum $APK | cut -d' ' -f1)"
             echo "frontend carregado (server.url): $APK_WEB_URL"
             echo "frontend embutido no APK: NAO — ver capacitor.config.ts"
+            echo "fallback de conexão: offline.html empacotado; apenas discador, sem envio de SOS"
+            echo "assinatura: debug, não é chave de distribuição Play"
             grep -E "versionCode|versionName" android/app/build.gradle
             grep -E "minSdkVersion|targetSdkVersion" android/variables.gradle
           } > android-build-metadata.txt
@@ -221,4 +223,3 @@ jobs:
             ${{ steps.meta.outputs.apk }}
             android-build-metadata.txt
           retention-days: 14
-

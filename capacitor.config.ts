@@ -49,11 +49,14 @@ const config: CapacitorConfig = {
   appId: "com.motoanjo.app",
   appName: "Moto Anjo",
   // Exigido pelo CLI mesmo usando server.url; é o output real do build web.
-  webDir: "dist/client",
+  webDir: ".output/public",
   server: {
     url: urlDoApp,
     cleartext: false,
     androidScheme: "https",
+    // Empacotada no APK: abre o discador mesmo quando o frontend remoto falha.
+    // Não tenta registrar um SOS sem o backend.
+    errorPath: "offline.html",
     allowNavigation: [
       // O host configurado entra primeiro: sem ele, um domínio próprio seria
       // bloqueado pela própria navegação do WebView.

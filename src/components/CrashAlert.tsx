@@ -1,5 +1,4 @@
 import { ShieldAlert } from "lucide-react";
-import { camada } from "@/lib/layers";
 import type { DeteccaoQueda } from "@/hooks/useCrashDetection";
 
 /**
@@ -15,7 +14,7 @@ export function CrashAlert({ deteccao }: { deteccao: DeteccaoQueda }) {
     <div
       role="alertdialog"
       aria-label="Possível queda detectada"
-      className={`absolute inset-0 ${camada("painelInferior")} flex flex-col items-center justify-center gap-6 bg-background/95 px-6 backdrop-blur-sm`}
+      className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-6 bg-background/95 px-6 backdrop-blur-sm"
     >
       <ShieldAlert size={44} className="text-emergency" />
       <div className="text-center">

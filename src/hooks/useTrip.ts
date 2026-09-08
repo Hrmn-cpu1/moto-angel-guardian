@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { queueCompletedTrip, syncCompletedTrips } from "@/lib/trip-history-sync";
 import {
   assinarEstadoDoServico,
   consultarEstadoDoServico,
@@ -42,6 +44,13 @@ import {
 
 let viagemAtual: Viagem = { ...VIAGEM_INICIAL };
 let hidratado = false;
+let finalizando = false;
+export function resetTripRuntime(): void {
+  viagemAtual = { ...VIAGEM_INICIAL };
+  hidratado = false;
+  jaTentouRecuperar = false;
+  void pararServicoDeViagem();
+}
 /** Uma única tentativa de recuperação por transição de viagem (P1 §7). */
 let jaTentouRecuperar = false;
 const assinantes = new Set<(v: Viagem) => void>();
@@ -194,10 +203,30 @@ export function useTrip() {
     publicar(iniciarViagem(viagemAtual, Date.now()));
   }, []);
   const cancelar = useCallback(() => publicar(cancelarPreparacao(viagemAtual)), []);
-  const finalizar = useCallback(
-    (sosAtivo: boolean) => publicar(finalizarViagem(viagemAtual, sosAtivo)),
-    [],
-  );
+  const finalizar = useCallback(async (sosAtivo: boolean) => {
+    if (finalizando || viagemAtual.estado !== "ativa" || viagemAtual.iniciadaEm == null) return;
+    finalizando = true;
+    try {
+      await queueCompletedTrip(viagemAtual.iniciadaEm);
+      publicar(finalizarViagem(viagemAtual, sosAtivo));
+      toast.success(
+        "Viagem encerrada. O compartilhamento mantém a sua escolha; confira em Compartilhar.",
+      );
+      try {
+        await syncCompletedTrips();
+      } catch {
+        toast.warning(
+          "Viagem salva neste aparelho. O histórico será sincronizado quando a conexão voltar.",
+        );
+      }
+    } catch {
+      toast.error(
+        "Não foi possível salvar a viagem. Ela continua aberta; tente finalizar novamente.",
+      );
+    } finally {
+      finalizando = false;
+    }
+  }, []);
 
   return { viagem, servico, definirDestino, iniciar, cancelar, finalizar };
 }

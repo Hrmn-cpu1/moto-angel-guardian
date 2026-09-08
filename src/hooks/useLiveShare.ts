@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createContext, useContext, useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { publicarPresenca } from "@/lib/presence";
 import { assinarPosicao } from "@/lib/geo-watch";
@@ -19,13 +19,29 @@ import { assinarPosicao } from "@/lib/geo-watch";
  *
  * A leitura da própria linha continua permitida pela RLS.
  */
-export function useLiveShare() {
+export function useLiveShareRuntime() {
   const [sharing, setSharing] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const changing = useRef(false);
   /** Cancelador da assinatura compartilhada de GPS. */
   const cancelarWatch = useRef<(() => void) | null>(null);
   const lastPush = useRef(0);
+  const mounted = useRef(false);
+  const generation = useRef(0);
+  useEffect(() => {
+    mounted.current = true;
+    generation.current += 1;
+    return () => {
+      mounted.current = false;
+      generation.current += 1;
+      cancelarWatch.current?.();
+      cancelarWatch.current = null;
+    };
+  }, []);
 
   // Restore the previous state so sharing survives navigation/reload.
   useEffect(() => {
@@ -34,22 +50,34 @@ export function useLiveShare() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user || cancelled) return;
-      const { data } = await supabase
+      if (!user || cancelled) {
+        if (!cancelled) setLoading(false);
+        return;
+      }
+      const { data, error: readError } = await supabase
         .from("live_locations")
         .select("sharing,updated_at")
         .eq("user_id", user.id)
         .maybeSingle();
-      if (cancelled || !data) return;
-      setSharing(!!data.sharing);
-      setLastSync(data.updated_at ?? null);
-    })();
+      if (cancelled) return;
+      if (readError) setError("Não foi possível consultar o compartilhamento. Tente novamente.");
+      setConfirmed(!readError);
+      setSharing(!!data?.sharing);
+      setLastSync(data?.updated_at ?? null);
+      setLoading(false);
+    })().catch(() => {
+      if (!cancelled) {
+        setError("Não foi possível consultar o compartilhamento.");
+        setLoading(false);
+      }
+    });
     return () => {
       cancelled = true;
     };
   }, []);
 
   const push = useCallback(async (coords: GeolocationCoordinates) => {
+    if (!mounted.current) return;
     // Só posição. O estado de publicação já foi definido por set_location_sharing.
     const resultado = await publicarPresenca({
       lat: coords.latitude,
@@ -61,7 +89,6 @@ export function useLiveShare() {
       setError(resultado.erro);
       return;
     }
-    setError(null);
     // 'throttled' e 'rejected_jump' não são erro do usuário: o servidor
     // simplesmente não aceitou aquela amostra. A anterior continua valendo.
     if (resultado.status === "ok" || resultado.status === "created") {
@@ -70,32 +97,32 @@ export function useLiveShare() {
   }, []);
 
   const stop = useCallback(async () => {
-    cancelarWatch.current?.();
-    cancelarWatch.current = null;
-    setSharing(false);
-    const { error: err } = await supabase.rpc("set_location_sharing", { _enabled: false });
-    if (err) setError(err.message);
+    if (changing.current) return;
+    changing.current = true;
+    setSaving(true);
+    try {
+      const { error: err } = await supabase.rpc("set_location_sharing", { _enabled: false });
+      if (err) throw err;
+      cancelarWatch.current?.();
+      cancelarWatch.current = null;
+      setSharing(false);
+      setConfirmed(true);
+      setError(null);
+    } catch {
+      setError(
+        "O servidor não confirmou a interrupção. Sua localização pode continuar compartilhada. Tente desligar novamente.",
+      );
+    } finally {
+      changing.current = false;
+      setSaving(false);
+    }
   }, []);
 
-  const start = useCallback(() => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setError("GPS indisponível neste dispositivo.");
-      return;
-    }
-    if (cancelarWatch.current) return;
-    setSharing(true);
-    // Liga a publicação antes de mandar posição: a ordem importa, porque
-    // presence_touch nunca liga sharing sozinho.
-    void supabase
-      .rpc("set_location_sharing", { _enabled: true })
-      .then(({ error: err }) => {
-        if (err) setError(err.message);
-      });
-    // Reutiliza a posição compartilhada em vez de abrir um segundo watcher.
+  const subscribePosition = useCallback(() => {
+    if (!mounted.current || cancelarWatch.current) return;
     cancelarWatch.current = assinarPosicao({
       aoReceber: (pos) => {
         const now = Date.now();
-        // throttle writes to one every 10s
         if (now - lastPush.current < 10_000) return;
         lastPush.current = now;
         void push(pos.coords);
@@ -104,22 +131,46 @@ export function useLiveShare() {
     });
   }, [push]);
 
+  const start = useCallback(async () => {
+    if (!mounted.current || changing.current) return;
+    const operation = generation.current;
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setError("GPS indisponível neste dispositivo.");
+      return;
+    }
+    changing.current = true;
+    setSaving(true);
+    try {
+      const { error: err } = await supabase.rpc("set_location_sharing", { _enabled: true });
+      if (!mounted.current || operation !== generation.current) return;
+      if (err) throw err;
+      setSharing(true);
+      setConfirmed(true);
+      setError(null);
+      subscribePosition();
+    } catch {
+      setError("O servidor não confirmou o compartilhamento. Tente novamente.");
+    } finally {
+      changing.current = false;
+      setSaving(false);
+    }
+  }, [subscribePosition]);
+
   const toggle = useCallback(() => {
-    if (sharing) void stop();
-    else start();
-  }, [sharing, start, stop]);
+    if (sharing || !confirmed) void stop();
+    else void start();
+  }, [sharing, confirmed, start, stop]);
 
   useEffect(() => {
-    if (sharing && cancelarWatch.current == null) start();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sharing]);
+    if (sharing && cancelarWatch.current == null) subscribePosition();
+  }, [sharing, subscribePosition]);
 
-  useEffect(() => {
-    return () => {
-      cancelarWatch.current?.();
-      cancelarWatch.current = null;
-    };
-  }, []);
+  return { sharing, toggle, start, stop, lastSync, error, loading, saving, confirmed };
+}
 
-  return { sharing, toggle, start, stop, lastSync, error };
+export const LiveShareContext = createContext<ReturnType<typeof useLiveShareRuntime> | null>(null);
+export function useLiveShare() {
+  const value = useContext(LiveShareContext);
+  if (!value) throw new Error("Compartilhamento requer a sessão autenticada.");
+  return value;
 }
