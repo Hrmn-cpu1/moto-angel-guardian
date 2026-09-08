@@ -34,9 +34,16 @@ END;
 $$;
 
 -- Activation is an operational gate, not part of this installer:
--- 1. Set server SOS_DELIVERY_ENABLED=true only after approved template and consented QA.
--- 2. Store the exact HTTPS route and matching server secret in Vault using the names above.
--- 3. Set Vault moto_anjo_sos_enabled=true.
--- 4. SELECT cron.alter_job(jobid, active := true) FROM cron.job WHERE jobname='moto-anjo-sos-dispatch';
+-- Current QA: Evolution is configured server-side and its instance is open,
+-- but the network preflight still fails. Automatic sending is NOT PROVEN; cron stays disabled.
+-- 1. Select SOS_DELIVERY_PROVIDER explicitly and validate its server-only configuration.
+--    Evolution requires a reachable connected instance; Meta requires an approved template
+--    and webhook configuration. Meta is not a prerequisite for the Evolution provider.
+-- 2. Set SOS_DELIVERY_NOT_BEFORE to the agreed activation cutoff, excluding historical alerts.
+--    This cutoff is mandatory for Evolution. Complete consented sending QA for the chosen provider.
+-- 3. Set server SOS_DELIVERY_ENABLED=true only for the verified activation scope.
+-- 4. Store the exact HTTPS route and matching server secret in Vault using the names above.
+-- 5. Set Vault moto_anjo_sos_enabled=true.
+-- 6. SELECT cron.alter_job(jobid, active := true) FROM cron.job WHERE jobname='moto-anjo-sos-dispatch';
 -- To stop: disable the cron job AND set server SOS_DELIVERY_ENABLED=false.
 -- Verify scheduler HTTP receipts via net._http_response (request id/status only; never expose headers).

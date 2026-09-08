@@ -57,6 +57,11 @@ Finalizar a viagem exibiu confirmação; a inspeção ADB posterior não encontr
 permaneceu “não medida” no teste parado. Esses resultados permitem continuar
 o piloto, sem declarar toda a proteção automática validada.
 
+A posição com motinho e a perspectiva 3D do mapa também foram confirmadas no
+Android, na captura local `/tmp/moto-3d-device2.png`. Na etapa de mapa e
+integração Evolution, passaram 599 testes unitários, 112 comportamentais e o
+build; esses checks não demonstram entrega automática de mensagens.
+
 ### Reabertura posterior e correção publicada
 
 Depois dessa jornada, reabrir o app com processo novo mostrou novamente a tela
@@ -106,12 +111,18 @@ O diagnóstico disponível no APK debug mostra um countdown de 15 segundos e
 permite cancelar/confirmar **sem criar pedido nem usar a rede**. Ele verifica
 o caminho local; não prova entrega de mensagem.
 
-**NOT PROVEN: envio automático.** O usuário confirmou em 08/09/2026 que ainda
-não existe conta oficial Meta para o produto. O envio automático permanece
-desligado. Registrar um SOS não
-significa avisar contatos: o compartilhamento manual precisa ser concluído
-no WhatsApp. A ativação futura exige remetente, template aprovado, webhook
-e teste de entrega autorizado antes de ligar o agendador.
+**NOT PROVEN: envio automático.** O backend publicado aceita Evolution ou
+Meta. Evolution já está configurada com segredo restrito ao servidor e
+instância em estado `open`, mas a verificação preliminar de rede ainda falha
+e foi corrigida com redirecionamento manual, sem seguir destinos externos.
+A fila de produção enviou ao destinatário autorizado e a Evolution confirmou
+DELIVERY_ACK. O teste de localização nativa confirmou locationMessage, sem
+link Google Maps, e DELIVERY_ACK. O corte temporal exclui alertas antigos.
+
+Meta é uma alternativa que exige remetente, template aprovado e webhook; não
+é condição para usar Evolution. Registrar um SOS ou obter aceite do provedor
+não comprova entrega ao contato. O compartilhamento manual permanece como
+alternativa e precisa ser concluído no WhatsApp quando oferecido pelo painel.
 
 ## Distribuição do piloto
 

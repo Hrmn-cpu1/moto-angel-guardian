@@ -21,19 +21,24 @@ com testadores; não equivale a uma operação de SOS 100% validada.
   serviço. Perfil confirma gravação antes de fechar o formulário. O botão de
   login WhatsApp sem implementação foi retirado.
 - Diagnóstico debug de countdown por 15 segundos não cria SOS nem chama rede.
+- Posição no mapa representada por uma motinho, com navegação em perspectiva
+  inclinada. O backend aceita provedores WhatsApp Meta ou Evolution, sem
+  colocar credenciais do provedor no aplicativo.
 
 ## Evidência desta versão
 
 - Revisões independentes de Java, backend e frontend concluídas sem novos
   bloqueantes no código revisado. Testes unitários e comportamentais,
   typecheck, build web e lint dos arquivos alterados passaram.
+- Na etapa de mapa e integração Evolution, passaram 599 testes unitários,
+  112 comportamentais e o build. Após os ajustes finais, passaram 601 unitários e 142 comportamentais.
 - 26 testes Java; `testDebugUnitTest` e `assembleDebug`: BUILD SUCCESSFUL.
 - PostgreSQL isolado confirmou autorização, revogação, validade, isolamento,
   idempotência, cancelamento durante registro e 20 disputas entre dispositivos
   sem deadlock. Nenhuma mensagem externa foi usada nesses testes.
 - Lovable Cloud: migration `20260908000300_native_protection.sql` aplicada,
   além das migrations 001 e 002. Quatro funções nativas com execução exclusiva
-  do servidor; tabela com RLS. Agendador de envio continua desativado.
+  do servidor; tabela com RLS. Agendador de envio configurado com credencial exclusiva no Vault.
 - APK local: `android/app/build/outputs/apk/debug/app-debug.apk`.
   SHA-256: `4f5034baad236e1d2b855929ea5ed5de95df145aed21b6a3a7e2eadffaf733c1`.
 - Identificador web desta versão: `1.5.0-piloto`, build 14,
@@ -56,13 +61,15 @@ com testadores; não equivale a uma operação de SOS 100% validada.
   somente para o destinatário autorizado. A mensagem foi identificada como
   “TESTE AUTORIZADO”, com aviso de que não era uma emergência real.
 - O WhatsApp mostrou “Entregue” para essa mensagem manual. Isso comprova a
-  entrega observada nesse teste, sem validar o envio automático da Meta.
+  entrega observada nesse teste, sem validar envio automático por um provedor.
 - Cancelamento do SOS: confirmação na interface e remoção do marcador no
   mapa. Finalização da viagem: confirmação na interface e ausência de
   `ViagemSeguraService` na inspeção ADB posterior.
 - Histórico: “Viagem concluída” com duração de 4 min 34 s e registro do SOS
   às 16:03. O histórico anterior foi preservado; a distância aparece como
   “não medida”, sem inventar deslocamento no teste parado.
+- A motinho e a perspectiva 3D do mapa foram confirmadas no Android pela
+  captura local `/tmp/moto-3d-device2.png`.
 
 Após essa jornada, uma reabertura com processo novo voltou à tela de permissão
 apesar do GPS já autorizado. O log apontou `Geolocation.then() is not implemented on android`.
@@ -88,11 +95,14 @@ no teste físico:
 
 ## Aceites externos pendentes
 
-1. **NOT PROVEN:** envio automático. O usuário confirmou que ainda não
-   existe conta oficial Meta para o produto.
-   O envio automático permanece desligado. Configurar remetente, template e
-   webhook; comprovar entrega autorizada antes de ativar o agendador. O
-   compartilhamento manual precisa ser concluído no WhatsApp.
+1. **Envio validado com destinatário autorizado:** a fila de produção enviou
+   pela Evolution e o provedor registrou `DELIVERY_ACK`. O teste seguinte
+   confirmou `locationMessage` nativo, coordenadas de teste correspondentes,
+   ausência de link Google Maps e `DELIVERY_ACK`. Cada item envia um único
+   cartão com nome, horário e telefone; aceite e entrega permanecem distintos
+   no painel. A consulta de recibos foi restrita aos IDs dessas mensagens.
+   O corte temporal impede disparar alertas anteriores à ativação. O fluxo
+   manual continua como alternativa quando oferecido pelo painel.
 2. **NOT PROVEN:** continuidade por períodos longos com tela apagada,
    economia de bateria e perda/retorno de rede. O diagnóstico breve e a
    jornada manual não comprovam esses cenários.
