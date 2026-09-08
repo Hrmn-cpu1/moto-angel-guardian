@@ -199,6 +199,16 @@ function pinSvg(color: string, glyphColor: string, glyph: string): string {
       '<path d="M12 7l5 9H7l5-9z" fill="none" stroke="' +
       glyphColor +
       '" stroke-width="1.8" stroke-linejoin="round"/>',
+    buraco:
+      '<ellipse cx="12" cy="13" rx="4" ry="2.5" fill="none" stroke="' +
+      glyphColor +
+      '" stroke-width="1.8"/><path d="M9 8l-1 2m7-2 1 2" stroke="' +
+      glyphColor +
+      '" stroke-width="1.5"/>',
+    pista:
+      '<path d="M12 7c-1 2-4 4-4 7a4 4 0 008 0c0-3-3-5-4-7z" fill="none" stroke="' +
+      glyphColor +
+      '" stroke-width="1.6"/>',
     acidente:
       '<path d="M12 7l1.6 3.4 3.4.6-2.6 2.4.7 3.6-3.1-1.8-3.1 1.8.7-3.6L7 11l3.4-.6z" fill="' +
       glyphColor +
@@ -990,9 +1000,17 @@ export default function RealMap({
         a.type === "sos" || a.type === "acidente" || a.type === "roubo" ? "#D92323" : "#D4AF37";
       const glyphColor = color === "#D92323" ? "#F5F5F5" : "#D4AF37";
       return {
-        url: pinSvg(color, glyphColor, a.type),
-        scaledSize: new g.maps.Size(32, 40),
-        anchor: new g.maps.Point(16, 40),
+        url: pinSvg(
+          color,
+          glyphColor,
+          a.type === "perigo" && a.title === "Buraco na pista"
+            ? "buraco"
+            : a.type === "perigo" && a.title === "Pista escorregadia"
+              ? "pista"
+              : a.type,
+        ),
+        scaledSize: new g.maps.Size(40, 50),
+        anchor: new g.maps.Point(20, 50),
       };
     };
     const plano = planejarReconciliacao(

@@ -16,10 +16,12 @@ export function CopilotCard({
   aviso,
   viagemAtiva,
   className,
+  titulo,
 }: {
   aviso: EventoNoMapa | null;
   viagemAtiva: boolean;
   className?: string;
+  titulo?: string;
 }) {
   if (aviso) {
     const { cor, rotulo } = APARENCIA[aviso.categoria];
@@ -33,7 +35,7 @@ export function CopilotCard({
         <AlertTriangle size={18} className="shrink-0" style={{ color: cor }} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold leading-none" style={{ color: cor }}>
-            {rotulo}
+            {titulo || rotulo}
           </p>
           <p className="mt-1 text-[11px] leading-none text-muted-foreground">
             {distanciaCurta(aviso.distanciaKm)} • atenção
@@ -51,7 +53,7 @@ export function CopilotCard({
     >
       <ShieldCheck size={13} className="shrink-0 text-gold" />
       <span className="min-w-0 truncate text-[11px] font-medium text-muted-foreground">
-        {viagemAtiva ? "Rota tranquila" : "Pronto para a viagem"}
+        {viagemAtiva ? "Sem avisos próximos" : "Pronto para a viagem"}
       </span>
     </div>
   );

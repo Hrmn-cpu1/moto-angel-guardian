@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { registrarPresenca } from "@/lib/presence";
@@ -62,6 +62,7 @@ export function useAlerts(pos: { lat: number; lng: number } | null, radiusKm = 2
   const qc = useQueryClient();
   const key = alertsKey(pos?.lat, pos?.lng);
   const instanceId = useId();
+  const [liveUpdates, setLiveUpdates] = useState(false);
 
   const query = useQuery({
     queryKey: key,
@@ -106,7 +107,12 @@ export function useAlerts(pos: { lat: number; lng: number } | null, radiusKm = 2
       .on("postgres_changes", { event: "*", schema: "public", table: "community_alerts" }, () => {
         invalidate();
       })
-      .subscribe();
+      .subscribe((status) => {
+        setLiveUpdates(status === "SUBSCRIBED");
+        // Refresh after every connection/reconnection to recover events
+        // missed while the socket was unavailable.
+        if (status === "SUBSCRIBED") invalidate();
+      });
     return () => {
       void supabase.removeChannel(channel);
     };
@@ -149,6 +155,7 @@ export function useAlerts(pos: { lat: number; lng: number } | null, radiusKm = 2
 
   return {
     alerts: query.data ?? (VAZIO as NearbyAlert[]),
+    liveUpdates,
     loading: query.isLoading,
     error: query.error as Error | null,
     create,

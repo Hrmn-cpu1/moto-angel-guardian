@@ -1,7 +1,13 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { ArrowLeft, Crosshair, Layers, Navigation } from "lucide-react";
+import { ArrowLeft, Crosshair, Layers, Navigation, Megaphone } from "lucide-react";
+import {
+  CommunityRadar,
+  CommunityAlertsSheet,
+  CommunityReportSheet,
+  type RoadReport,
+} from "@/components/CommunityMapPanel";
 import { AppShell } from "@/components/AppShell";
 import { HomeTopBar } from "@/components/HomeTopBar";
 import { SosFabControlado } from "@/components/SosFab";
@@ -54,7 +60,7 @@ import { usePartners } from "@/hooks/usePartners";
 import { useServerFn } from "@tanstack/react-start";
 import { searchPOIs, type POI } from "@/lib/pois.functions";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import type { EstadoDaRota, RouteInfo } from "@/components/RealMap";
+import type { EstadoDaRota, RouteInfo, MapAlert } from "@/components/RealMap";
 import { MapErrorBoundary } from "@/components/MapErrorBoundary";
 
 const RealMap = lazy(() => import("@/components/RealMap"));
@@ -89,13 +95,25 @@ function Dashboard() {
   const [showAlerts, setShowAlerts] = useState(true);
   // RC3.2: UM estado para todas as folhas inferiores. Ver `lib/sheets.ts`.
   const [folha, setFolha] = useState<Folha>("nenhuma");
+  const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
+  const openMapAlert = useCallback((alert: MapAlert) => {
+    setSelectedAlertId(alert.id);
+    setFolha("avisos");
+  }, []);
   const tecladoAberto = useTecladoVirtual();
   const [rota, setRota] = useState<RouteInfo | null>(null);
   const [estadoDaRota, setEstadoDaRota] = useState<EstadoDaRota>("sem_destino");
 
   const [pois, setPois] = useState<POI[]>([]);
   const fetchPOIs = useServerFn(searchPOIs);
-  const { alerts } = useAlerts(position);
+  const {
+    alerts,
+    loading: alertsLoading,
+    error: alertsError,
+    create: createAlert,
+    refresh: refreshAlerts,
+    liveUpdates,
+  } = useAlerts(position);
   // Mesma fonte de verdade da tela /map (P0.5-B): mesma preferência, mesmas
   // regras de opt-in e a mesma separação entre comunidade e contatos.
   const { camadas, alternar } = useMapLayers();
@@ -116,6 +134,18 @@ function Dashboard() {
   // O SOS ativo é lido do controlador que já existe, pela fase — não invento
   // API nova nele (RC3: não reimplementar SOS).
   const sos = useSosController();
+  useEffect(() => {
+    if (sos.open) setFolha("nenhuma");
+  }, [sos.open]);
+  const publishRoadReport = async (report: RoadReport) => {
+    const fix = await capture();
+    if (!fix.ok) throw new Error("Não conseguimos localizar você. Ative o GPS e tente novamente.");
+    if (Date.now() - fix.position.timestamp > 60_000 || (fix.position.accuracy ?? Infinity) > 100) {
+      throw new Error("O GPS ainda está impreciso. Aguarde o sinal melhorar e tente novamente.");
+    }
+    await createAlert.mutateAsync({ ...report, lat: fix.position.lat, lng: fix.position.lng });
+    setShowAlerts(true);
+  };
   // Um SOS existe no servidor a partir do registro: são as fases em que já
   // há sos_event_id. É isso que "finalizar viagem" não pode destruir.
   const sosAtivo =
@@ -141,8 +171,8 @@ function Dashboard() {
    * evento real mais próximo ou o silêncio. Nada é gerado sem dado.
    */
   const textoDoCopiloto = aviso
-    ? `${APARENCIA[aviso.categoria].rotulo} • ${distanciaCurta(aviso.distanciaKm)}`
-    : "Rota tranquila";
+    ? `${alerts.find((a) => a.id === aviso.id)?.title || APARENCIA[aviso.categoria].rotulo} • ${distanciaCurta(aviso.distanciaKm)}`
+    : "Sem avisos próximos";
 
   /* ---------------------------------------------------------------- *
    * Proteção em segundo plano — o que o Android realmente disse.
@@ -452,6 +482,7 @@ function Dashboard() {
                 onRouteStatus={aoMudarEstadoDaRota}
                 paddingInferiorPx={viagem.estado === "preparando" ? 150 : 160}
                 alerts={alertasNoMapa}
+                onAlertSelect={openMapAlert}
                 riders={ridersNoMapa}
                 partners={parceirosNoMapa}
                 className="absolute inset-0"
@@ -546,6 +577,17 @@ function Dashboard() {
             icon={<Layers size={14} />}
             discreto={modoCockpit}
           />
+          {modoCockpit && folha === "nenhuma" && !sos.open && (
+            <button
+              type="button"
+              onClick={() => setFolha("avisar")}
+              aria-label="Avisar perigo"
+              className="flex min-h-[56px] min-w-[48px] flex-col items-center justify-center gap-1 rounded-2xl bg-gold text-black shadow-map"
+            >
+              <Megaphone size={22} />
+              <span className="text-[11px] font-bold">Avisar</span>
+            </button>
+          )}
           {/* A comunidade foi recolhida para a folha de camadas. Este espelho
               invisível preserva o contrato de preferência sem poluir o mapa. */}
           <span className="hidden" aria-hidden="true">
@@ -602,6 +644,44 @@ function Dashboard() {
           <ChamadaViagemSegura onAbrir={() => setFolha((f) => abrirFolha(f, "destino"))} />
         )}
 
+        {viagem.estado === "ocioso" && folha === "nenhuma" && !sos.open && (
+          <>
+            <CommunityRadar
+              alerts={alerts}
+              loading={alertsLoading}
+              error={alertsError}
+              liveUpdates={liveUpdates}
+              onOpen={() => {
+                setSelectedAlertId(null);
+                setFolha("avisos");
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => setFolha("avisar")}
+              className={`absolute bottom-[calc(var(--ma-bottom)+8px)] left-3 right-[86px] ${camada("painelInferior")} flex min-h-[64px] items-center justify-center gap-3 rounded-2xl bg-gold px-4 text-[17px] font-bold text-black shadow-map`}
+            >
+              <Megaphone size={24} /> Avisar perigo
+            </button>
+          </>
+        )}
+
+        {folha === "avisar" && !sos.open && (
+          <CommunityReportSheet onPublish={publishRoadReport} onClose={() => setFolha("nenhuma")} />
+        )}
+        {folha === "avisos" && !sos.open && (
+          <CommunityAlertsSheet
+            alerts={alerts}
+            loading={alertsLoading}
+            error={alertsError}
+            selectedId={selectedAlertId}
+            onShowAll={() => setSelectedAlertId(null)}
+            onRefresh={refreshAlerts}
+            onReport={() => setFolha("avisar")}
+            onClose={() => setFolha("nenhuma")}
+          />
+        )}
+
         {/* O copiloto acompanha a Home inteira, com ou sem viagem — menos
             durante a preparação, onde o painel ocupa a mesma faixa.
             Navegando, a linha do Copiloto vive DENTRO da telemetria; sobre o
@@ -609,6 +689,7 @@ function Dashboard() {
         {folha === "nenhuma" && modoCockpit && aviso != null && (
           <CopilotCard
             aviso={aviso}
+            titulo={alerts.find((a) => a.id === aviso.id)?.title}
             viagemAtiva={viagemAtiva}
             className={`absolute inset-x-3 ${
               modoCockpit

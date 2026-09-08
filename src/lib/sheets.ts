@@ -10,7 +10,7 @@
  * Aqui o estado é UM só, e as regras são puras e testáveis.
  */
 
-export type Folha = "nenhuma" | "camadas" | "destino" | "viagem";
+export type Folha = "nenhuma" | "camadas" | "destino" | "viagem" | "avisar" | "avisos";
 
 /** Abrir uma folha fecha qualquer outra. Tocar na mesma folha alterna. */
 export function abrirFolha(atual: Folha, alvo: Exclude<Folha, "nenhuma">): Folha {
