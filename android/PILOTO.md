@@ -57,9 +57,24 @@ Finalizar a viagem exibiu confirmação; a inspeção ADB posterior não encontr
 permaneceu “não medida” no teste parado. Esses resultados permitem continuar
 o piloto, sem declarar toda a proteção automática validada.
 
+### Reabertura posterior e correção publicada
+
+Depois dessa jornada, reabrir o app com processo novo mostrou novamente a tela
+de permissão, embora o Android já tivesse autorizado o GPS. O log registrou
+`Geolocation.then() is not implemented on android`. A correção `ab282f6` usa
+wrapper simples do proxy e fallback com tempo limitado. Passaram 9 testes
+comportamentais de permissão, 2 de GPS, 7 testes unitários de permissão, lint,
+typecheck, build e revisão independente. A publicação da revisão web
+`2026-09-08-gps-permission-proxy-fix` foi confirmada em `release.json`.
+
+O Android desconectou do USB antes da última reabertura física. Esse aceite
+continua pendente de reconexão; não invalida as provas anteriores de login
+restaurado, rota, SOS manual e encerramento, nem confirma a correção no aparelho.
+
 ## Aceites ainda pendentes
 
-- Continuidade da viagem ao navegar entre telas e após recriação do processo.
+- Reabertura física após a correção de permissão publicada; depois, conferir
+  continuidade da viagem ao navegar entre telas e após recriação do processo.
 - Primeira abertura sem rede mostra a página local e o retry volta à URL
   configurada. Conferir abertura do discador sem concluir uma ligação.
 - Um gesto cancelado no SOS da tela bloqueada não emite pedido. Um gesto

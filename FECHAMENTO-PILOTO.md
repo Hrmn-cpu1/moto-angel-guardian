@@ -64,6 +64,17 @@ com testadores; não equivale a uma operação de SOS 100% validada.
   às 16:03. O histórico anterior foi preservado; a distância aparece como
   “não medida”, sem inventar deslocamento no teste parado.
 
+Após essa jornada, uma reabertura com processo novo voltou à tela de permissão
+apesar do GPS já autorizado. O log apontou `Geolocation.then() is not implemented on android`.
+A correção `ab282f6` removeu o retorno direto do proxy assíncrono, usando um
+wrapper simples e fallback com tempo limitado. Passaram 9 testes comportamentais
+de permissão, 2 de GPS, 7 testes unitários de permissão, lint, typecheck e build,
+além de revisão independente. A revisão web publicada
+`2026-09-08-gps-permission-proxy-fix` foi confirmada em `release.json`.
+**A reabertura física após essa correção ainda está pendente:** o Android
+desconectou do USB na verificação final. As provas anteriores de restauração,
+rota, SOS manual e encerramento continuam válidas para os testes realizados.
+
 Distribuição pública verificada em 08/09/2026:
 [página para testadores](https://moto-angel-guardian.lovable.app/testar.html)
 respondeu HTTP 200, com conteúdo idêntico a `public/testar.html`. A página
