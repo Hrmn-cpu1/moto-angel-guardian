@@ -1,8 +1,20 @@
+import {
+  deliveryNotBefore,
+  evolutionConfiguration,
+  whatsappProvider,
+} from "./sos-whatsapp-config.server.ts";
+
 // Server-only helpers for SOS/WhatsApp dispatch.
 // This file is filename-blocked from client bundles by the "*.server.ts" pattern.
 
-/** Explicit enablement and approved template configuration are required. */
+/** Configuration is not connection or delivery proof; the worker checks its provider. */
 export function isWhatsAppConfigured(): boolean {
+  if (process.env.SOS_DELIVERY_ENABLED !== "true") return false;
+  if (process.env.SOS_DELIVERY_NOT_BEFORE && deliveryNotBefore() === null) return false;
+  if (whatsappProvider() === "evolution") {
+    return evolutionConfiguration() !== null && deliveryNotBefore() !== null;
+  }
+  if (whatsappProvider() !== "meta") return false;
   return Boolean(
     process.env.SOS_DELIVERY_ENABLED === "true" &&
     process.env.WHATSAPP_ACCESS_TOKEN &&
@@ -104,7 +116,7 @@ export async function sendSosTemplate(
     uncertain,
     retryable,
   });
-  if (!isWhatsAppConfigured())
+  if (whatsappProvider() !== "meta" || !isWhatsAppConfigured())
     return fail("Envio automático desativado ou template não configurado.");
   const to = normalizeE164(recipientPhone);
   if (!/^[1-9]\d{9,14}$/.test(to)) return fail("Telefone de destino inválido.");
