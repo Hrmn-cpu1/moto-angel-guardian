@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b0c0e" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta
+      name="description"
+      content="Baixe o piloto Android do Moto Anjo e siga o roteiro de teste com um contato autorizado."
+    />
+    <title>Teste o Moto Anjo — Android</title>
+    <link rel="icon" href="/favicon.png" />
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        background: #0b0c0e;
+        color: #f4f3ef;
+        line-height: 1.55;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+      }
+      main {
+        width: min(100% - 40px, 580px);
+        margin: 0 auto;
+        padding: 48px 0 36px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        margin-bottom: 36px;
+      }
+      header img {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+      }
+      .brand {
+        margin: 0;
+        font-weight: 800;
+        letter-spacing: 0.07em;
+        font-size: 17px;
+      }
+      .version {
+        margin: 2px 0 0;
+        color: #aaa9a5;
+        font-size: 13px;
+      }
+      h1 {
+        font-size: clamp(30px, 7vw, 42px);
+        line-height: 1.14;
+        letter-spacing: -0.035em;
+        margin: 0 0 16px;
+      }
+      h2 {
+        font-size: 18px;
+        margin: 30px 0 14px;
+      }
+      p {
+        margin: 0 0 14px;
+      }
+      .intro {
+        color: #bcbcb8;
+        max-width: 48ch;
+      }
+      a {
+        color: #efd078;
+        text-underline-offset: 4px;
+      }
+      a:focus-visible {
+        outline: 3px solid #fff;
+        outline-offset: 5px;
+      }
+      .download {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        background: #e7bf58;
+        color: #16120b;
+        text-decoration: none;
+        font-weight: 800;
+        border-radius: 12px;
+        min-height: 58px;
+        padding: 14px 20px;
+        margin: 26px 0 10px;
+      }
+      .download:hover {
+        background: #f3ce6e;
+      }
+      .download svg {
+        width: 20px;
+        height: 20px;
+      }
+      .file {
+        text-align: center;
+        color: #a5a5a1;
+        font-size: 12px;
+      }
+      .notice {
+        background: #201c12;
+        border: 1px solid #655129;
+        border-radius: 12px;
+        padding: 16px 18px;
+        margin-top: 26px;
+        font-size: 14px;
+      }
+      .notice strong {
+        color: #efd078;
+      }
+      .notice p:last-child {
+        margin-bottom: 0;
+      }
+      ol {
+        list-style: none;
+        counter-reset: step;
+        padding: 0;
+        margin: 0;
+      }
+      li {
+        counter-increment: step;
+        position: relative;
+        padding: 0 0 20px 42px;
+        color: #c2c2bd;
+        font-size: 14px;
+      }
+      li::before {
+        content: counter(step);
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 27px;
+        height: 27px;
+        display: grid;
+        place-items: center;
+        border: 1px solid #454138;
+        border-radius: 50%;
+        color: #efd078;
+        font-weight: 700;
+        font-size: 12px;
+      }
+      li strong {
+        display: block;
+        color: #f4f3ef;
+        margin-bottom: 2px;
+      }
+      .update {
+        border-top: 1px solid #30302c;
+        padding-top: 20px;
+        margin-top: 6px;
+        font-size: 13px;
+        color: #aaa9a5;
+      }
+      .web {
+        display: block;
+        text-align: center;
+        padding: 12px;
+        margin-top: 18px;
+        font-size: 14px;
+      }
+      footer {
+        margin-top: 26px;
+        text-align: center;
+        color: #aaa9a5;
+        font-size: 12px;
+      }
+      @media (max-width: 400px) {
+        main {
+          width: calc(100% - 32px);
+          padding-top: 28px;
+        }
+        header {
+          margin-bottom: 28px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <img src="/icon-192.png" alt="" width="52" height="52" />
+        <div>
+          <p class="brand">MOTO ANJO</p>
+          <p class="version">Piloto Android · 1.5.0 · versão 14</p>
+        </div>
+      </header>
+
+      <h1>Instale. Entre.<br />Faça um teste parado.</h1>
+      <p class="intro">
+        Use este piloto com uma pessoa que aceitou receber seu aviso de teste. Siga o roteiro até
+        concluir o envio no WhatsApp.
+      </p>
+
+      <a
+        class="download"
+        href="/downloads/moto-anjo-1.5.0-piloto.apk"
+        download="moto-anjo-1.5.0-piloto.apk"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          aria-hidden="true"
+        >
+          <path d="M12 3v12m-5-5 5 5 5-5M5 16v5h14v-5" />
+        </svg>
+        Baixar APK para Android
+      </a>
+      <p class="file">Arquivo de instalação · 9,3 MB · versão de teste</p>
+
+      <aside class="notice" aria-label="Como funciona este piloto">
+        <p>
+          <strong>Os avisos automáticos pelo WhatsApp estão desligados.</strong> No teste de SOS,
+          você precisa abrir o WhatsApp e enviar a mensagem ao contato.
+        </p>
+        <p>Faça tudo parado, em um local seguro. <strong>Não simule uma queda.</strong></p>
+      </aside>
+
+      <h2>Seu primeiro teste</h2>
+      <ol>
+        <li>
+          <strong>Instale o arquivo baixado.</strong>Abra o APK. Se o Android solicitar, permita a
+          instalação por este navegador para instalar o piloto.
+        </li>
+        <li>
+          <strong>Entre no Moto Anjo.</strong>Use sua conta Google ou seu e-mail. Se ainda não tiver
+          conta, faça o cadastro.
+        </li>
+        <li>
+          <strong>Cadastre um contato de teste.</strong>Use somente o número de uma pessoa que
+          autorizou o teste. Avise antes que ela receberá uma mensagem de SOS de teste.
+        </li>
+        <li>
+          <strong>Permita localização e notificações.</strong>Ative o GPS do Android e conceda as
+          permissões solicitadas pelo aplicativo.
+        </li>
+        <li>
+          <strong>Inicie uma viagem segura.</strong>Defina um destino e inicie a viagem, mantendo o
+          aparelho parado durante a verificação.
+        </li>
+        <li>
+          <strong>Conclua o SOS manual.</strong>Segure o botão SOS por 3 segundos. No painel,
+          escolha o contato autorizado, abra o WhatsApp e toque em enviar. Confirme com a pessoa o
+          recebimento; depois cancele o SOS no app e finalize a viagem.
+        </li>
+      </ol>
+
+      <p class="update">
+        <strong>Já tem o app instalado?</strong> Se o Android informar conflito de assinatura ou
+        recusar a atualização, não apague o aplicativo antes de guardar seus dados locais e
+        confirmar como entrar novamente na sua conta. Peça orientação a quem enviou este piloto.
+      </p>
+      <a class="web" href="/login">Abrir a versão web do Moto Anjo</a>
+      <footer>Em uma emergência real, ligue 190, 192 ou 193.</footer>
+    </main>
+  </body>
+</html>
