@@ -33,7 +33,18 @@ aceites abaixo.
 - `npx cap sync android`, `testDebugUnitTest` e `assembleDebug`: BUILD SUCCESSFUL.
   APK: `android/app/build/outputs/apk/debug/app-debug.apk`.
   SHA-256: `b165e56e0f38190fe8753d32f4c4581e8e6394e742688f0ef1f25738a02908ca`.
-- Marcador público da versão: `/release.json`.
+- Publicação verificada em
+  [release.json](https://moto-angel-guardian.lovable.app/release.json):
+  `1.4.0-piloto`, build 13, código `93fdc6276ca7c440e23234ef4714862e70cf503e`.
+  Jornada pública até login verificada no navegador, sem erros de console.
+- Banco de produção confirmou histórico e dispatcher instalados, job desativado
+  e ausência de permissão do cliente para executar o dispatcher. Sem os segredos,
+  os endpoints de dispatch e webhook respondem 503; nenhum SOS real foi enviado.
+- Progresso registrado no
+  [Saraiva OS](https://airtable.com/appGIS6XGbfscwWdd/tblleZDTyqFjS8qZx/recavYltApeKOEm6C).
+- [CI Android](https://github.com/Hrmn-cpu1/moto-angel-guardian/actions/runs/34258715567)
+  concluído com sucesso; artefato `moto-anjo-android-debug` publicado. A assinatura
+  debug e o hash desse APK do CI podem diferir do APK local identificado acima.
 
 ## Aceites que ainda fecham a operação
 
