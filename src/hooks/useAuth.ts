@@ -164,21 +164,31 @@ export function useAuth() {
     async (payload: Omit<AppUser, "id" | "createdAt"> & { password: string }) => {
       assertPublicAuthConfig();
       const { password, ...rest } = payload;
+      const termsAcceptedAt = new Date().toISOString();
       const { data, error } = await supabase.auth.signUp({
         email: rest.email.trim(),
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
-          data: { name: rest.name, phone: rest.phone },
+          data: {
+            name: rest.name.trim(),
+            phone: rest.phone.trim(),
+            bike_model: (rest.bikeModel ?? "").trim(),
+            plate: (rest.plate ?? "").trim().toUpperCase(),
+            blood_type: (rest.bloodType ?? "").trim(),
+            emergency_contact: (rest.emergencyContact ?? "").trim(),
+            emergency_phone: (rest.emergencyPhone ?? "").trim(),
+            terms_accepted_at: termsAcceptedAt,
+            terms_version: CURRENT_TERMS_VERSION,
+          },
         },
       });
       if (error) throw classifyAuthError(error);
       if (!data.user) throw authFailure("unexpected", "Falha ao criar conta.");
       // O Supabase responde 200 mesmo quando o e-mail já existe (proteção
-      // contra enumeração): a marca é `identities` vazio. Sem isto o app dizia
-      // "conta criada" e em seguida o login falhava com "senha inválida".
+      // contra enumeração): a marca é `identities` vazio.
       if (Array.isArray(data.user.identities) && data.user.identities.length === 0) {
-        throw authFailure("google_only_account");
+        throw authFailure("already_registered");
       }
       // Confirmação de e-mail está ativa: não há sessão até o usuário clicar
       // no link. Não fingimos login — a tela mostra o aviso.
@@ -188,17 +198,37 @@ export function useAuth() {
       // Upsert profile fields (the trigger creates a bare row; we fill the rest here).
       await supabase.from("profiles").upsert({
         id: data.user.id,
-        name: rest.name,
-        email: rest.email,
-        phone: rest.phone,
-        bike_model: rest.bikeModel ?? "",
-        plate: rest.plate ?? "",
-        blood_type: rest.bloodType ?? "",
-        emergency_contact: rest.emergencyContact ?? "",
-        emergency_phone: rest.emergencyPhone ?? "",
-        terms_accepted_at: new Date().toISOString(),
+        name: rest.name.trim(),
+        email: rest.email.trim(),
+        phone: rest.phone.trim(),
+        bike_model: (rest.bikeModel ?? "").trim(),
+        plate: (rest.plate ?? "").trim().toUpperCase(),
+        blood_type: (rest.bloodType ?? "").trim(),
+        emergency_contact: (rest.emergencyContact ?? "").trim(),
+        emergency_phone: (rest.emergencyPhone ?? "").trim(),
+        terms_accepted_at: termsAcceptedAt,
         terms_version: CURRENT_TERMS_VERSION,
       });
+      // Se houver contato de emergência, registrar também em emergency_contacts
+      if (rest.emergencyContact?.trim() && rest.emergencyPhone?.trim()) {
+        try {
+          const { count } = await supabase
+            .from("emergency_contacts")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", data.user.id);
+          if ((count ?? 0) === 0) {
+            await supabase.from("emergency_contacts").insert({
+              user_id: data.user.id,
+              name: rest.emergencyContact.trim(),
+              phone: rest.emergencyPhone.trim(),
+              relation: "Contato de emergência",
+              is_primary: true,
+            });
+          }
+        } catch {
+          /* Fallback silencioso; o perfil já salvou o contato */
+        }
+      }
       const u = await loadProfile(data.user.id, data.user.email ?? "");
       setState({ user: u, loading: false });
       return { status: "signed_in" as const, user: u };

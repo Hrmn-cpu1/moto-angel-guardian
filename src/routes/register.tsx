@@ -45,6 +45,20 @@ function Register() {
 
   const set = (k: keyof typeof form) => (v: string) => setForm((s) => ({ ...s, [k]: v }));
 
+  const formatPhone = (v: string) => {
+    const digits = v.replace(/\D/g, "").slice(0, 11);
+    if (digits.length <= 2) return digits.length > 0 ? `(${digits}` : "";
+    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    if (digits.length <= 10) {
+      return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+    }
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  };
+
+  const formatPlate = (v: string) => {
+    return v.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 7);
+  };
+
   const pwdChecks = useMemo(() => {
     const p = form.password;
     const common = [
@@ -80,21 +94,24 @@ function Register() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (!form.name.trim()) return setError("Por favor, preencha seu nome completo.");
+    if (!form.email.trim()) return setError("Por favor, informe seu e-mail.");
+    if (!form.phone.trim()) return setError("Por favor, informe seu telefone.");
     if (!pwdStrong) return setError("Sua senha não atende a todos os requisitos de segurança.");
     if (form.password !== form.confirm) return setError("As senhas não coincidem.");
-    if (!accepted) return setError("Você precisa aceitar os termos.");
+    if (!accepted) return setError("Você precisa aceitar os Termos de Uso e a Política de Privacidade.");
     setLoading(true);
     try {
       const result = await register({
-        name: form.name,
-        email: form.email,
-        phone: form.phone,
+        name: form.name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
         password: form.password,
-        bikeModel: form.bikeModel,
-        plate: form.plate,
-        bloodType: form.bloodType,
-        emergencyContact: form.emergencyContact,
-        emergencyPhone: form.emergencyPhone,
+        bikeModel: form.bikeModel.trim(),
+        plate: form.plate.trim(),
+        bloodType: form.bloodType.trim(),
+        emergencyContact: form.emergencyContact.trim(),
+        emergencyPhone: form.emergencyPhone.trim(),
       });
       if (result.status === "confirm_email") {
         setConfirmSent(true);
@@ -162,15 +179,23 @@ function Register() {
         <div className="flex items-center gap-3 py-1 text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
           <span className="h-px flex-1 bg-border" /> ou <span className="h-px flex-1 bg-border" />
         </div>
-        <TxtField label="Nome completo" value={form.name} onChange={set("name")} required />
-        <TxtField label="E-mail" type="email" value={form.email} onChange={set("email")} required />
-        <TxtField label="Telefone" value={form.phone} onChange={set("phone")} required />
+        <TxtField label="Nome completo" value={form.name} onChange={set("name")} required placeholder="Ex: João da Silva" />
+        <TxtField label="E-mail" type="email" value={form.email} onChange={set("email")} required placeholder="seu@email.com" />
+        <TxtField
+          label="Telefone"
+          type="tel"
+          value={form.phone}
+          onChange={(v) => set("phone")(formatPhone(v))}
+          placeholder="(11) 99999-9999"
+          required
+        />
         <div className="grid grid-cols-2 gap-3">
           <TxtField
             label="Senha"
             type="password"
             value={form.password}
             onChange={set("password")}
+            placeholder="Crie sua senha"
             required
           />
           <TxtField
@@ -178,6 +203,7 @@ function Register() {
             type="password"
             value={form.confirm}
             onChange={set("confirm")}
+            placeholder="Repita a senha"
             required
           />
         </div>
@@ -191,27 +217,41 @@ function Register() {
           </div>
         )}
         <div className="grid grid-cols-2 gap-3">
-          <TxtField label="Modelo da moto" value={form.bikeModel} onChange={set("bikeModel")} />
-          <TxtField label="Placa" value={form.plate} onChange={set("plate")} />
+          <TxtField
+            label="Modelo da moto"
+            value={form.bikeModel}
+            onChange={set("bikeModel")}
+            placeholder="Ex: Honda CG 160"
+          />
+          <TxtField
+            label="Placa"
+            value={form.plate}
+            onChange={(v) => set("plate")(formatPlate(v))}
+            placeholder="ABC1D23"
+          />
         </div>
-        <TxtField
+        <SelectField
           label="Tipo sanguíneo"
           value={form.bloodType}
           onChange={set("bloodType")}
-          placeholder="O+, A-, ..."
+          options={["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]}
+          placeholder="Selecione o tipo sanguíneo..."
         />
         <TxtField
           label="Contato de emergência"
           value={form.emergencyContact}
           onChange={set("emergencyContact")}
+          placeholder="Nome de quem avisar"
         />
         <TxtField
           label="Telefone de emergência"
+          type="tel"
           value={form.emergencyPhone}
-          onChange={set("emergencyPhone")}
+          onChange={(v) => set("emergencyPhone")(formatPhone(v))}
+          placeholder="(11) 99999-9999"
         />
 
-        <label className="flex items-start gap-3 pt-2 text-xs text-muted-foreground">
+        <label className="flex items-start gap-3 pt-2 text-xs text-muted-foreground cursor-pointer">
           <input
             type="checkbox"
             checked={accepted}
@@ -246,7 +286,7 @@ function Register() {
           <GoldButton
             size="lg"
             type="submit"
-            disabled={loading || !accepted || !pwdStrong || !pwdMatch}
+            disabled={loading}
           >
             {loading ? "Criando..." : "Criar conta"}
           </GoldButton>
@@ -292,6 +332,45 @@ function TxtField({
           required={required}
           className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/60"
         />
+      </div>
+    </label>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+  required,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  placeholder?: string;
+  required?: boolean;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+        {label}
+      </span>
+      <div className="glass-card rounded-xl px-4 py-2.5 focus-within:border-gold">
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required={required}
+          className="w-full bg-transparent text-sm text-foreground outline-none cursor-pointer [&>option]:bg-background [&>option]:text-foreground"
+        >
+          {placeholder && <option value="">{placeholder}</option>}
+          {options.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
       </div>
     </label>
   );
