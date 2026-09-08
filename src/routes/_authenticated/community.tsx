@@ -9,7 +9,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { publicarNaComunidade, validarPublicacao } from "@/lib/community-post";
 import { useAuth } from "@/hooks/useAuth";
 
-
 export const Route = createFileRoute("/_authenticated/community")({
   head: () => ({
     meta: [
@@ -117,7 +116,6 @@ function Community() {
     retry: 2,
   });
 
-
   useEffect(() => {
     // Realtime bursts (a post + its likes/comments) are coalesced so the feed
     // is refetched once instead of on every single row event.
@@ -210,7 +208,6 @@ function Community() {
       setPublishing(false);
     }
   };
-
 
   const toggleLike = async (post: FeedPost) => {
     if (!user) return;
@@ -409,7 +406,6 @@ function Community() {
             </button>
           </div>
         ) : filtered.length === 0 ? (
-
           <div className="glass-card rounded-2xl p-5 text-center">
             <Users size={28} className="mx-auto text-gold" />
             <p className="mt-3 text-sm text-muted-foreground">

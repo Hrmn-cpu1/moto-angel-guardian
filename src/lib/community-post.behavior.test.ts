@@ -69,9 +69,9 @@ test("grava com o usuário da sessão e devolve o registro criado", async () => 
 
 test("sem sessão ativa avisa em vez de falhar em silêncio", async () => {
   mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
-  await expect(publicarNaComunidade({ text: "teste", category: "Geral", region: "" })).rejects.toThrow(
-    /sessão expirou/i,
-  );
+  await expect(
+    publicarNaComunidade({ text: "teste", category: "Geral", region: "" }),
+  ).rejects.toThrow(/sessão expirou/i);
   expect(mocks.insert).not.toHaveBeenCalled();
 });
 
@@ -80,16 +80,18 @@ test("recusa por regra de acesso vira mensagem específica", async () => {
     data: null,
     error: { code: "42501", message: "new row violates row-level security policy" },
   });
-  await expect(publicarNaComunidade({ text: "teste", category: "Geral", region: "" })).rejects.toThrow(
-    /Sem permissão/i,
-  );
+  await expect(
+    publicarNaComunidade({ text: "teste", category: "Geral", region: "" }),
+  ).rejects.toThrow(/Sem permissão/i);
 });
 
 describe("tradução de erros", () => {
   test("cada tipo de falha tem mensagem própria", () => {
     expect(mensagemErroPublicacao({ code: "42501" })).toMatch(/Sem permissão/i);
     expect(mensagemErroPublicacao({ code: "PGRST301" })).toMatch(/sessão expirou/i);
-    expect(mensagemErroPublicacao({ code: "23502", message: "null value" })).toMatch(/Confira os campos/i);
+    expect(mensagemErroPublicacao({ code: "23502", message: "null value" })).toMatch(
+      /Confira os campos/i,
+    );
     expect(mensagemErroPublicacao({ message: "Failed to fetch" })).toMatch(/Sem conexão/i);
   });
 });
