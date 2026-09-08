@@ -53,7 +53,7 @@ test("v2 sendText uses server apikey, flat text and namespaced acceptance id", a
   expect(url).toBe("https://evolution.example.com/message/sendText/qa-instance");
   expect(init).toMatchObject({
     method: "POST",
-    redirect: "error",
+    redirect: "manual",
     headers: { apikey: "fixture-secret-not-real" },
   });
   expect(init?.signal).toBeInstanceOf(AbortSignal);
@@ -108,6 +108,52 @@ test("disconnected, unauthorized or missing instance never posts a message", asy
     expect(JSON.stringify(result)).not.toContain("body-must-not-leak");
   }
 });
+
+test.each([301, 302, 303, 307, 308])(
+  "preflight HTTP %s never follows Location or posts",
+  async (status) => {
+    const fetcher = vi.fn<typeof fetch>(
+      async () =>
+        new Response(null, {
+          status,
+          headers: { Location: "https://other.invalid/secret" },
+        }),
+    );
+    expect(await sendSosEvolution("11999990000", data, fetcher)).toMatchObject({
+      ok: false,
+      uncertain: false,
+      retryable: false,
+      httpStatus: status,
+    });
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(fetcher.mock.calls[0][1]?.redirect).toBe("manual");
+  },
+);
+
+test.each([301, 302, 303, 307, 308])(
+  "sendText HTTP %s never follows Location or retries uncertain POST",
+  async (status) => {
+    const fetcher = fetcherWith(
+      new Response(null, {
+        status,
+        headers: { Location: "https://other.invalid/secret" },
+      }),
+    );
+    expect(await sendSosEvolution("11999990000", data, fetcher)).toMatchObject({
+      ok: false,
+      uncertain: true,
+      retryable: false,
+      httpStatus: status,
+    });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(
+      fetcher.mock.calls.every(
+        ([url, init]) =>
+          String(url).startsWith("https://evolution.example.com/") && init?.redirect === "manual",
+      ),
+    ).toBe(true);
+  },
+);
 
 test("unreachable read-only preflight may retry, without calling sendText", async () => {
   const fetcher = vi.fn<typeof fetch>(async () => {

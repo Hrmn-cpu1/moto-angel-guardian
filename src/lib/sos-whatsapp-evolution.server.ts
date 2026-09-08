@@ -48,10 +48,16 @@ export async function sendSosEvolution(
       `${config.baseUrl}/instance/connectionState/${encodeURIComponent(config.instance)}`,
       {
         headers,
-        redirect: "error",
+        redirect: "manual",
         signal: AbortSignal.timeout(5000),
       },
     );
+    // Manual mode is portable across Workers and never forwards apikey to Location.
+    if (connection.status >= 300 && connection.status < 400)
+      return fail(
+        "Evolution redirecionou a consulta. Confira a URL do servidor.",
+        connection.status,
+      );
     if (!connection.ok)
       return fail(
         connection.status === 401 || connection.status === 403
@@ -106,11 +112,17 @@ export async function sendSosEvolution(
       {
         method: "POST",
         headers,
-        redirect: "error",
+        redirect: "manual",
         signal: AbortSignal.timeout(12000),
         body: JSON.stringify({ number, text: buildSosMessage(data), linkPreview: false }),
       },
     );
+    if (response.status >= 300 && response.status < 400)
+      return fail(
+        "Evolution redirecionou o envio. Nenhum redirecionamento foi seguido.",
+        response.status,
+        true,
+      );
     if (!response.ok)
       return fail(
         response.status === 401 || response.status === 403
