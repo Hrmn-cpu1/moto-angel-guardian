@@ -449,6 +449,27 @@ export function claimsDelivery(state: SosDeliveryState): boolean {
   return state === "entregue_confirmado";
 }
 
+/** Current delivery rows determine the panel title, independently of the initial send mode. */
+export function sosPanelTitle(
+  phase: SosPhase,
+  recipients: readonly SosDeliveryState[],
+  fallback = sosPhaseLabel(phase),
+): string {
+  if (phase !== "aguardando_envio") return fallback;
+  const states = new Set(recipients);
+  if (states.size === 0 || (states.size === 1 && states.has("preparada"))) return fallback;
+  if (states.size > 1) return "SOS registrado — confira a situação de cada contato";
+  if (states.has("enviando")) return "SOS registrado — enviando avisos pelo WhatsApp";
+  if (states.has("aceita_pelo_provedor"))
+    return "SOS registrado — aceito pela API; aguarde confirmação";
+  if (states.has("recusada_pelo_provedor"))
+    return "SOS registrado — envio recusado; use os botões manuais";
+  if (states.has("envio_incerto"))
+    return "SOS registrado — envio sem confirmação; verifique com o contato";
+  if (states.has("entregue_confirmado")) return "SOS registrado — entrega confirmada aos contatos";
+  return "SOS registrado — confirme o envio no WhatsApp";
+}
+
 /**
  * Único status de evento que significa "socorro em curso".
  *

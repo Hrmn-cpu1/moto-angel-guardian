@@ -170,6 +170,7 @@ function semComentarios(src: string): string {
 test("o painel nunca afirma entrega fora do estado confirmado", () => {
   const painel = semComentarios(ler("src/components/SosPanel.tsx"));
   assert.ok(painel.includes("sosDeliveryLabel"), "o painel precisa usar os rótulos honestos");
+  assert.ok(painel.includes("sosPanelTitle"), "o título também precisa usar a fonte controlada");
   assert.ok(
     !/entregue|recebeu|chegou ao destino/i.test(painel),
     "o painel escreveu texto próprio de entrega em vez de usar o rótulo controlado",

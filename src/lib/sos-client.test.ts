@@ -22,6 +22,7 @@ import {
   saveActiveSos,
   serializeActiveSos,
   sosDeliveryLabel,
+  sosPanelTitle,
   sosPhaseLabel,
   validateSosFix,
   waLink,
@@ -32,6 +33,38 @@ import {
 } from "./sos-client.ts";
 
 const AGORA = 1_770_000_000_000; // instante fixo para todos os testes de tempo
+
+test("título agregado só confirma entrega quando todos os destinatários estão confirmados", () => {
+  const states: SosDeliveryState[] = [
+    "preparada",
+    "aberta_no_whatsapp",
+    "enviando",
+    "aceita_pelo_provedor",
+    "recusada_pelo_provedor",
+    "envio_incerto",
+    "entregue_confirmado",
+  ];
+  for (const first of states) {
+    for (const second of states) {
+      const title = sosPanelTitle("aguardando_envio", [first, second]);
+      assert.equal(
+        title.includes("entrega confirmada"),
+        claimsDelivery(first) && claimsDelivery(second),
+      );
+    }
+  }
+  assert.ok(!sosPanelTitle("aguardando_envio", []).includes("entrega confirmada"));
+});
+
+test("título agregado preserva cancelamento e recuperação nativa enquanto consulta os avisos", () => {
+  assert.equal(sosPanelTitle("cancelando", ["aceita_pelo_provedor"]), sosPhaseLabel("cancelando"));
+  const recovery = "SOS registrado; aguardando sincronização";
+  assert.equal(sosPanelTitle("aguardando_envio", ["preparada"], recovery), recovery);
+  assert.notEqual(
+    sosPanelTitle("aguardando_envio", ["aceita_pelo_provedor"]),
+    sosPhaseLabel("aguardando_envio"),
+  );
+});
 
 function fix(over: Partial<Parameters<typeof validateSosFix>[0]> = {}) {
   return { lat: -23.9608, lng: -46.3339, accuracy: 12, timestamp: AGORA, ...over };

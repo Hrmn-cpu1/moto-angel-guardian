@@ -10,7 +10,12 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { camada } from "@/lib/layers";
-import { allowsManualSend, claimsDelivery, sosDeliveryLabel } from "@/lib/sos-client";
+import {
+  allowsManualSend,
+  claimsDelivery,
+  sosDeliveryLabel,
+  sosPanelTitle,
+} from "@/lib/sos-client";
 import { abrirUrlExterna } from "@/lib/external-navigation";
 import type { SosController } from "@/hooks/useSosController";
 
@@ -41,6 +46,11 @@ export function SosPanel({ sos, layout = "overlay", onAddContacts, className }: 
   const podeCancelar = Boolean(sos.sosEventId) && sos.phase !== "cancelando";
   const mostrarRetentativa =
     sos.phase === "gps_recusado" || sos.phase === "falha_registro" || sos.phase === "sem_internet";
+  const titulo = sosPanelTitle(
+    sos.phase,
+    sos.recipients.map((recipient) => recipient.state),
+    sos.phaseLabel,
+  );
 
   const corpo = (
     <div
@@ -59,7 +69,7 @@ export function SosPanel({ sos, layout = "overlay", onAddContacts, className }: 
           <p className="text-[10px] uppercase tracking-widest text-emergency">
             {sos.sosEventId ? "SOS aberto" : "Acionando SOS"}
           </p>
-          <p className="mt-0.5 text-sm font-semibold text-foreground">{sos.phaseLabel}</p>
+          <p className="mt-0.5 text-sm font-semibold text-foreground">{titulo}</p>
         </div>
         {layout !== "page" && (
           <button
