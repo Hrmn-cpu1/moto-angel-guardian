@@ -10,6 +10,7 @@ import {
   evolutionConfiguration,
   whatsappProvider,
 } from "./sos-whatsapp-config.server.ts";
+import { evolutionPreflightDiagnostic } from "./sos-whatsapp-diagnostics.server.ts";
 
 /** Evolution 2.x sendText: response key.id confirms acceptance, never delivery. */
 export async function sendSosEvolution(
@@ -72,9 +73,11 @@ export async function sendSosEvolution(
         false,
         true,
       );
-  } catch {
+  } catch (error) {
+    const { reason, diagnostic } = evolutionPreflightDiagnostic(error);
+    console.error("[MA-EVOLUTION-PREFLIGHT]", diagnostic);
     return fail(
-      "Não foi possível consultar a conexão Evolution. Nenhuma mensagem foi solicitada.",
+      `Não foi possível consultar a conexão Evolution (${reason}). Nenhuma mensagem foi solicitada.`,
       0,
       false,
       true,

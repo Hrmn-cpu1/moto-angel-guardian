@@ -15,6 +15,7 @@ const data = {
   when: new Date("2026-09-08T20:00:01Z"),
 };
 beforeEach(() => {
+  vi.spyOn(console, "error").mockImplementation(() => {});
   vi.stubEnv("SOS_DELIVERY_ENABLED", "true");
   vi.stubEnv("SOS_DELIVERY_PROVIDER", "evolution");
   vi.stubEnv("SOS_DELIVERY_NOT_BEFORE", activated);
@@ -25,6 +26,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 function fetcherWith(response: Response | Error) {
   return vi.fn<typeof fetch>(async (_url, init) => {
@@ -118,6 +120,75 @@ test("unreachable read-only preflight may retry, without calling sendText", asyn
   });
   expect(fetcher).toHaveBeenCalledOnce();
 });
+
+test.each([
+  [
+    new DOMException("fixture-secret https://private.invalid/5511999990000", "TimeoutError"),
+    "timeout",
+    "Connection timed out or aborted",
+    undefined,
+  ],
+  [
+    new TypeError("fetch failed fixture-secret", {
+      cause: { code: "ENOTFOUND", hostname: "private.invalid" },
+    }),
+    "dns",
+    "DNS resolution failed",
+    "ENOTFOUND",
+  ],
+  [
+    new TypeError("fixture-secret", { cause: { code: "CERT_HAS_EXPIRED" } }),
+    "tls",
+    "TLS validation or handshake failed",
+    "CERT_HAS_EXPIRED",
+  ],
+  [
+    new TypeError("AbortSignal.timeout is not a function"),
+    "runtime",
+    "AbortSignal.timeout unavailable",
+    undefined,
+  ],
+  [
+    new TypeError("redirect to https://private.invalid?apikey=fixture-secret"),
+    "redirect",
+    "Redirect refused",
+    undefined,
+  ],
+  [
+    new SyntaxError("Unexpected token fixture-secret 5511999990000"),
+    "invalid_response",
+    "Invalid JSON response",
+    undefined,
+  ],
+  [
+    Object.assign(new Error("fixture-secret 5511999990000"), {
+      name: "fixture-secret",
+      cause: { code: "fixture-secret" },
+    }),
+    "network",
+    "Network request failed",
+    undefined,
+  ],
+])(
+  "preflight diagnostics classify safely without disclosing error content (%#)",
+  async (error, reason, message, code) => {
+    const fetcher = vi.fn<typeof fetch>(async () => {
+      throw error;
+    });
+    const result = await sendSosEvolution("11999990000", data, fetcher);
+    expect(result).toMatchObject({ ok: false, uncertain: false, retryable: true });
+    expect(result).toHaveProperty("error", expect.stringContaining(`(${reason})`));
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(console.error).toHaveBeenCalledWith("[MA-EVOLUTION-PREFLIGHT]", {
+      name: error.name === "fixture-secret" ? "Error" : error.name,
+      message,
+      ...(code ? { cause: { code } } : {}),
+    });
+    const output = JSON.stringify([vi.mocked(console.error).mock.calls, result]);
+    for (const secret of ["fixture-secret", "private.invalid", "5511999990000"])
+      expect(output).not.toContain(secret);
+  },
+);
 
 test.each([408, 500, 502, 503])(
   "sendText HTTP %s is uncertain and never auto retried",
