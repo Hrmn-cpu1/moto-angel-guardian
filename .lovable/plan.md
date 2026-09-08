@@ -1,89 +1,48 @@
-# MOTO ANJO — Análise do app + caminho até a Play Store com monetização
+# Correção: publicar na Comunidade
 
-## Parte 1 — Análise: o que está bom
+## O que foi verificado
 
-- **Base de testes sólida**: 31 arquivos de teste cobrindo SOS, GPS, telefone, rota, navegação bloqueada, login Google e camadas do mapa. Build e verificação de tipos passam limpos.
-- **Segurança**: nenhuma senha ou chave secreta está no código. As regras de acesso ao banco estão ativas nas tabelas críticas, e o SOS valida coordenada, precisão e evita disparo duplicado.
-- **Desempenho do mapa**: um único rastreador de GPS, marcadores atualizados sem recriar tudo, e limpeza correta ao sair da tela — nada de vazamento.
-- **Design consistente**: paleta e espaçamentos centralizados, alturas de botão dentro do recomendado para toque (46–50 px), e respeito às áreas seguras do celular (notch e barra de gestos) nas telas principais.
-- **Telas honestas**: quando não há dado, o cockpit mostra "—" ou "calculando" em vez de inventar número. Loading, erro e permissão negada têm tela própria.
-- **Acessibilidade no cockpit**: textos ocultos para leitor de tela e rótulos nos controles críticos (status do GPS, finalizar viagem, cancelar destino).
+- Tela: `src/routes/_authenticated/community.tsx` (botão "Publicar" → função `publish`).
+- Tabela real usada: `community_posts` (mesma tabela lida pelo feed, via a função `community_feed`).
+- Permissões e regras de acesso: a permissão de gravação existe e a regra "só publica em nome de si mesmo" está ativa; a leitura do feed está liberada para quem está logado.
+- Banco hoje: **zero publicações gravadas** — ou seja, nenhum envio chegou a ser salvo até agora.
 
-## Parte 2 — Análise: falhas
+## Causa raiz
 
-### Graves (bloqueiam publicar com segurança)
-1. **Nada foi provado em aparelho real.** GPS em movimento, tela bloqueada, SOS ponta a ponta, login no APK — tudo passou só em teste de código. Para um app de emergência, isso é o risco número um.
-2. **O app é uma casca que depende de internet.** O APK carrega o site publicado; sem rede, o app inteiro cai — inclusive o botão de SOS.
-3. **Não existe versão assinada.** Só há build de teste. Sem chave de assinatura e sem AAB, não dá para enviar à loja.
+A função de publicar falha em silêncio. Três pontos concretos no mesmo trecho:
 
-### Médias
-4. **Login pode escapar para a tela de login** numa corrida entre o retorno do Google e a checagem de sessão.
-5. **Sem recálculo de rota confirmado em campo** — se sair do caminho, a manobra pode ficar errada (o mecanismo foi implementado, mas não validado no aparelho).
-6. **Viagem não se recupera** se o Android matar o processo.
-7. **Alguns avisos de código** em Dashboard e Mapa (dependências de efeito faltando) que podem causar dados desatualizados na tela.
-8. **"Planos pagos — em breve"** aparece na tela de administração — anúncio de algo que não existe.
+1. `if (!text.trim() || !user) return;` — se o perfil do usuário ainda não carregou (ou falhou ao carregar), o clique não faz absolutamente nada, sem aviso. O botão continua clicável e o formulário fica igual.
+2. O retorno de erro do banco é guardado numa variável e simplesmente ignorado: `if (!error) { ... }`. Qualquer recusa (sessão expirada, regra de acesso, campo inválido, rede) desaparece sem mensagem e sem registro no console.
+3. Após o envio não há recarga da lista: o feed depende só do aviso automático em tempo real. Se esse canal não chegar, a publicação não aparece mesmo quando é salva.
 
-### Menores
-9. **Dois arquivos gigantes**: Mapa (1.294 linhas) e Dashboard (723 linhas) concentram lógica demais — difícil de manter.
-10. **Cores escritas à mão** fora do sistema de design nos gráficos do admin e em alguns botões — se a paleta mudar, esses pontos ficam para trás.
-11. Sem trava de tela ligada durante navegação, sem confirmação de entrega do WhatsApp, backup do app sem regras de exclusão.
-12. Contraste de cores nunca foi medido (avaliação foi visual, não numérica).
+O feed também engole o erro da consulta: quando a leitura falha, a tela mostra "Nenhuma publicação" como se estivesse tudo certo.
 
-## Parte 3 — O que falta para virar APK na Play Store que monetiza
+## Correção proposta (sem mudar o visual)
 
-### A. Release assinado (obrigatório)
-- Gerar **keystore de release** (fora do repositório) e configurar `assembleRelease` / `bundleRelease`.
-- A loja exige **AAB**, não APK.
-- Incrementar `versionCode` a cada envio (hoje: 12).
-- CI gera o AAB assinado usando segredos do GitHub.
-- Ativar **Play App Signing** (Google guarda a chave; recuperável se perder).
+Arquivo: `src/routes/_authenticated/community.tsx`
 
-### B. Compliance da loja (onde mais se reprova)
-- **Política de privacidade em URL pública** — a página já existe no app; basta publicar e apontar na ficha.
-- **Justificativa de localização** — não usamos localização em segundo plano (decisão já tomada), o que simplifica a revisão.
-- **Formulário de segurança de dados**: localização, contatos, telefones de emergência.
-- **Classificação de conteúdo** (questionário).
-- **Teste fechado obrigatório**: contas novas precisam de **12+ testadores por 14 dias** antes da produção.
-- Ficha: descrição, screenshots, ícone 512, imagem de destaque 1024x500.
-- Conta de desenvolvedor: **US$ 25** (taxa única, paga por você ao Google).
+- Validar antes de enviar: texto obrigatório (mín. 2 caracteres) e sessão ativa; cada caso com mensagem própria no formulário.
+- Ler a sessão real no momento do envio (`supabase.auth.getUser()`) e usar esse identificador como autor — assim o envio funciona mesmo se o perfil ainda estiver carregando; o nome exibido continua vindo do perfil quando disponível.
+- Fazer o envio retornando o registro criado (`.insert(...).select().single()`), aguardando confirmação do banco.
+- Tratar o erro por tipo, com texto claro para o usuário e `console.error` com o detalhe técnico:
+  - sessão/autenticação inválida → "Sua sessão expirou. Entre novamente."
+  - recusa por regra de acesso → "Sem permissão para publicar com esta conta."
+  - campo obrigatório/valor inválido → "Confira os campos e tente novamente."
+  - falha de rede → "Sem conexão. Tente novamente."
+- Só após confirmação: inserir o registro retornado no topo da lista, recarregar o feed do banco, limpar o formulário e fechar o compositor.
+- Feedback visível de sucesso: "Publicação realizada", exibido por alguns segundos.
+- Botão com estado de carregando ("Publicando…"), desabilitado durante o envio, com trava contra duplo clique (mesma trava usada em outros formulários do app).
+- O formulário só é limpo depois do sucesso — nunca antes.
+- Mostrar erro de carregamento do feed em vez de "Nenhuma publicação", com botão "Tentar novamente".
 
-### C. Monetização — decisão sua
-Regra importante: **apps na Play que vendem recursos digitais são obrigados a usar o Google Play Billing.** Stripe ou Paddle para desbloquear recursos do app Android reprova na revisão.
+## Verificação
 
-Modelos:
-
-| Modelo | Observação |
-|---|---|
-| **Assinatura premium** (recomendado) | Receita recorrente; melhor encaixe |
-| Compra única | Simples, sem recorrência |
-| Grátis + anúncios | Combina mal com app de emergência |
-
-Proposta de divisão (ajustável):
-- **Grátis**: SOS manual, mapa, contatos de emergência, navegação.
-- **Premium**: detecção automática de queda, compartilhamento em tempo real, histórico e telemetria completos, navegação na tela bloqueada.
-
-Implementação: integrar Google Play Billing, tela "Seja Premium", restauração de compra e travas nos recursos premium. Você cria os produtos no Play Console — eu passo os IDs exatos.
-
-## Ordem sugerida
-
-1. Corrigir as falhas médias de código (login, avisos de efeito, remover "em breve").
-2. Adicionar tela de emergência offline mínima (SOS funciona sem internet).
-3. Testes físicos no aparelho: GPS, tela bloqueada, SOS ponta a ponta.
-4. Keystore + AAB assinado no CI.
-5. Google Play Billing + tela Premium + travas.
-6. Ficha da loja + formulários + política publicada.
-7. Teste fechado (14 dias) → produção.
-
-## O que preciso que você decida
-
-- Modelo de monetização (recomendo assinatura premium).
-- O que fica grátis vs premium.
-- Preços (sugestão: R$ 14,90/mês, R$ 119,90/ano).
-- Já tem conta Google Play Developer ou vai criar?
-- Quer que eu comece pelas correções de código (item 1) ou direto pelo caminho da loja (item 4)?
+- Novo teste de comportamento `src/routes/community-publish.behavior.test.tsx`: envio com sucesso atualiza a lista e mostra confirmação; erro de regra de acesso mostra mensagem e mantém o texto digitado; duplo clique envia uma única vez; sem texto não envia.
+- Rodar a suíte completa, verificação de tipos, lint e build.
+- Conferir no banco que a linha realmente existe em `community_posts` após o teste no navegador, e que ela permanece após recarregar a tela.
 
 ## Detalhes técnicos
 
-- Keystore nunca entra no git; fica em segredos do CI.
-- Play Billing exige AAB no Play Console com produtos criados para testar compras.
-- Nada disso altera SOS, RLS, migrations ou OAuth já validados.
+- Tabela: `public.community_posts`; regras envolvidas: `cp_insert` (gravar apenas com o próprio identificador) e `cp_select` (leitura liberada a usuários autenticados); leitura agregada via função `community_feed`.
+- Atualização da lista por `queryClient.setQueryData` (imediata, com o registro retornado) seguida de `invalidateQueries(["community","feed"])`; o canal em tempo real existente continua funcionando como reforço.
+- Nenhuma migração de banco é necessária — o esquema e as permissões já estão corretos.
