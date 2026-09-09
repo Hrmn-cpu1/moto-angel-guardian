@@ -650,6 +650,7 @@ export type Database = {
           trips: number
         }[]
       }
+      admin_email_fixo: { Args: never; Returns: string }
       admin_stats: {
         Args: never
         Returns: {
