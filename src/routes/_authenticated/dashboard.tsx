@@ -659,7 +659,7 @@ function Dashboard() {
             <button
               type="button"
               onClick={() => setFolha("avisar")}
-              className={`absolute bottom-[calc(var(--ma-bottom)+8px)] left-3 right-[86px] ${camada("painelInferior")} flex min-h-[64px] items-center justify-center gap-3 rounded-2xl bg-gold px-4 text-[17px] font-bold text-black shadow-map`}
+              className={`absolute bottom-[calc(var(--ma-bottom)+8px)] left-3 right-[calc(50%+52px)] ${camada("painelInferior")} flex min-h-[64px] items-center justify-center gap-3 rounded-2xl bg-gold px-4 text-[17px] font-bold text-black shadow-map`}
             >
               <Megaphone size={24} /> Avisar perigo
             </button>
