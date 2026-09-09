@@ -659,7 +659,7 @@ function Dashboard() {
             <button
               type="button"
               onClick={() => setFolha("avisar")}
-              className={`absolute bottom-[calc(var(--ma-bottom)+8px)] left-3 right-[86px] ${camada("painelInferior")} flex min-h-[64px] items-center justify-center gap-3 rounded-2xl bg-gold px-4 text-[17px] font-bold text-black shadow-map`}
+              className={`absolute bottom-[calc(var(--ma-bottom)+8px)] left-3 right-[calc(50%+52px)] ${camada("painelInferior")} flex min-h-[64px] items-center justify-center gap-3 rounded-2xl bg-gold px-4 text-[17px] font-bold text-black shadow-map`}
             >
               <Megaphone size={24} /> Avisar perigo
             </button>
@@ -746,18 +746,14 @@ function Dashboard() {
         {/* Sem prop de posição: o SOS captura o GPS na hora do acionamento.
             O acionador flutuante some enquanto uma folha ou o teclado ocupam
             a mesma faixa — o painel de SOS ativo continua sempre visível. */}
-        {/* Em viagem ele encolhe um pouco (64px, sem pulso) para não cobrir
-            rota e telemetria — continua vermelho, ao alcance do polegar e com
-            o mesmo hold de 3 s. Nada do comportamento mudou. */}
+        {/* Botão flutuante centralizado acima da navegação inferior: o círculo
+            vermelho pulsante do plano da Home. Em viagem ele encolhe (compact,
+            sem pulso) para não cobrir rota e telemetria, mas continua central
+            e ao alcance do polegar. O hold de 3 s e todo o resto não mudaram. */}
         <SosFabControlado
           sos={sos}
-          compact
+          compact={modoCockpit}
           oculto={!sosFlutuanteVisivel(folha, tecladoAberto)}
-          className={
-            modoCockpit
-              ? "bottom-[calc(env(safe-area-inset-bottom)+12px)] left-auto right-3 translate-x-0"
-              : "bottom-[calc(var(--ma-bottom)+8px)] left-auto right-3 translate-x-0"
-          }
         />
       </div>
     </AppShell>
