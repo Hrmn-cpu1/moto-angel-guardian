@@ -9,13 +9,13 @@ export function useIsAdmin(userId?: string) {
     staleTime: 5 * 60_000,
     retry: 1,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId!)
-        .eq("role", "admin");
+      // Validação no backend: has_role exige o e-mail administrador fixo.
+      const { data, error } = await supabase.rpc("has_role", {
+        _user_id: userId!,
+        _role: "admin",
+      });
       if (error) throw error;
-      return !!data && data.length > 0;
+      return data === true;
     },
   });
   return { isAdmin: data ?? false, checking: !!userId && isLoading };
