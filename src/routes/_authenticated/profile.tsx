@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   Siren,
   Smartphone,
+  Trash2,
   Sparkles,
   User as UserIcon,
   type LucideIcon,
@@ -37,6 +38,7 @@ import { definirPreferenciaTelaBloqueada, preferenciaTelaBloqueada } from "@/lib
 import { lerDiagnosticoLock } from "@/lib/trip-service";
 import type { User } from "@/types";
 import { toast } from "sonner";
+import { deleteMyAccount } from "@/lib/account.functions";
 
 export const Route = createFileRoute("/_authenticated/profile")({
   head: () => ({
@@ -94,6 +96,21 @@ function ProfilePage() {
       await navigate({ to: "/welcome" });
     } catch {
       toast.error("Não foi possível sair. Tente novamente.");
+    }
+  };
+
+  const doDeleteAccount = async () => {
+    const confirmed = window.confirm(
+      "Excluir sua conta remove seus dados do Moto Anjo e encerra o acesso. Esta ação não pode ser desfeita. Continuar?",
+    );
+    if (!confirmed) return;
+    try {
+      await deleteMyAccount({ data: { confirmation: "DELETE" } });
+      await supabase.auth.signOut();
+      toast.success("Conta excluída.");
+      await navigate({ to: "/welcome" });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível excluir a conta.");
     }
   };
 
@@ -292,6 +309,16 @@ function ProfilePage() {
         >
           <LogOut size={14} /> Sair
         </OutlineButton>
+        <button
+          type="button"
+          onClick={() => void doDeleteAccount()}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-emergency/30 px-4 py-3 text-xs font-semibold uppercase tracking-widest text-emergency transition hover:bg-emergency/10"
+        >
+          <Trash2 size={14} /> Excluir minha conta
+        </button>
+        <p className="pb-4 text-center text-[10px] leading-relaxed text-muted-foreground">
+          A exclusão remove seus dados do serviço, salvo o que precisar ser mantido por obrigação legal.
+        </p>
       </div>
       {diagnosticoAberto && <AndroidLockDiagnostics onClose={() => setDiagnosticoAberto(false)} />}
     </AppShell>
