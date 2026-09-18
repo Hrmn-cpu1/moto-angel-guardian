@@ -200,7 +200,7 @@ export function CockpitDeViagem({
         onFinalizar={onFinalizar}
         onSosHoldComplete={onSosHoldComplete}
         sosDisabled={sosDisabled}
-        className="absolute bottom-[calc(env(safe-area-inset-bottom)+12px)] left-3 right-3"
+        className="absolute bottom-[calc(env(safe-area-inset-bottom)+76px)] left-3 right-3"
       />
     </>
   );
