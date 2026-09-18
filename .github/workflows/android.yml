@@ -88,8 +88,8 @@ jobs:
           echo "== app =="
           grep -E "applicationId|versionCode|versionName" android/app/build.gradle
           TARGET=$(grep -oP 'targetSdkVersion\s*=\s*\K\d+' android/variables.gradle)
-          if [ "$TARGET" -lt 35 ]; then
-            echo "targetSdk $TARGET abaixo do exigido pela Play"; exit 1
+          if [ "$TARGET" -lt 36 ]; then
+            echo "targetSdk $TARGET abaixo do exigido para novos apps na Play em 31/08/2026"; exit 1
           fi
           PKG=$(grep -oP 'applicationId\s*"\K[^"]+' android/app/build.gradle)
           if [ "$PKG" != "com.motoanjo.app" ]; then
@@ -143,39 +143,66 @@ jobs:
         working-directory: android
         run: ./gradlew :app:testDebugUnitTest assembleDebug --stacktrace
 
+      - name: Montar release APK + AAB
+        working-directory: android
+        env:
+          MOTOANJO_KEYSTORE_BASE64: ${{ secrets.MOTOANJO_KEYSTORE_BASE64 }}
+          MOTOANJO_KEYSTORE_PASSWORD: ${{ secrets.MOTOANJO_KEYSTORE_PASSWORD }}
+          MOTOANJO_KEY_ALIAS: ${{ secrets.MOTOANJO_KEY_ALIAS }}
+          MOTOANJO_KEY_PASSWORD: ${{ secrets.MOTOANJO_KEY_PASSWORD }}
+        run: |
+          set -e
+          ./gradlew :app:bundleRelease :app:assembleRelease --stacktrace
+          test -f app/build/outputs/bundle/release/app-release.aab
+          test -f app/build/outputs/apk/release/app-release.apk
+
       - name: Metadados e SHA-256
         id: meta
         run: |
           set -e
-          ORIGEM=android/app/build/outputs/apk/debug/app-debug.apk
-          test -f "$ORIGEM" || { echo "APK não foi gerado"; exit 1; }
+          DEBUG=android/app/build/outputs/apk/debug/app-debug.apk
+          RELEASE_APK=android/app/build/outputs/apk/release/app-release.apk
+          RELEASE_AAB=android/app/build/outputs/bundle/release/app-release.aab
+          test -f "$DEBUG" && test -f "$RELEASE_APK" && test -f "$RELEASE_AAB" || { echo "artefato Android não foi gerado"; exit 1; }
           VCODE=$(grep -oE "versionCode +[0-9]+" android/app/build.gradle | grep -oE "[0-9]+")
           VNAME=$(grep -oE 'versionName +"[^"]+"' android/app/build.gradle | cut -d'"' -f2)
           test -n "$VCODE" && test -n "$VNAME" || { echo "versão não lida do build.gradle"; exit 1; }
-          APK="moto-anjo-${VNAME}-${VCODE}-debug.apk"
-          cp "$ORIGEM" "$APK"
+          AAB="moto-anjo-${VNAME}-${VCODE}-release.aab"
+          APK="moto-anjo-${VNAME}-${VCODE}-release.apk"
+          DEBUG_APK="moto-anjo-${VNAME}-${VCODE}-debug.apk"
+          cp "$RELEASE_AAB" "$AAB"
+          cp "$RELEASE_APK" "$APK"
+          cp "$DEBUG" "$DEBUG_APK"
+          SIGNING="unsigned/RC"
+          if [ -n "${{ secrets.MOTOANJO_KEYSTORE_BASE64 }}" ]; then SIGNING="signed release"; fi
+          echo "aab=$AAB" >> "$GITHUB_OUTPUT"
           echo "apk=$APK" >> "$GITHUB_OUTPUT"
-          echo "sha256: $(sha256sum "$APK" | cut -d' ' -f1)"
-          echo "tamanho: $(du -h "$APK" | cut -f1)"
+          echo "sha256 AAB: $(sha256sum "$AAB" | cut -d' ' -f1)"
+          echo "sha256 APK release: $(sha256sum "$APK" | cut -d' ' -f1)"
           {
-            echo "arquivo: $APK"
+            echo "arquivo AAB: $AAB"
+            echo "arquivo APK release: $APK"
+            echo "arquivo APK debug: $DEBUG_APK"
             echo "commit: ${{ github.sha }}"
-            echo "sha256: $(sha256sum "$APK" | cut -d' ' -f1)"
+            echo "sha256 AAB: $(sha256sum "$AAB" | cut -d' ' -f1)"
+            echo "sha256 APK release: $(sha256sum "$APK" | cut -d' ' -f1)"
             echo "frontend carregado (server.url): $APK_WEB_URL"
             echo "frontend embutido no APK: NAO — ver capacitor.config.ts"
-            echo "fallback de conexão: offline.html empacotado; apenas discador, sem envio de SOS"
-            echo "assinatura: debug, não é chave de distribuição Play"
-            grep -E "versionCode|versionName" android/app/build.gradle
+            echo "assinatura: $SIGNING"
+            echo "versionCode: $VCODE"
+            echo "versionName: $VNAME"
             grep -E "minSdkVersion|targetSdkVersion" android/variables.gradle
           } > android-build-metadata.txt
           cat android-build-metadata.txt
 
-      - name: Publicar artefato
+      - name: Publicar artefatos Android
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: moto-anjo-android-debug
+          name: moto-anjo-android-release
           path: |
+            ${{ steps.meta.outputs.aab }}
             ${{ steps.meta.outputs.apk }}
+            moto-anjo-*-debug.apk
             android-build-metadata.txt
           retention-days: 14
