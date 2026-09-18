@@ -274,11 +274,23 @@ public class ViagemSeguraService extends Service {
 
         // Sensor a ~50 Hz; MotionPeakWindow preserva impactos curtos na saída
         // de 5 Hz. A disponibilidade reflete o registro real no Android.
-        boolean accelerationRegistered = sensorAceleracao != null && sensores.registerListener(ouvinteSensores, sensorAceleracao, SensorManager.SENSOR_DELAY_GAME);
-        boolean gyroRegistered = sensorGiroscopio != null && sensores.registerListener(ouvinteSensores, sensorGiroscopio, SensorManager.SENSOR_DELAY_GAME);
+        boolean accelerationRegistered = false;
+        boolean gyroRegistered = false;
+        try {
+            accelerationRegistered = sensorAceleracao != null
+                    && sensores.registerListener(ouvinteSensores, sensorAceleracao, SensorManager.SENSOR_DELAY_GAME);
+            gyroRegistered = sensorGiroscopio != null
+                    && sensores.registerListener(ouvinteSensores, sensorGiroscopio, SensorManager.SENSOR_DELAY_GAME);
+        } catch (RuntimeException ignored) {
+            // Alguns drivers de sensor recusam o registro em runtime. Não
+            // derrubar a viagem: publica suporte real e mantém o SOS manual.
+            if (ouvinteSensores != null) {
+                try { sensores.unregisterListener(ouvinteSensores); } catch (Exception ignored2) {}
+            }
+        }
         temAceleracaoAgora = accelerationRegistered;
         temGiroscopioAgora = gyroRegistered;
-        capturandoMovimento = accelerationRegistered || gyroRegistered;
+        capturandoMovimento = accelerationRegistered;
         movimentoAtivoAgora = capturandoMovimento;
         NativeProtection.get(this).sensors(accelerationRegistered);
     }
