@@ -52,9 +52,16 @@ function PrivacyPage() {
           confidencialidade; (c) autoridades competentes mediante requisição legal.
         </Section>
         <Section title="4. Geolocalização">
-          A localização é obtida somente enquanto o app é utilizado e apenas com sua permissão. É
-          usada para exibir mapas, calcular viagens e compor os alertas SOS. Você pode desativar a
-          permissão a qualquer momento nas configurações do sistema operacional.
+          A localização é usada somente com a permissão do sistema e conforme os recursos que você
+          ativar. Durante uma viagem ativa, o Moto Anjo pode continuar usando a localização em um
+          serviço de primeiro plano mesmo com o aplicativo minimizado ou com a tela bloqueada, porque
+          isso é necessário para manter a viagem, a navegação e a proteção automática. Isso não
+          significa que sua posição seja compartilhada com outros motociclistas: o compartilhamento
+          com contatos e a opção de aparecer para a comunidade são controles separados.
+          Ao encerrar a viagem, o serviço de proteção é encerrado. Ao desligar o compartilhamento,
+          o aparelho para de publicar novas posições imediatamente; se o servidor não confirmar a
+          mudança, o aplicativo informa essa pendência em vez de fingir que a interrupção foi concluída.
+          Você também pode revogar a permissão de localização nas configurações do sistema.
         </Section>
         <Section title="5. Cookies e tecnologias utilizadas">
           Utilizamos armazenamento local do dispositivo (localStorage / Preferences) para manter sua
