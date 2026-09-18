@@ -160,6 +160,8 @@ interface CockpitProps {
   vozSuportada: boolean;
   onAlternarVoz: () => void;
   onFinalizar: () => void;
+  onSosHoldComplete: (heldMs: number) => void;
+  sosDisabled?: boolean;
 }
 
 export function CockpitDeViagem({
@@ -175,6 +177,8 @@ export function CockpitDeViagem({
   vozSuportada,
   onAlternarVoz,
   onFinalizar,
+  onSosHoldComplete,
+  sosDisabled = false,
 }: CockpitProps) {
   return (
     <>
@@ -194,7 +198,9 @@ export function CockpitDeViagem({
         vozSuportada={vozSuportada}
         onAlternarVoz={onAlternarVoz}
         onFinalizar={onFinalizar}
-        className="absolute bottom-[calc(env(safe-area-inset-bottom)+12px)] left-3 right-[68px]"
+        onSosHoldComplete={onSosHoldComplete}
+        sosDisabled={sosDisabled}
+        className="absolute bottom-[calc(env(safe-area-inset-bottom)+12px)] left-3 right-3"
       />
     </>
   );
