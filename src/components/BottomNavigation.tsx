@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Bell, Home, Menu, Users } from "lucide-react";
-import { cn } from "@/lib/utils";
+import type { SosController } from "@/components/AppShell";
+import { cn } from "@/lib/utils";\nimport { SosFabControlado } from "@/components/SosFab";
 
 const tabs = [
   { to: "/dashboard", label: "Início", icon: Home },
@@ -11,7 +12,7 @@ const tabs = [
 
 // Four gold tabs. The emergency trigger is an independent floating button
 // rendered by the screens themselves (SosFab), not a tab.
-export function BottomNavigation() {
+export function BottomNavigation({ cockpit = false, sos }: { cockpit?: boolean; sos?: SosController }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isActive = (to: string) => pathname === to || pathname.startsWith(to + "/");
 
@@ -32,7 +33,7 @@ export function BottomNavigation() {
   return (
     <nav
       aria-label="Navegação principal"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-map-panel/98 backdrop-blur-xl"
+      className={cn("fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-map-panel/98 backdrop-blur-xl", cockpit && "border-t-white/15")}
     >
       <div className="relative mx-auto flex max-w-md items-stretch gap-1 px-2 pb-[env(safe-area-inset-bottom)]">
         {tabs.map((it) => (
