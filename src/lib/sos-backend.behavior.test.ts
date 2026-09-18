@@ -15,6 +15,10 @@ const details = {
 };
 beforeEach(() => {
   vi.stubEnv("SOS_DELIVERY_ENABLED", "true");
+  // Isola a suíte da configuração real do ambiente/CI. Estes testes cobrem
+  // explicitamente o provedor Meta; Evolution possui sua própria suíte.
+  vi.stubEnv("SOS_DELIVERY_PROVIDER", "meta");
+  vi.stubEnv("SOS_DELIVERY_NOT_BEFORE", "");
   vi.stubEnv("WHATSAPP_ACCESS_TOKEN", "test-token");
   vi.stubEnv("WHATSAPP_PHONE_NUMBER_ID", "1234");
   vi.stubEnv("WHATSAPP_SOS_TEMPLATE_NAME", "sos_alerta");
