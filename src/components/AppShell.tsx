@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSosController } from "@/hooks/useSosController";
 import { isTermsAccepted } from "@/lib/terms";
 
-type SosController = ReturnType<typeof useSosController>;
+export type SosController = ReturnType<typeof useSosController>;
 
 type AppShellProps = {
   children: ReactNode;
@@ -20,6 +20,8 @@ type AppShellProps = {
   sosOculto?: boolean;
   /** Uses the compact SOS treatment used by the navigation cockpit. */
   sosCompact?: boolean;
+  /** Cockpit keeps the main navigation visible and centers SOS over it. */
+  cockpit?: boolean;
 };
 
 /**
@@ -48,6 +50,7 @@ function AppShellFrame({
   sos,
   sosOculto = false,
   sosCompact = false,
+  cockpit = false,
   renderSos = true,
 }: AppShellProps & { sos: SosController; renderSos: boolean }) {
   const { user, loading } = useAuth();
@@ -76,7 +79,7 @@ function AppShellFrame({
         />
       )}
 
-      {!hideNav && <BottomNavigation />}
+      {!hideNav && <BottomNavigation cockpit={cockpit} sos={sos} />}
     </div>
   );
 }
