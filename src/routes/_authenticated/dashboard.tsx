@@ -440,7 +440,8 @@ function Dashboard() {
        baixo encolhe (`ma-cockpit`), para o mapa ser a tela inteira. */
     <AppShell
       fullBleed
-      hideNav={modoCockpit}
+      hideNav={false}
+      cockpit={modoCockpit}
       sos={sos}
     >
       <div
