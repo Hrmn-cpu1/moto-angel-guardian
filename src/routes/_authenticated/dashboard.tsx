@@ -10,7 +10,6 @@ import {
 } from "@/components/CommunityMapPanel";
 import { AppShell } from "@/components/AppShell";
 import { HomeTopBar } from "@/components/HomeTopBar";
-import { SosFabControlado } from "@/components/SosFab";
 import { DestinationBar } from "@/components/DestinationBar";
 import { CopilotCard } from "@/components/CopilotCard";
 import { MapLayersSheet } from "@/components/MapLayersSheet";
@@ -438,7 +437,13 @@ function Dashboard() {
   return (
     /* COCKPIT V2: durante a viagem a navegação inferior some e a âncora de
        baixo encolhe (`ma-cockpit`), para o mapa ser a tela inteira. */
-    <AppShell fullBleed hideNav={modoCockpit}>
+    <AppShell
+      fullBleed
+      hideNav={modoCockpit}
+      sos={sos}
+      sosCompact={modoCockpit}
+      sosOculto={!sosFlutuanteVisivel(folha, tecladoAberto)}
+    >
       <div
         className={`relative h-[100dvh] w-full overflow-hidden bg-background ${
           modoCockpit ? "ma-cockpit" : ""
@@ -743,18 +748,9 @@ function Dashboard() {
           />
         )}
 
-        {/* Sem prop de posição: o SOS captura o GPS na hora do acionamento.
-            O acionador flutuante some enquanto uma folha ou o teclado ocupam
-            a mesma faixa — o painel de SOS ativo continua sempre visível. */}
-        {/* Botão flutuante centralizado acima da navegação inferior: o círculo
-            vermelho pulsante do plano da Home. Em viagem ele encolhe (compact,
-            sem pulso) para não cobrir rota e telemetria, mas continua central
-            e ao alcance do polegar. O hold de 3 s e todo o resto não mudaram. */}
-        <SosFabControlado
-          sos={sos}
-          compact={modoCockpit}
-          oculto={!sosFlutuanteVisivel(folha, tecladoAberto)}
-        />
+        {/* O SOS é renderizado pelo AppShell e permanece disponível nesta aba.
+            O mesmo controlador da Home é reaproveitado para evitar duplicação
+            de estado/realtime. */}
       </div>
     </AppShell>
   );
