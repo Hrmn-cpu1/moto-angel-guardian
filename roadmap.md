@@ -5,4 +5,4 @@
 - [x] Auditar todos os workflows e corrigir a instalação do Android SDK 36.
 - [x] Validar dependências, TypeScript, build web, lint incremental e configuração Android.
 - [x] Executar sync Capacitor e build Android completo; confirmar APK e SHA-256.
-- [x] Revisar o roadmap; a confirmação da execução remota depende do acesso ao repositório privado.
+- [ ] Confirmar a execução remota; bloqueado porque a `main` do GitHub ainda aponta para `290445a` e não há conexão GitHub disponível nesta sessão.
