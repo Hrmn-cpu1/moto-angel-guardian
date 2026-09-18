@@ -1,3 +1,4 @@
+-- CHECKPOINT RC6 — sistema de convites e benefícios
 -- Referral system: every profile receives a unique invite code.
 -- A new account may optionally provide another rider's code; attribution is
 -- recorded server-side by the signup trigger.
