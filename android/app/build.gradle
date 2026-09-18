@@ -2,12 +2,19 @@ apply plugin: 'com.android.application'
 
 // A chave de publicação pertence ao responsável pela distribuição. Não há
 // chave de release gerada ou credencial gravada no repositório.
+def releaseKeystoreBase64 = System.getenv('MOTOANJO_KEYSTORE_BASE64')
+def releaseKeystoreFile = System.getenv('MOTOANJO_KEYSTORE_FILE')
 def releaseSigning = [
-    file: System.getenv('MOTOANJO_KEYSTORE_FILE'),
+    file: releaseKeystoreBase64 ? file("${rootProject.buildDir}/motoanjo-release.jks") : releaseKeystoreFile,
     storePassword: System.getenv('MOTOANJO_KEYSTORE_PASSWORD'),
     alias: System.getenv('MOTOANJO_KEY_ALIAS'),
     keyPassword: System.getenv('MOTOANJO_KEY_PASSWORD')
 ]
+if (releaseKeystoreBase64) {
+    def keyFile = file("${rootProject.buildDir}/motoanjo-release.jks")
+    keyFile.parentFile.mkdirs()
+    keyFile.bytes = releaseKeystoreBase64.decodeBase64()
+}
 def hasReleaseSigning = releaseSigning.values().every { it != null && !it.isEmpty() }
 if (releaseSigning.values().any { it != null && !it.isEmpty() } && !hasReleaseSigning) {
     throw new GradleException('Configuração de assinatura incompleta: forneça as quatro variáveis MOTOANJO_KEY*.')
@@ -22,8 +29,8 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // versionCode monotonico: cada APK que sai do CI precisa de um numero
         // maior que o anterior, senao a Play rejeita. 4 = primeiro RC Android.
-        versionCode 15
-        versionName "1.5.1-piloto"
+        versionCode 16
+        versionName "1.6.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
