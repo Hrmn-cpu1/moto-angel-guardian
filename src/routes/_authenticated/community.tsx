@@ -8,6 +8,7 @@ import { GoldButton } from "@/components/GoldButton";
 import { supabase } from "@/integrations/supabase/client";
 import { publicarNaComunidade, validarPublicacao } from "@/lib/community-post";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/community")({
   head: () => ({
