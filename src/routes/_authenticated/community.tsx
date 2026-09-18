@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Heart, Loader2, MapPin, MessageCircle, Plus, Send, Trash2, Users } from "lucide-react";
+import { Ban, Flag, Heart, Loader2, MapPin, MessageCircle, Plus, Send, Trash2, Users } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Header } from "@/components/Header";
 import { GoldButton } from "@/components/GoldButton";
@@ -265,6 +265,49 @@ function Community() {
     await loadComments(postId);
   };
 
+  const reportPost = async (postId: string) => {
+    const reason = window.prompt("Motivo da denúncia (ex.: spam, assédio, conteúdo perigoso):", "outro");
+    if (reason === null) return;
+    const { error } = await supabase.rpc("report_community_content", {
+      _post_id: postId,
+      _comment_id: null,
+      _reason: reason || "outro",
+    });
+    if (error) {
+      toast.error("Não foi possível registrar a denúncia.");
+      return;
+    }
+    toast.success("Denúncia registrada. Obrigado por ajudar a moderar a comunidade.");
+  };
+
+  const reportComment = async (commentId: string) => {
+    const reason = window.prompt("Motivo da denúncia:", "outro");
+    if (reason === null) return;
+    const { error } = await supabase.rpc("report_community_content", {
+      _post_id: null,
+      _comment_id: commentId,
+      _reason: reason || "outro",
+    });
+    if (error) {
+      toast.error("Não foi possível registrar a denúncia.");
+      return;
+    }
+    toast.success("Denúncia registrada.");
+  };
+
+  const blockUser = async (blockedId: string, name: string) => {
+    if (!window.confirm(`Bloquear ${name || "este motociclista"}? Você deixará de ver o conteúdo dessa pessoa e ela deixará de ver o seu.`))
+      return;
+    const { error } = await supabase.rpc("block_community_user", { _blocked_id: blockedId });
+    if (error) {
+      toast.error("Não foi possível bloquear este usuário.");
+      return;
+    }
+    setOpenComments(null);
+    void qc.invalidateQueries({ queryKey: feedKey });
+    toast.success("Usuário bloqueado.");
+  };
+
   return (
     <AppShell>
       <Header
@@ -428,15 +471,37 @@ function Community() {
                     {p.region ? ` · ${p.region}` : ""}
                   </p>
                 </div>
-                {user?.id === p.user_id && (
-                  <button
-                    onClick={() => deletePost(p.id)}
-                    aria-label="Apagar publicação"
-                    className="text-muted-foreground/60 hover:text-emergency"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                )}
+                <div className="flex shrink-0 items-center gap-2">
+                  {user?.id !== p.user_id && (
+                    <>
+                      <button
+                        onClick={() => void reportPost(p.id)}
+                        aria-label="Denunciar publicação"
+                        title="Denunciar publicação"
+                        className="text-muted-foreground/60 hover:text-gold"
+                      >
+                        <Flag size={14} />
+                      </button>
+                      <button
+                        onClick={() => void blockUser(p.user_id, p.author_name)}
+                        aria-label={`Bloquear ${p.author_name || "usuário"}`}
+                        title="Bloquear usuário"
+                        className="text-muted-foreground/60 hover:text-emergency"
+                      >
+                        <Ban size={14} />
+                      </button>
+                    </>
+                  )}
+                  {user?.id === p.user_id && (
+                    <button
+                      onClick={() => deletePost(p.id)}
+                      aria-label="Apagar publicação"
+                      className="text-muted-foreground/60 hover:text-emergency"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
               </header>
               <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
                 {p.text}
@@ -482,6 +547,26 @@ function Community() {
                           {c.text}
                         </p>
                       </div>
+                      {user?.id !== c.user_id && (
+                        <div className="flex shrink-0 items-center gap-1">
+                          <button
+                            onClick={() => void reportComment(c.id)}
+                            aria-label="Denunciar comentário"
+                            title="Denunciar comentário"
+                            className="text-muted-foreground/60 hover:text-gold"
+                          >
+                            <Flag size={12} />
+                          </button>
+                          <button
+                            onClick={() => void blockUser(c.user_id, c.author_name)}
+                            aria-label={`Bloquear ${c.author_name || "usuário"}`}
+                            title="Bloquear usuário"
+                            className="text-muted-foreground/60 hover:text-emergency"
+                          >
+                            <Ban size={12} />
+                          </button>
+                        </div>
+                      )}
                       {user?.id === c.user_id && (
                         <button
                           onClick={() => deleteComment(p.id, c.id)}
