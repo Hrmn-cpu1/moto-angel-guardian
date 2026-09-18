@@ -145,7 +145,7 @@ function Login() {
           </GoldButton>
         </div>
 
-        <Link to="/register" search={{ next }} className="block pt-1">
+        <Link to="/register" search={{ next, ref: undefined }} className="block pt-1">
           <OutlineButton type="button" size="lg">
             Criar conta
           </OutlineButton>
