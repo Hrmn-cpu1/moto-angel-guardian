@@ -29,8 +29,8 @@ type ProfileRow = {
   terms_accepted_at: string | null;
   terms_version: string | null;
   created_at: string;
-  referral_code: string | null;
-  referred_by: string | null;
+  referral_code?: string | null;
+  referred_by?: string | null;
 };
 
 function toAppUser(row: ProfileRow): AppUser {
