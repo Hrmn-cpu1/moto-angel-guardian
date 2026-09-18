@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   BadgePercent,
+  Copy,
   Bike,
   ChevronRight,
   Contact as ContactIcon,
@@ -101,6 +102,32 @@ function ProfilePage() {
       <Header title="Perfil" subtitle="Sua identidade" showBell />
 
       <div className="space-y-4 px-5 pt-4">
+        <div className="glass-card rounded-2xl border border-gold/20 bg-gold/5 p-4 animate-fade-up">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gold/25 bg-black/30 text-gold">
+              <Share2 size={18} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gold">Seu código de convite</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">Compartilhe com outro motociclista. O cadastro indicado ficará vinculado ao seu convite.</p>
+            </div>
+          </div>
+          <div className="mt-3 flex items-center gap-2 rounded-xl border border-white/10 bg-black/40 p-2">
+            <code className="min-w-0 flex-1 px-2 text-base font-black tracking-[0.16em] text-foreground">{user.referralCode ?? "—"}</code>
+            <button
+              type="button"
+              aria-label="Copiar código de convite"
+              disabled={!user.referralCode}
+              onClick={() => {
+                if (!user.referralCode) return;
+                void navigator.clipboard?.writeText(user.referralCode).then(() => toast.success("Código copiado."));
+              }}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gold/20 bg-gold/10 text-gold disabled:opacity-40"
+            >
+              <Copy size={16} />
+            </button>
+          </div>
+        </div>
         <div>
           <p className="mb-3 px-1 text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
             Atalhos
