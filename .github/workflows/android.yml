@@ -39,6 +39,11 @@ jobs:
 
       - name: Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            platform-tools
+            platforms;android-36
+            build-tools;36.0.0
 
       - name: Instalar dependências
         run: npm ci
@@ -90,14 +95,14 @@ jobs:
           # Prettier a cada regeneração, o que recriava este gate a cada push.
           # Ele sai do conjunto bloqueante; o lint global informativo acima
           # continua cobrindo o arquivo. Código-fonte normal segue bloqueando.
-          ALTERADOS=$(git diff --name-only --diff-filter=ACMR "$BASE" HEAD -- '*.ts' '*.tsx' \
-            | grep -v '^src/integrations/supabase/types\.ts$' | tr '\n' ' ' || true)
-          if [ -z "$ALTERADOS" ]; then
+          mapfile -d '' ALTERADOS < <(git diff --name-only -z --diff-filter=ACMR "$BASE" HEAD -- '*.ts' '*.tsx' \
+            | grep -zv '^src/integrations/supabase/types\.ts$' || true)
+          if [ "${#ALTERADOS[@]}" -eq 0 ]; then
             echo "nenhum arquivo TS/TSX alterado neste push"
             exit 0
           fi
-          echo "lintando apenas: $ALTERADOS"
-          npx eslint $ALTERADOS
+          printf 'lintando apenas: %s\n' "${ALTERADOS[*]}"
+          npx eslint "${ALTERADOS[@]}"
 
       # ---- Verificações de release ----
       - name: Conferir configuração Android
@@ -147,11 +152,12 @@ jobs:
       - name: Migrations presentes e ordenadas
         run: |
           set -e
-          COUNT=$(ls supabase/migrations/*.sql | wc -l)
+          mapfile -t MIGRATIONS < <(printf '%s\n' supabase/migrations/*.sql)
+          COUNT=${#MIGRATIONS[@]}
           echo "migrations: $COUNT"
           if [ "$COUNT" -lt 30 ]; then echo "migrations sumiram"; exit 1; fi
           # A ordem cronológica dos nomes tem de bater com a ordem de aplicação.
-          diff <(ls supabase/migrations/*.sql) <(ls supabase/migrations/*.sql | sort) \
+          diff <(printf '%s\n' "${MIGRATIONS[@]}") <(printf '%s\n' "${MIGRATIONS[@]}" | sort) \
             || { echo "nomes fora de ordem"; exit 1; }
 
       # ---- Android ----
@@ -162,7 +168,7 @@ jobs:
         run: |
           set -e
           URL="${MOTOANJO_WEB_URL:-https://moto-angel-guardian.lovable.app}"
-          echo "APK_WEB_URL=$URL" >> $GITHUB_ENV
+          echo "APK_WEB_URL=$URL" >> "$GITHUB_ENV"
           echo "::notice title=Frontend do APK::Este APK carrega $URL (server.url). Ele NAO embute o frontend deste commit; a tela so mostra este codigo depois que essa URL for publicada."
         env:
           MOTOANJO_WEB_URL: ${{ vars.MOTOANJO_WEB_URL }}
@@ -197,12 +203,12 @@ jobs:
           APK="moto-anjo-${VNAME}-${VCODE}-debug.apk"
           cp "$ORIGEM" "$APK"
           echo "apk=$APK" >> "$GITHUB_OUTPUT"
-          echo "sha256: $(sha256sum $APK | cut -d' ' -f1)"
-          echo "tamanho: $(du -h $APK | cut -f1)"
+          echo "sha256: $(sha256sum "$APK" | cut -d' ' -f1)"
+          echo "tamanho: $(du -h "$APK" | cut -f1)"
           {
             echo "arquivo: $APK"
             echo "commit: ${{ github.sha }}"
-            echo "sha256: $(sha256sum $APK | cut -d' ' -f1)"
+            echo "sha256: $(sha256sum "$APK" | cut -d' ' -f1)"
             echo "frontend carregado (server.url): $APK_WEB_URL"
             echo "frontend embutido no APK: NAO — ver capacitor.config.ts"
             echo "fallback de conexão: offline.html empacotado; apenas discador, sem envio de SOS"
