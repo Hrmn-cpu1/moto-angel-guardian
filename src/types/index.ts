@@ -14,6 +14,10 @@ export interface User {
   termsAcceptedAt?: string;
   /** Version of the Terms accepted by the user. */
   termsVersion?: string;
+  /** Código único para convidar outros motociclistas. */
+  referralCode?: string;
+  /** ID do motociclista cujo código foi usado neste cadastro. */
+  referredBy?: string;
 }
 
 export interface Contact {
