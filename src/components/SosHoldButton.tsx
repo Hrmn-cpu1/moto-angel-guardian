@@ -3,7 +3,7 @@ import { Siren } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SOS_HOLD_MS } from "@/lib/sos-client";
 
-export type SosHoldVariant = "fab" | "map" | "compact" | "page";
+export type SosHoldVariant = "fab" | "map" | "compact" | "nav" | "page";
 
 interface Props {
   /** Recebe quantos milissegundos a pressão realmente durou. */
@@ -22,6 +22,7 @@ const TAMANHOS: Record<
   fab: { box: "h-[58px] w-[58px]", icone: 20, rotulo: "text-[10px]", anel: "inset-[3px]" },
   map: { box: "h-[58px] w-[58px]", icone: 19, rotulo: "text-[10px]", anel: "inset-[3px]" },
   compact: { box: "h-11 w-11", icone: 16, rotulo: "text-[8px]", anel: "inset-[3px]" },
+  nav: { box: "h-[112px] w-[112px]", icone: 30, rotulo: "text-[13px]", anel: "inset-[4px]" },
   page: {
     box: "h-[min(56vw,208px)] w-[min(56vw,208px)]",
     icone: 38,
@@ -110,6 +111,7 @@ export function SosHoldButton({
         holding &&
           "scale-95 border-emergency/70 bg-[#170d0d] shadow-[0_5px_22px_-5px_hsl(var(--emergency)/0.7),0_0_0_2px_hsl(var(--emergency)/0.2)]",
         variant === "compact" && "shadow-map",
+        variant === "nav" && "border-2 border-emergency/70 bg-[#08090a] shadow-[0_0_0_5px_rgba(5,5,5,0.92),0_0_30px_rgba(217,35,35,0.28)]",
         size.box,
         disabled && "opacity-50",
         className,
@@ -145,6 +147,7 @@ export function SosHoldButton({
           className={cn(
             "mt-0.5 text-[6px] font-bold uppercase tracking-[0.1em] text-white/55",
             variant === "compact" && "sr-only",
+            variant === "nav" && "text-[9px] tracking-[0.14em]",
           )}
         >
           {holding ? "Continue segurando" : "Segure 3s"}
