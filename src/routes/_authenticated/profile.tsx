@@ -107,7 +107,7 @@ function ProfilePage() {
     if (!confirmed) return;
     try {
       await deleteMyAccount({ data: { confirmation: "DELETE" } });
-      await supabase.auth.signOut();
+      await supabase.auth.signOut().catch(() => undefined);
       toast.success("Conta excluída.");
       await navigate({ to: "/welcome" });
     } catch (error) {
