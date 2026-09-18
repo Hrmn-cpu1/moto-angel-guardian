@@ -29,6 +29,8 @@ type ProfileRow = {
   terms_accepted_at: string | null;
   terms_version: string | null;
   created_at: string;
+  referral_code: string | null;
+  referred_by: string | null;
 };
 
 function toAppUser(row: ProfileRow): AppUser {
@@ -46,6 +48,8 @@ function toAppUser(row: ProfileRow): AppUser {
     createdAt: row.created_at,
     termsAcceptedAt: row.terms_accepted_at ?? undefined,
     termsVersion: row.terms_version ?? undefined,
+    referralCode: row.referral_code ?? undefined,
+    referredBy: row.referred_by ?? undefined,
   };
 }
 
@@ -161,7 +165,7 @@ export function useAuth() {
   }, []);
 
   const register = useCallback(
-    async (payload: Omit<AppUser, "id" | "createdAt"> & { password: string }) => {
+    async (payload: Omit<AppUser, "id" | "createdAt" | "referralCode" | "referredBy"> & { password: string; referralCode?: string }) => {
       assertPublicAuthConfig();
       const { password, ...rest } = payload;
       const termsAcceptedAt = new Date().toISOString();
@@ -180,6 +184,7 @@ export function useAuth() {
             emergency_phone: (rest.emergencyPhone ?? "").trim(),
             terms_accepted_at: termsAcceptedAt,
             terms_version: CURRENT_TERMS_VERSION,
+            referral_code: rest.referralCode?.trim().toUpperCase() || null,
           },
         },
       });
