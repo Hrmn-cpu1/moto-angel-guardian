@@ -31,14 +31,14 @@ type AppShellProps = {
  */
 export function AppShell(props: AppShellProps) {
   if (props.sos) {
-    return <AppShellFrame {...props} sos={props.sos} />;
+    return <AppShellFrame {...props} sos={props.sos} renderSos={false} />;
   }
   return <AppShellWithOwnSos {...props} />;
 }
 
 function AppShellWithOwnSos(props: AppShellProps) {
   const sos = useSosController();
-  return <AppShellFrame {...props} sos={sos} />;
+  return <AppShellFrame {...props} sos={sos} renderSos />;
 }
 
 function AppShellFrame({
@@ -48,7 +48,8 @@ function AppShellFrame({
   sos,
   sosOculto = false,
   sosCompact = false,
-}: AppShellProps & { sos: SosController }) {
+  renderSos = true,
+}: AppShellProps & { sos: SosController; renderSos: boolean }) {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
@@ -67,11 +68,13 @@ function AppShellFrame({
     >
       {children}
 
-      <SosFabControlado
-        sos={sos}
-        compact={sosCompact}
-        oculto={sosOculto}
-      />
+      {renderSos && (
+        <SosFabControlado
+          sos={sos}
+          compact={sosCompact}
+          oculto={sosOculto}
+        />
+      )}
 
       {!hideNav && <BottomNavigation />}
     </div>
