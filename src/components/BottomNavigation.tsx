@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Bell, Home, Menu, Users } from "lucide-react";
 import type { SosController } from "@/components/AppShell";
-import { cn } from "@/lib/utils";\nimport { SosFabControlado } from "@/components/SosFab";
+import { cn } from "@/lib/utils";\nimport { SosHoldButton } from "@/components/SosHoldButton";
 
 const tabs = [
   { to: "/dashboard", label: "Início", icon: Home },
