@@ -157,7 +157,15 @@ jobs:
           # A mesma chave NÃO deve ser usada como chave permanente da Play Store.
           if [ -z "$MOTOANJO_KEYSTORE_BASE64" ]; then
             echo "Nenhuma chave de publicação configurada: gerando keystore temporária de RC."
-            keytool -genkeypair -v               -keystore rc-release.jks               -storepass motoanjo-rc               -keypass motoanjo-rc               -alias motoanjo-rc               -keyalg RSA -keysize 2048 -validity 3650               -dname "CN=Moto Anjo RC, OU=Release Candidate, O=Moto Anjo"
+            mkdir -p app
+            keytool -genkeypair -v \
+              -keystore app/rc-release.jks \
+              -storepass motoanjo-rc \
+              -keypass motoanjo-rc \
+              -alias motoanjo-rc \
+              -keyalg RSA -keysize 2048 -validity 3650 \
+              -dname "CN=Moto Anjo RC, OU=Release Candidate, O=Moto Anjo"
+            test -f app/rc-release.jks
             export MOTOANJO_KEYSTORE_FILE=rc-release.jks
             export MOTOANJO_KEYSTORE_PASSWORD=motoanjo-rc
             export MOTOANJO_KEY_ALIAS=motoanjo-rc
