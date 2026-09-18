@@ -9,6 +9,7 @@ import {
   type RoadReport,
 } from "@/components/CommunityMapPanel";
 import { AppShell } from "@/components/AppShell";
+import { SosFabControlado } from "@/components/SosFab";
 import { HomeTopBar } from "@/components/HomeTopBar";
 import { DestinationBar } from "@/components/DestinationBar";
 import { CopilotCard } from "@/components/CopilotCard";
@@ -441,8 +442,6 @@ function Dashboard() {
       fullBleed
       hideNav={modoCockpit}
       sos={sos}
-      sosCompact={modoCockpit}
-      sosOculto={!sosFlutuanteVisivel(folha, tecladoAberto)}
     >
       <div
         className={`relative h-[100dvh] w-full overflow-hidden bg-background ${
@@ -748,9 +747,13 @@ function Dashboard() {
           />
         )}
 
-        {/* O SOS é renderizado pelo AppShell e permanece disponível nesta aba.
-            O mesmo controlador da Home é reaproveitado para evitar duplicação
-            de estado/realtime. */}
+        {/* SOS da Home usa o controlador local compartilhado; nas demais abas o
+            AppShell fornece o SOS global. O acionador captura GPS no toque. */}
+        <SosFabControlado
+          sos={sos}
+          compact={modoCockpit}
+          oculto={!sosFlutuanteVisivel(folha, tecladoAberto)}
+        />
       </div>
     </AppShell>
   );
