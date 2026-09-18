@@ -734,6 +734,8 @@ function Dashboard() {
             vozSuportada={vozSuportada}
             onAlternarVoz={alternarVoz}
             onFinalizar={() => finalizar(sosAtivo)}
+            onSosHoldComplete={(heldMs) => sos.trigger(heldMs)}
+            sosDisabled={sos.busy || sos.recovering}
           />
         )}
 
@@ -752,7 +754,7 @@ function Dashboard() {
         <SosFabControlado
           sos={sos}
           compact={modoCockpit}
-          oculto={!sosFlutuanteVisivel(folha, tecladoAberto)}
+          oculto={modoCockpit || !sosFlutuanteVisivel(folha, tecladoAberto)}
         />
       </div>
     </AppShell>
