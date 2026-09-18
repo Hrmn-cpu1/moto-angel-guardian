@@ -57,7 +57,7 @@ function Welcome() {
                 Entrar <ArrowRight size={18} />
               </GoldButton>
             </Link>
-            <Link to="/register" search={{ next: undefined }} className="block">
+            <Link to="/register" search={{ next: undefined, ref: undefined }} className="block">
               <OutlineButton size="lg">Criar conta</OutlineButton>
             </Link>
           </div>
