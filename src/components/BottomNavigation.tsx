@@ -21,15 +21,7 @@ export function BottomNavigation({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isActive = (to: string) => pathname === to || pathname.startsWith(to + "/");
 
-  const Tab = ({
-    to,
-    label,
-    icon: Icon,
-  }: {
-    to: string;
-    label: string;
-    icon: typeof Home;
-  }) => (
+  const Tab = ({ to, label, icon: Icon }: { to: string; label: string; icon: typeof Home }) => (
     <Link
       to={to}
       aria-current={isActive(to) ? "page" : undefined}
