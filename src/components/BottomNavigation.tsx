@@ -57,7 +57,7 @@ export function BottomNavigation({
 
         {cockpit && sos ? (
           <div className="relative flex w-[92px] shrink-0 items-end justify-center">
-            <div className="absolute -top-[72px] left-1/2 -translate-x-1/2">
+            <div className="absolute -top-[30px] left-1/2 z-50 -translate-x-1/2">
               <SosHoldButton
                 variant="nav"
                 disabled={sos.busy || sos.recovering}
