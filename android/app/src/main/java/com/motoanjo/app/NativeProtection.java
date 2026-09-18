@@ -82,7 +82,12 @@ public final class NativeProtection {
     public void addListener(Listener listener) { listeners.add(listener); }
     public void removeListener(Listener listener) { listeners.remove(listener); }
     public synchronized boolean configured() { return token != null && expiresMs > System.currentTimeMillis(); }
-    /**\n     * Sensor detection must not depend on POST_NOTIFICATIONS.\n     * Notification permission only controls the visible warning; disabling it\n     * must not disable the safety pipeline itself.\n     */\n    private boolean canDetect() { return configured() && tripRunning && sensors && cpuLeaseAllowed && !permanentFailure; }
+        /**
+     * Sensor detection must not depend on POST_NOTIFICATIONS.
+     * Notification permission only controls the visible warning; disabling it
+     * must not disable the safety pipeline itself.
+     */
+    private boolean canDetect() { return configured() && tripRunning && sensors && cpuLeaseAllowed && !permanentFailure; }
     public synchronized JSObject snapshot() {
         JSObject s = new JSObject();
         s.put("supported", true); s.put("configured", configured()); s.put("armed", canDetect());
