@@ -21,8 +21,6 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          # O lint incremental compara com o commit anterior. Com o padrão
-          # (fetch-depth: 1) não existe base e `git diff` falharia.
           fetch-depth: 0
 
       - name: Node
@@ -40,15 +38,11 @@ jobs:
       - name: Android SDK
         uses: android-actions/setup-android@v4
         with:
-          packages: |
-            platform-tools
-            platforms;android-36
-            build-tools;36.0.0
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
 
       - name: Instalar dependências
         run: npm ci
 
-      # ---- Gates de código. Ordem importa: o barato falha primeiro. ----
       - name: Testes
         run: npm test
 
@@ -58,15 +52,6 @@ jobs:
       - name: Build web
         run: npm run build
 
-      # Lint em duas camadas.
-      #
-      # O problema real não era o lint bloquear — ele nunca bloqueou (`|| echo`
-      # E `continue-on-error`). O problema é o inverso: com centenas de erros
-      # históricos de Prettier na base herdada do shadcn, um erro NOVO fica
-      # invisível no meio do ruído, e ninguém lê um passo que sempre grita.
-      #
-      # Camada 1: o total histórico continua sem derrubar nada, mas agora sai
-      # como número, que dá para acompanhar de um build para o outro.
       - name: Lint global (informativo — não bloqueia)
         run: |
           npm run lint > /tmp/lint.txt 2>&1 || true
@@ -75,9 +60,6 @@ jobs:
           tail -40 /tmp/lint.txt
         continue-on-error: true
 
-      # Camada 2: só o que ESTE push mudou. Arquivo histórico não entra, então
-      # os erros antigos não bloqueiam nada; erro novo bloqueia, que é o único
-      # jeito de a base parar de piorar. Conserto: `npx prettier --write <arquivo>`.
       - name: Lint dos arquivos alterados (bloqueia)
         run: |
           set -e
@@ -90,13 +72,7 @@ jobs:
             echo "commit base indisponível no checkout — nada a lintar"
             exit 0
           fi
-          # src/integrations/supabase/types.ts é 100% gerado pela plataforma
-          # (sem script de geração no repo) e é reescrito sem formatação
-          # Prettier a cada regeneração, o que recriava este gate a cada push.
-          # Ele sai do conjunto bloqueante; o lint global informativo acima
-          # continua cobrindo o arquivo. Código-fonte normal segue bloqueando.
-          mapfile -d '' ALTERADOS < <(git diff --name-only -z --diff-filter=ACMR "$BASE" HEAD -- '*.ts' '*.tsx' \
-            | grep -zv '^src/integrations/supabase/types\.ts$' || true)
+          mapfile -d '' ALTERADOS < <(git diff --name-only -z --diff-filter=ACMR "$BASE" HEAD -- '*.ts' '*.tsx'             | grep -zv '^src/integrations/supabase/types\.ts$' || true)
           if [ "${#ALTERADOS[@]}" -eq 0 ]; then
             echo "nenhum arquivo TS/TSX alterado neste push"
             exit 0
@@ -104,7 +80,6 @@ jobs:
           printf 'lintando apenas: %s\n' "${ALTERADOS[*]}"
           npx eslint "${ALTERADOS[@]}"
 
-      # ---- Verificações de release ----
       - name: Conferir configuração Android
         run: |
           set -e
@@ -121,27 +96,13 @@ jobs:
             echo "package id mudou: $PKG"; exit 1
           fi
 
-      # Este passo estava QUEBRADO e provado quebrado: a linha de continuação
-      # `\` era seguida de uma linha só com espaços, então o comando terminava
-      # ali. O shell executava `--include=*.ts` como se fosse um programa
-      # ("command not found"), esse era o último status do `if`, e a condição
-      # dava falso SEMPRE — o gate nunca reprovou nada. Pior: o primeiro grep
-      # rodava mesmo assim, sobre o repositório inteiro, com `-o`, e IMPRIMIA
-      # OS VALORES ENCONTRADOS no log do Actions.
-      #
-      # Agora: varre exatamente o que está versionado (`git ls-files`, que pega
-      # arquivos sem extensão como `.env`, invisíveis para o filtro anterior) e
-      # imprime SÓ O NOME DO ARQUIVO, nunca o trecho casado.
       - name: Nenhum segredo no repositório
         run: |
           set -e
           PADRAO='sb_secret_[A-Za-z0-9]+|EAA[A-Za-z0-9]{30,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}'
-          # Sem esta guarda, um `git ls-files` que falhasse deixaria a lista
-          # vazia e o gate passaria em silêncio — o defeito que estamos matando.
           git rev-parse --is-inside-work-tree > /dev/null
           ACHADOS=$(git ls-files -z | xargs -0 -r grep -lIE "$PADRAO" 2>/dev/null || true)
-          # Arquivos de exemplo e patches de histórico usam chave de amostra.
-          ACHADOS=$(echo "$ACHADOS" | grep -vE '^(\.env\.example|RC[0-9].*\.patch)$' || true)
+          ACHADOS=$(echo "$ACHADOS" | grep -vE '^(.env.example|RC[0-9].*.patch)$' || true)
           if [ -n "$ACHADOS" ]; then
             echo "possível segredo em arquivo versionado (valor não impresso de propósito):"
             echo "$ACHADOS"
@@ -156,14 +117,8 @@ jobs:
           COUNT=${#MIGRATIONS[@]}
           echo "migrations: $COUNT"
           if [ "$COUNT" -lt 30 ]; then echo "migrations sumiram"; exit 1; fi
-          # A ordem cronológica dos nomes tem de bater com a ordem de aplicação.
-          diff <(printf '%s\n' "${MIGRATIONS[@]}") <(printf '%s\n' "${MIGRATIONS[@]}" | sort) \
-            || { echo "nomes fora de ordem"; exit 1; }
+          diff <(printf '%s\n' "${MIGRATIONS[@]}") <(printf '%s\n' "${MIGRATIONS[@]}" | sort)             || { echo "nomes fora de ordem"; exit 1; }
 
-      # ---- Android ----
-      # Declara, no log e no artefato, EXATAMENTE qual frontend este APK vai
-      # carregar. Sem isto, um APK verde pode estar abrindo uma publicação
-      # antiga — e ninguém saberia olhando só o build.
       - name: Declarar o frontend que o APK vai carregar
         run: |
           set -e
@@ -194,9 +149,6 @@ jobs:
           set -e
           ORIGEM=android/app/build/outputs/apk/debug/app-debug.apk
           test -f "$ORIGEM" || { echo "APK não foi gerado"; exit 1; }
-          # O nome sai do build.gradle, nunca de constante no YAML: era assim
-          # que o outro workflow publicava "v3 / 1.2" enquanto o projeto já
-          # estava em outra versão.
           VCODE=$(grep -oE "versionCode +[0-9]+" android/app/build.gradle | grep -oE "[0-9]+")
           VNAME=$(grep -oE 'versionName +"[^"]+"' android/app/build.gradle | cut -d'"' -f2)
           test -n "$VCODE" && test -n "$VNAME" || { echo "versão não lida do build.gradle"; exit 1; }
@@ -218,8 +170,6 @@ jobs:
           } > android-build-metadata.txt
           cat android-build-metadata.txt
 
-      # `if: success()` explícito: sem isso um passo anterior vermelho ainda
-      # deixaria um APK para baixar, e alguém instalaria achando que passou.
       - name: Publicar artefato
         if: success()
         uses: actions/upload-artifact@v4
