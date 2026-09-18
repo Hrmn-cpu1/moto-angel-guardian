@@ -35,7 +35,7 @@ export const Route = createFileRoute("/_authenticated/sharing")({
 
 function SharingPage() {
   const { position, capture, share } = useGeolocation();
-  const { sharing, toggle, lastSync, error, loading, saving, confirmed } = useLiveShare();
+  const { sharing, toggle, lastSync, error, loading, saving, confirmed, localStopRequested } = useLiveShare();
   const { contacts } = useContacts();
   const { pending, approved, approve, revoke, requestAccess, requesting } = useLocationShares();
   const riders = useRiderVisibility();
@@ -102,9 +102,11 @@ function SharingPage() {
                   : "Compartilhamento desligado"}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {sharing
-              ? "Sua posição é atualizada automaticamente a cada 10 segundos."
-              : "Ative para manter seus contatos acompanhando o trajeto."}
+            {localStopRequested
+              ? "Este aparelho parou de enviar novas posições. A interrupção no servidor ainda precisa ser confirmada."
+              : sharing
+                ? "Sua posição é atualizada automaticamente a cada 10 segundos."
+                : "Ative para manter seus contatos acompanhando o trajeto."}
           </p>
           {position && (
             <p className="mt-3 rounded-lg border border-gold/15 bg-black/40 py-2 font-mono text-xs text-gold">
