@@ -22,7 +22,7 @@ const TAMANHOS: Record<
   fab: { box: "h-[58px] w-[58px]", icone: 20, rotulo: "text-[10px]", anel: "inset-[3px]" },
   map: { box: "h-[58px] w-[58px]", icone: 19, rotulo: "text-[10px]", anel: "inset-[3px]" },
   compact: { box: "h-11 w-11", icone: 16, rotulo: "text-[8px]", anel: "inset-[3px]" },
-  nav: { box: "h-[112px] w-[112px]", icone: 30, rotulo: "text-[13px]", anel: "inset-[4px]" },
+  nav: { box: "h-[88px] w-[88px]", icone: 24, rotulo: "text-[12px]", anel: "inset-[4px]" },
   page: {
     box: "h-[min(56vw,208px)] w-[min(56vw,208px)]",
     icone: 38,
