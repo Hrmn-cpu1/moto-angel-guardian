@@ -152,6 +152,17 @@ jobs:
           MOTOANJO_KEY_PASSWORD: ${{ secrets.MOTOANJO_KEY_PASSWORD }}
         run: |
           set -e
+          # Sem os 4 secrets de publicação, gere uma assinatura temporária de RC.
+          # Isso deixa o APK instalável para teste físico sem colocar chave privada no repo.
+          # A mesma chave NÃO deve ser usada como chave permanente da Play Store.
+          if [ -z "$MOTOANJO_KEYSTORE_BASE64" ]; then
+            echo "Nenhuma chave de publicação configurada: gerando keystore temporária de RC."
+            keytool -genkeypair -v               -keystore rc-release.jks               -storepass motoanjo-rc               -keypass motoanjo-rc               -alias motoanjo-rc               -keyalg RSA -keysize 2048 -validity 3650               -dname "CN=Moto Anjo RC, OU=Release Candidate, O=Moto Anjo"
+            export MOTOANJO_KEYSTORE_FILE=rc-release.jks
+            export MOTOANJO_KEYSTORE_PASSWORD=motoanjo-rc
+            export MOTOANJO_KEY_ALIAS=motoanjo-rc
+            export MOTOANJO_KEY_PASSWORD=motoanjo-rc
+          fi
           ./gradlew :app:bundleRelease :app:assembleRelease --stacktrace
           echo "== outputs release =="
           find app/build/outputs -maxdepth 4 -type f -name '*.aab' -o -name '*.apk' | sort
@@ -177,8 +188,8 @@ jobs:
           cp "$RELEASE_AAB" "$AAB"
           cp "$RELEASE_APK" "$APK"
           cp "$DEBUG" "$DEBUG_APK"
-          SIGNING="unsigned/RC"
-          if [ -n "${{ secrets.MOTOANJO_KEYSTORE_BASE64 }}" ]; then SIGNING="signed release"; fi
+          SIGNING="signed RC (temporary key)"
+          if [ -n "${{ secrets.MOTOANJO_KEYSTORE_BASE64 }}" ]; then SIGNING="signed release (Play key)"; fi
           echo "aab=$AAB" >> "$GITHUB_OUTPUT"
           echo "apk=$APK" >> "$GITHUB_OUTPUT"
           echo "sha256 AAB: $(sha256sum "$AAB" | cut -d' ' -f1)"
