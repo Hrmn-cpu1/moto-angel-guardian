@@ -15,9 +15,16 @@ if (releaseKeystoreBase64) {
     keyFile.parentFile.mkdirs()
     keyFile.bytes = releaseKeystoreBase64.decodeBase64()
 }
-def hasReleaseSigning = releaseSigning.values().every { it != null && !it.isEmpty() }
-if (releaseSigning.values().any { it != null && !it.isEmpty() } && !hasReleaseSigning) {
-    throw new GradleException('Configuração de assinatura incompleta: forneça as quatro variáveis MOTOANJO_KEY*.')
+def hasReleaseSigning = releaseSigning.file != null &&
+        releaseSigning.storePassword != null && !releaseSigning.storePassword.toString().isEmpty() &&
+        releaseSigning.alias != null && !releaseSigning.alias.toString().isEmpty() &&
+        releaseSigning.keyPassword != null && !releaseSigning.keyPassword.toString().isEmpty()
+def hasAnyReleaseSigning = releaseSigning.storePassword != null ||
+        releaseSigning.alias != null ||
+        releaseSigning.keyPassword != null ||
+        releaseSigning.file != null
+if (hasAnyReleaseSigning && !hasReleaseSigning) {
+    throw new GradleException('Configuração de assinatura incompleta: forneça keystore, senha, alias e senha da chave.')
 }
 
 android {
