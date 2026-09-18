@@ -1,6 +1,5 @@
 import { ShieldCheck, Square, Volume2, VolumeX } from "lucide-react";
 import { camada } from "@/lib/layers";
-import { SosHoldButton } from "@/components/SosHoldButton";
 import type { Cardeal, Inclinacao } from "@/lib/ride-telemetry";
 
 /**
@@ -67,13 +66,6 @@ export function TelemetryStrip({
           />
           <Item valor={etaMin == null ? "—" : String(etaMin)} rotulo="chegada" sufixo="min" />
         </div>
-
-        <SosHoldButton
-          variant="compact"
-          disabled={sosDisabled}
-          onHoldComplete={onSosHoldComplete}
-          className="shrink-0"
-        />
 
         <button
           onClick={onFinalizar}
