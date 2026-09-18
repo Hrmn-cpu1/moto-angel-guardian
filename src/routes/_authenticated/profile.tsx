@@ -38,6 +38,7 @@ import { definirPreferenciaTelaBloqueada, preferenciaTelaBloqueada } from "@/lib
 import { lerDiagnosticoLock } from "@/lib/trip-service";
 import type { User } from "@/types";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { deleteMyAccount } from "@/lib/account.functions";
 
 export const Route = createFileRoute("/_authenticated/profile")({
