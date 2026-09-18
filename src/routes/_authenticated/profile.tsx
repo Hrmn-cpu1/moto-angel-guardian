@@ -120,7 +120,8 @@ function ProfilePage() {
               disabled={!user.referralCode}
               onClick={() => {
                 if (!user.referralCode) return;
-                void navigator.clipboard?.writeText(user.referralCode).then(() => toast.success("Código copiado."));
+                if (!navigator.clipboard) return toast.error("Não foi possível copiar automaticamente.");
+                void navigator.clipboard.writeText(user.referralCode).then(() => toast.success("Código copiado."));
               }}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gold/20 bg-gold/10 text-gold disabled:opacity-40"
             >
