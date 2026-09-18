@@ -2,19 +2,53 @@ import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { BottomNavigation } from "./BottomNavigation";
+import { SosFabControlado } from "./SosFab";
 import { useAuth } from "@/hooks/useAuth";
+import { useSosController } from "@/hooks/useSosController";
 import { isTermsAccepted } from "@/lib/terms";
 
-export function AppShell({
-  children,
-  hideNav = false,
-  fullBleed = false,
-}: {
+type SosController = ReturnType<typeof useSosController>;
+
+type AppShellProps = {
   children: ReactNode;
   hideNav?: boolean;
   /** Full-screen surfaces (map home) drop the bottom padding. */
   fullBleed?: boolean;
-}) {
+  /** Reuses the screen's SOS controller so there is only one controller per screen. */
+  sos?: SosController;
+  /** Hides the global SOS only when the current screen has a blocking sheet/keyboard. */
+  sosOculto?: boolean;
+  /** Uses the compact SOS treatment used by the navigation cockpit. */
+  sosCompact?: boolean;
+};
+
+/**
+ * AppShell keeps the emergency trigger available on every authenticated tab.
+ *
+ * Screens that already own a SOS controller (currently Home) pass it through;
+ * other screens get one controller owned by AppShell. This avoids creating two
+ * realtime SOS controllers on the same screen.
+ */
+export function AppShell(props: AppShellProps) {
+  if (props.sos) {
+    return <AppShellFrame {...props} sos={props.sos} />;
+  }
+  return <AppShellWithOwnSos {...props} />;
+}
+
+function AppShellWithOwnSos(props: AppShellProps) {
+  const sos = useSosController();
+  return <AppShellFrame {...props} sos={sos} />;
+}
+
+function AppShellFrame({
+  children,
+  hideNav = false,
+  fullBleed = false,
+  sos,
+  sosOculto = false,
+  sosCompact = false,
+}: AppShellProps & { sos: SosController }) {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
@@ -32,6 +66,13 @@ export function AppShell({
       className={`mx-auto flex min-h-[100dvh] max-w-md flex-col bg-background ${fullBleed ? "" : "pb-[calc(var(--ma-bottom)+1rem)]"}`}
     >
       {children}
+
+      <SosFabControlado
+        sos={sos}
+        compact={sosCompact}
+        oculto={sosOculto}
+      />
+
       {!hideNav && <BottomNavigation />}
     </div>
   );
