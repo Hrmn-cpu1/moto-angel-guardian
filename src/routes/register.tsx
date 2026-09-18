@@ -10,6 +10,7 @@ import { destinoInternoSeguro, nextInternoOuIndefinido } from "@/lib/redirect-se
 export const Route = createFileRoute("/register")({
   validateSearch: (s: Record<string, unknown>) => ({
     next: nextInternoOuIndefinido(s.next),
+    ref: typeof s.ref === "string" ? s.ref.trim().toUpperCase() : undefined,
   }),
   head: () => ({
     meta: [
@@ -25,7 +26,7 @@ export const Route = createFileRoute("/register")({
 function Register() {
   const navigate = useNavigate();
   const { register, loginWithGoogle } = useAuth();
-  const { next } = useSearch({ from: "/register" });
+  const { next, ref } = useSearch({ from: "/register" });
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -37,6 +38,7 @@ function Register() {
     bloodType: "",
     emergencyContact: "",
     emergencyPhone: "",
+    referralCode: ref ?? "",
   });
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,6 +114,7 @@ function Register() {
         bloodType: form.bloodType.trim(),
         emergencyContact: form.emergencyContact.trim(),
         emergencyPhone: form.emergencyPhone.trim(),
+        referralCode: form.referralCode.trim(),
       });
       if (result.status === "confirm_email") {
         setConfirmSent(true);
@@ -237,6 +240,16 @@ function Register() {
           options={["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]}
           placeholder="Selecione o tipo sanguíneo..."
         />
+        <TxtField
+          label="Código de convite (opcional)"
+          value={form.referralCode}
+          onChange={(v) => set("referralCode")(v.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 11))}
+          placeholder="Ex: MA-AB12CD34"
+        />
+        <p className="-mt-1 px-1 text-[10px] leading-relaxed text-muted-foreground">
+          Se alguém te convidou, coloque o código dele aqui. O cadastro ficará vinculado ao convite para os benefícios correspondentes.
+        </p>
+
         <TxtField
           label="Contato de emergência"
           value={form.emergencyContact}
