@@ -341,10 +341,12 @@ public final class NativeProtection {
             } else if (tripRunning) {
                 if (canDetect() || inFlight || "countdown".equals(phase)) ensureWake(); else releaseWake();
                 if ("countdown".equals(phase)) {
-                    if (!notificationAllowed()) { engine.reset(); phase = "failed"; countdownEnd = 0; error = "Notificações desligadas. Alerta automático interrompido; abra o aplicativo."; changed(); }
-                    else if (externalSosId != null) { engine.reset(); phase = "normal"; countdownEnd = 0; changed(); }
+                    // A permissão de notificações controla o aviso visível, não a
+                    // execução da proteção. O countdown e o SOS continuam mesmo
+                    // quando POST_NOTIFICATIONS está desligado.
+                    if (externalSosId != null) { engine.reset(); phase = "normal"; countdownEnd = 0; changed(); }
                     else if (SystemClock.elapsedRealtime() >= countdownEnd) {
-                        try { requestHelp("crash"); } catch (Exception e) { phase = "failed"; error = "Não foi possível registrar. Abra o aplicativo."; changed(); }
+                        try { requestHelp("crash"); } catch (Exception e) { phase = "failed"; error = "Não foi possível registrar o SOS automático. Abra o aplicativo."; changed(); }
                     } else changed();
                 }
                 if (retryAt > 0 && SystemClock.elapsedRealtime() >= retryAt) { retryAt = 0; attempt(); }
