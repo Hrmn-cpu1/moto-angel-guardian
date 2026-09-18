@@ -26,15 +26,22 @@ export function useLiveShareRuntime() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [localStopRequested, setLocalStopRequested] = useState(false);
   const changing = useRef(false);
   /** Cancelador da assinatura compartilhada de GPS. */
   const cancelarWatch = useRef<(() => void) | null>(null);
   const lastPush = useRef(0);
   const mounted = useRef(false);
   const generation = useRef(0);
+  const LOCAL_STOP_KEY = "moto_anjo_local_share_stop_requested";
   useEffect(() => {
     mounted.current = true;
     generation.current += 1;
+    try {
+      setLocalStopRequested(localStorage.getItem(LOCAL_STOP_KEY) === "1");
+    } catch {
+      setLocalStopRequested(false);
+    }
     return () => {
       mounted.current = false;
       generation.current += 1;
@@ -64,6 +71,11 @@ export function useLiveShareRuntime() {
       setConfirmed(!readError);
       setSharing(!!data?.sharing);
       setLastSync(data?.updated_at ?? null);
+      try {
+        setLocalStopRequested(localStorage.getItem(LOCAL_STOP_KEY) === "1");
+      } catch {
+        setLocalStopRequested(false);
+      }
       setLoading(false);
     })().catch(() => {
       if (!cancelled) {
@@ -100,17 +112,32 @@ export function useLiveShareRuntime() {
     if (changing.current) return;
     changing.current = true;
     setSaving(true);
+
+    // Primeiro para o produtor local. Assim uma falha de rede não deixa este
+    // aparelho continuar publicando novas posições enquanto aguarda o servidor.
+    cancelarWatch.current?.();
+    cancelarWatch.current = null;
+    setLocalStopRequested(true);
+    try {
+      localStorage.setItem(LOCAL_STOP_KEY, "1");
+    } catch {
+      /* armazenamento local indisponível: o watch já foi cancelado nesta sessão */
+    }
+
     try {
       const { error: err } = await supabase.rpc("set_location_sharing", { _enabled: false });
       if (err) throw err;
-      cancelarWatch.current?.();
-      cancelarWatch.current = null;
       setSharing(false);
       setConfirmed(true);
       setError(null);
+      try {
+        localStorage.removeItem(LOCAL_STOP_KEY);
+      } catch {
+        /* ignore */
+      }
     } catch {
       setError(
-        "O servidor não confirmou a interrupção. Sua localização pode continuar compartilhada. Tente desligar novamente.",
+        "O servidor não confirmou a interrupção. Este aparelho parou de enviar novas posições. Tente desligar novamente quando houver conexão.",
       );
     } finally {
       changing.current = false;
@@ -146,7 +173,13 @@ export function useLiveShareRuntime() {
       if (err) throw err;
       setSharing(true);
       setConfirmed(true);
+      setLocalStopRequested(false);
       setError(null);
+      try {
+        localStorage.removeItem(LOCAL_STOP_KEY);
+      } catch {
+        /* ignore */
+      }
       subscribePosition();
     } catch {
       setError("O servidor não confirmou o compartilhamento. Tente novamente.");
@@ -162,10 +195,10 @@ export function useLiveShareRuntime() {
   }, [sharing, confirmed, start, stop]);
 
   useEffect(() => {
-    if (sharing && cancelarWatch.current == null) subscribePosition();
-  }, [sharing, subscribePosition]);
+    if (sharing && !localStopRequested && cancelarWatch.current == null) subscribePosition();
+  }, [sharing, localStopRequested, subscribePosition]);
 
-  return { sharing, toggle, start, stop, lastSync, error, loading, saving, confirmed };
+  return { sharing, toggle, start, stop, lastSync, error, loading, saving, confirmed, localStopRequested };
 }
 
 export const LiveShareContext = createContext<ReturnType<typeof useLiveShareRuntime> | null>(null);
