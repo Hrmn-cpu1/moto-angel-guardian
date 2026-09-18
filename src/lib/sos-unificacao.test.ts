@@ -233,7 +233,7 @@ test("as migrations antigas não foram tocadas", () => {
   const antigas = arquivosSql().filter((f) => !ehCheckpoint(f, "qualquer"));
   assert.equal(
     antigas.length,
-    25, // +1: RC6 revoke EXECUTE purge_native_auth_codes (ACL, aditiva)
+    26, // +1 RC6 revoke EXECUTE purge_native_auth_codes; +1 admin único (20260909000520)
     "o número de migrations pré-existentes mudou",
   );
 });
@@ -546,7 +546,7 @@ test("1B — as migrations do 1B também são aditivas", () => {
   const antigas = todas.filter((f) => !ehCheckpoint(f, "qualquer"));
   assert.equal(
     antigas.length,
-    25, // +1: RC6 revoke EXECUTE purge_native_auth_codes (ACL, aditiva)
+    26, // +1 RC6 revoke EXECUTE purge_native_auth_codes; +1 admin único (20260909000520)
     "o número de migrations pré-existentes mudou",
   );
   const doCheckpoint1 = todas.filter((f) => ehCheckpoint(f, "1"));
