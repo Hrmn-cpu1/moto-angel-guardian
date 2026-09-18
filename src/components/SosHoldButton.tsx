@@ -19,8 +19,8 @@ const TAMANHOS: Record<
   SosHoldVariant,
   { box: string; icone: number; rotulo: string; anel: string }
 > = {
-  fab: { box: "h-[72px] w-[72px]", icone: 22, rotulo: "text-[12px]", anel: "inset-[4px]" },
-  map: { box: "h-[68px] w-[68px]", icone: 20, rotulo: "text-[11px]", anel: "inset-[3px]" },
+  fab: { box: "h-[64px] w-[64px]", icone: 21, rotulo: "text-[11px]", anel: "inset-[3px]" },
+  map: { box: "h-[64px] w-[64px]", icone: 20, rotulo: "text-[11px]", anel: "inset-[3px]" },
   compact: { box: "h-12 w-12", icone: 17, rotulo: "text-[9px]", anel: "inset-[3px]" },
   page: {
     box: "h-[min(56vw,208px)] w-[min(56vw,208px)]",
@@ -103,10 +103,12 @@ export function SosHoldButton({
       disabled={disabled}
       aria-label="Acionar SOS de emergência — segure 3 segundos"
       className={cn(
-        "relative flex select-none flex-col items-center justify-center rounded-xl text-destructive-foreground",
-        "border border-emergency/50 bg-emergency transition-transform active:scale-95",
-        "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emergency/50",
-        variant === "compact" ? "shadow-map" : "animate-pulse-emergency",
+        "relative flex select-none flex-col items-center justify-center rounded-full text-destructive-foreground",
+        "border border-emergency/80 bg-emergency transition-all duration-200 active:scale-95",
+        "shadow-[0_8px_28px_-8px_hsl(var(--emergency)/0.9)]",
+        "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emergency/30",
+        holding && "scale-95 shadow-[0_4px_18px_-5px_hsl(var(--emergency)/0.95)]",
+        variant === "compact" && "shadow-map",
         size.box,
         disabled && "opacity-50",
         className,
@@ -115,11 +117,11 @@ export function SosHoldButton({
     >
       <span
         aria-hidden
-        className={cn("absolute rounded-full", size.anel)}
+        className={cn("absolute rounded-full border border-white/20", size.anel)}
         style={{
-          background: `conic-gradient(rgba(255,255,255,0.9) ${progress * 360}deg, transparent 0)`,
-          WebkitMask: "radial-gradient(circle, transparent 70%, black 71%)",
-          mask: "radial-gradient(circle, transparent 70%, black 71%)",
+          background: `conic-gradient(rgba(255,255,255,0.95) ${progress * 360}deg, rgba(0,0,0,0.18) 0)`,
+          WebkitMask: "radial-gradient(circle, transparent 76%, black 77%)",
+          mask: "radial-gradient(circle, transparent 76%, black 77%)",
         }}
       />
       <span className="relative z-10 flex flex-col items-center leading-none">
@@ -137,7 +139,7 @@ export function SosHoldButton({
         </span>
         <span
           className={cn(
-            "mt-0.5 text-[7px] font-semibold uppercase opacity-85",
+            "mt-0.5 text-[6px] font-bold uppercase tracking-[0.12em] opacity-90",
             variant === "compact" && "sr-only",
           )}
         >
