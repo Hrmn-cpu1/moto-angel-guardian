@@ -1,4 +1,6 @@
 import { ShieldCheck, Square, Volume2, VolumeX } from "lucide-react";
+import { DaisyVoiceButton } from "@/components/DaisyVoiceButton";
+import type { DaisyCommand } from "@/lib/daisy";
 import { camada } from "@/lib/layers";
 import type { Cardeal, Inclinacao } from "@/lib/ride-telemetry";
 
@@ -24,6 +26,7 @@ export function TelemetryStrip({
   vozLigada,
   vozSuportada,
   onAlternarVoz,
+  onDaisyCommand,
   onFinalizar,
   onSosHoldComplete,
   sosDisabled = false,
@@ -46,6 +49,7 @@ export function TelemetryStrip({
   vozLigada: boolean;
   vozSuportada: boolean;
   onAlternarVoz: () => void;
+  onDaisyCommand: (command: DaisyCommand, transcript: string) => void;
   onFinalizar: () => void;
   onSosHoldComplete: (heldMs: number) => void;
   sosDisabled?: boolean;
