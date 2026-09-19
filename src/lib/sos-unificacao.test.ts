@@ -218,11 +218,11 @@ function ehCheckpoint(f: string, marca: "1" | "1B" | "qualquer"): boolean {
   // RC5 idem: heatmap sem dupla contagem. O que este teste protege é o
   // conjunto das 23 pré-existentes, não o total do diretório.
   const rc5 = /CHECKPOINT RC5 —/.test(sql);
-  const rc7 = /CHECKPOINT RC7 —/.test(sql);
+  const rc7 = /CHECKPOINT RC7 —/.test(sql);\n  const rc8 = /CHECKPOINT RC8 —/.test(sql);
   const rc6 = /CHECKPOINT RC6 —/.test(sql);
   if (marca === "1") return um;
   if (marca === "1B") return umB;
-  return um || umB || p02 || rc2 || rc5 || rc6 || rc7 || f.startsWith("20260908");
+  return um || umB || p02 || rc2 || rc5 || rc6 || rc7 || rc8 || f.startsWith("20260908");
 }
 
 function sqlNovo(): string {
