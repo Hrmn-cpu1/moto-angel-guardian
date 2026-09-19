@@ -51,7 +51,7 @@ export function DaisyVoiceButton({
         onClick={toggle}
         aria-label={listening ? "Parar escuta da DAISY" : "Falar com a DAISY"}
         aria-pressed={listening}
-        className={\`grid h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 place-items-center rounded-xl border border-white/10 bg-black/30 text-gold transition \${listening ? "ring-2 ring-gold/50" : ""}\`}
+        className={`grid h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 place-items-center rounded-xl border border-white/10 bg-black/30 text-gold transition ${listening ? "ring-2 ring-gold/50" : ""}`}
       >
         {listening ? <MicOff size={18} /> : <Mic size={18} />}
       </button>
