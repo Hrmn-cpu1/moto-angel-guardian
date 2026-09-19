@@ -137,6 +137,30 @@ function Dashboard() {
   // API nova nele (RC3: não reimplementar SOS).
   const sos = useSosController();
 
+  useEffect(() => {
+    if (sos.open) setFolha("nenhuma");
+  }, [sos.open]);
+  const publishRoadReport = async (report: RoadReport) => {
+    const fix = await capture();
+    if (!fix.ok) throw new Error("Não conseguimos localizar você. Ative o GPS e tente novamente.");
+    if (Date.now() - fix.position.timestamp > 60_000 || (fix.position.accuracy ?? Infinity) > 100) {
+      throw new Error("O GPS ainda está impreciso. Aguarde o sinal melhorar e tente novamente.");
+    }
+    await createAlert.mutateAsync({ ...report, lat: fix.position.lat, lng: fix.position.lng });
+    setShowAlerts(true);
+  };
+  // Um SOS existe no servidor a partir do registro: são as fases em que já
+  // há sos_event_id. É isso que "finalizar viagem" não pode destruir.
+  const sosAtivo =
+    sos.phase === "aguardando_envio" || sos.phase === "sem_contatos" || sos.sosEventId != null;
+  const { aviso, vozLigada, vozSuportada, alternarVoz } = useSafetyCopilot({
+    alerts,
+    pois,
+    riders,
+    viagemAtiva,
+    modo,
+  });
+  const { located: locatedPartners } = usePartners();
   // DAISY Fase 1: comandos determinísticos. A voz nunca dispara uma ação
   // crítica sem confirmação e nunca substitui o motor nativo de segurança.
   const onDaisyCommand = useCallback(
@@ -178,30 +202,7 @@ function Dashboard() {
     [viagem, viagemAtiva, iniciar, vozLigada, alternarVoz],
   );
 
-  useEffect(() => {
-    if (sos.open) setFolha("nenhuma");
-  }, [sos.open]);
-  const publishRoadReport = async (report: RoadReport) => {
-    const fix = await capture();
-    if (!fix.ok) throw new Error("Não conseguimos localizar você. Ative o GPS e tente novamente.");
-    if (Date.now() - fix.position.timestamp > 60_000 || (fix.position.accuracy ?? Infinity) > 100) {
-      throw new Error("O GPS ainda está impreciso. Aguarde o sinal melhorar e tente novamente.");
-    }
-    await createAlert.mutateAsync({ ...report, lat: fix.position.lat, lng: fix.position.lng });
-    setShowAlerts(true);
-  };
-  // Um SOS existe no servidor a partir do registro: são as fases em que já
-  // há sos_event_id. É isso que "finalizar viagem" não pode destruir.
-  const sosAtivo =
-    sos.phase === "aguardando_envio" || sos.phase === "sem_contatos" || sos.sosEventId != null;
-  const { aviso, vozLigada, vozSuportada, alternarVoz } = useSafetyCopilot({
-    alerts,
-    pois,
-    riders,
-    viagemAtiva,
-    modo,
-  });
-  const { located: locatedPartners } = usePartners();
+
 
   // A rota vem do Google pelo mapa; guardá-la aqui é o que permite mostrar
   // distância e ETA reais na faixa de destino.
