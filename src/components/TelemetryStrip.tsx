@@ -98,6 +98,8 @@ export function TelemetryStrip({
             </p>
           )}
 
+          <DaisyVoiceButton onCommand={onDaisyCommand} />
+
           {vozSuportada && (
             <button
               type="button"
