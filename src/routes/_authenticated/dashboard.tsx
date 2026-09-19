@@ -174,7 +174,9 @@ function Dashboard() {
             vozDoNavegador.falar("Viagem segura iniciada. Estou acompanhando sua rota.");
           } else {
             setFolha("destino");
-            vozDoNavegador.falar("Escolha seu destino primeiro. Depois podemos iniciar a viagem segura.");
+            vozDoNavegador.falar(
+              "Escolha seu destino primeiro. Depois podemos iniciar a viagem segura.",
+            );
           }
           break;
         case "destination": {
@@ -201,8 +203,6 @@ function Dashboard() {
     },
     [viagem, viagemAtiva, iniciar, vozLigada, alternarVoz],
   );
-
-
 
   // A rota vem do Google pelo mapa; guardá-la aqui é o que permite mostrar
   // distância e ETA reais na faixa de destino.
@@ -483,12 +483,7 @@ function Dashboard() {
   return (
     /* COCKPIT V2: durante a viagem a navegação inferior some e a âncora de
        baixo encolhe (`ma-cockpit`), para o mapa ser a tela inteira. */
-    <AppShell
-      fullBleed
-      hideNav={false}
-      cockpit={modoCockpit}
-      sos={sos}
-    >
+    <AppShell fullBleed hideNav={false} cockpit={modoCockpit} sos={sos}>
       <div
         className={`relative h-[100dvh] w-full overflow-hidden bg-background ${
           modoCockpit ? "ma-cockpit" : ""
