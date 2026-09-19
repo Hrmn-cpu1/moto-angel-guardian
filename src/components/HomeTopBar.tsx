@@ -1,4 +1,6 @@
 import { Star } from "lucide-react";
+import { DaisyVoiceButton } from "@/components/DaisyVoiceButton";
+import type { DaisyCommand } from "@/lib/daisy";
 
 interface Props {
   gpsOnline: boolean;
@@ -18,6 +20,7 @@ interface Props {
   segundoPlano?: { ok: boolean; descricao: string } | null;
   /** O aparelho tem o serviço nativo (Android). Fora dele nada é prometido. */
   temServico?: boolean;
+  onDaisyCommand?: (command: DaisyCommand, transcript: string) => void;
 }
 
 /** Slim translucent status strip floating over the full-screen home map. */
@@ -28,6 +31,7 @@ export function HomeTopBar({
   tripActive = false,
   segundoPlano = null,
   temServico: _temServico = false,
+  onDaisyCommand,
 }: Props) {
   // Fora da viagem não há serviço em segundo plano a reportar. Durante a
   // viagem o estado real segue acessível sem voltar a criar uma faixa visual.
@@ -41,13 +45,21 @@ export function HomeTopBar({
           Moto Anjo
         </span>
       </div>
-      <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-semibold text-foreground">
-        {gpsOnline ? "GPS ativo" : "Buscando GPS"}
-        <span
-          className={`h-2 w-2 rounded-full ${gpsOnline ? "bg-success" : "bg-muted-foreground"}`}
-          aria-label={gpsOnline ? "GPS ativo" : "GPS aguardando sinal"}
-        />
-      </span>
+      <div className="pointer-events-auto flex shrink-0 items-center gap-2">
+        {onDaisyCommand && (
+          <div className="flex items-center gap-1.5 rounded-xl border border-gold/30 bg-black/40 px-1.5">
+            <span className="text-[10px] font-extrabold tracking-wide text-gold">DAISY AI</span>
+            <DaisyVoiceButton onCommand={onDaisyCommand} />
+          </div>
+        )}
+        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground">
+          {gpsOnline ? "GPS ativo" : "Buscando GPS"}
+          <span
+            className={`h-2 w-2 rounded-full ${gpsOnline ? "bg-success" : "bg-muted-foreground"}`}
+            aria-label={gpsOnline ? "GPS ativo" : "GPS aguardando sinal"}
+          />
+        </span>
+      </div>
       {estadoSegundoPlano && (
         <span className="sr-only">Proteção em segundo plano: {estadoSegundoPlano.descricao}</span>
       )}
