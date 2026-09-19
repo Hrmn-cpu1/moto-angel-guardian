@@ -4,6 +4,7 @@ import type { EventoNoMapa } from "@/lib/map-events";
 import type { Cardeal, Inclinacao } from "@/lib/ride-telemetry";
 import { rotuloDoDestino, type Viagem } from "@/lib/trip";
 import { TelemetryStrip } from "@/components/TelemetryStrip";
+import type { DaisyCommand } from "@/lib/daisy";
 import type { EstadoDaRota, RouteInfo } from "@/components/RealMap";
 
 /**
@@ -159,6 +160,7 @@ interface CockpitProps {
   vozLigada: boolean;
   vozSuportada: boolean;
   onAlternarVoz: () => void;
+  onDaisyCommand: (command: DaisyCommand, transcript: string) => void;
   onFinalizar: () => void;
   onSosHoldComplete: (heldMs: number) => void;
   sosDisabled?: boolean;
@@ -176,6 +178,7 @@ export function CockpitDeViagem({
   vozLigada,
   vozSuportada,
   onAlternarVoz,
+  onDaisyCommand,
   onFinalizar,
   onSosHoldComplete,
   sosDisabled = false,
@@ -197,6 +200,7 @@ export function CockpitDeViagem({
         vozLigada={vozLigada}
         vozSuportada={vozSuportada}
         onAlternarVoz={onAlternarVoz}
+        onDaisyCommand={onDaisyCommand}
         onFinalizar={onFinalizar}
         onSosHoldComplete={onSosHoldComplete}
         sosDisabled={sosDisabled}
