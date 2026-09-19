@@ -62,6 +62,8 @@ import { searchPOIs, type POI } from "@/lib/pois.functions";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import type { EstadoDaRota, RouteInfo, MapAlert } from "@/components/RealMap";
 import { MapErrorBoundary } from "@/components/MapErrorBoundary";
+import type { DaisyCommand } from "@/lib/daisy";
+import { vozDoNavegador } from "@/lib/voice";
 
 const RealMap = lazy(() => import("@/components/RealMap"));
 
@@ -134,6 +136,48 @@ function Dashboard() {
   // O SOS ativo é lido do controlador que já existe, pela fase — não invento
   // API nova nele (RC3: não reimplementar SOS).
   const sos = useSosController();
+
+  // DAISY Fase 1: comandos determinísticos. A voz nunca dispara uma ação
+  // crítica sem confirmação e nunca substitui o motor nativo de segurança.
+  const onDaisyCommand = useCallback(
+    (command: DaisyCommand) => {
+      switch (command.type) {
+        case "start_trip":
+          if (viagemAtiva) {
+            vozDoNavegador.falar("A viagem segura já está ativa.");
+          } else if (viagem.destino) {
+            iniciar();
+            vozDoNavegador.falar("Viagem segura iniciada. Estou acompanhando sua rota.");
+          } else {
+            setFolha("destino");
+            vozDoNavegador.falar("Escolha seu destino primeiro. Depois podemos iniciar a viagem segura.");
+          }
+          break;
+        case "destination": {
+          const destino = rotuloDoDestino(viagem);
+          vozDoNavegador.falar(
+            destino ? `Seu próximo destino é ${destino}.` : "Você ainda não definiu um destino.",
+          );
+          break;
+        }
+        case "help":
+          // Pedido de emergência por voz exige confirmação física no SOS.
+          vozDoNavegador.falar(
+            "Entendi. Para evitar um acionamento acidental, mantenha o botão SOS pressionado para pedir ajuda.",
+          );
+          break;
+        case "stop_voice":
+          if (vozLigada) alternarVoz();
+          vozDoNavegador.calar();
+          break;
+        case "unknown":
+          vozDoNavegador.falar("Não entendi. Você pode perguntar pelo destino ou pedir ajuda.");
+          break;
+      }
+    },
+    [viagem, viagemAtiva, iniciar, vozLigada, alternarVoz],
+  );
+
   useEffect(() => {
     if (sos.open) setFolha("nenhuma");
   }, [sos.open]);
@@ -734,6 +778,7 @@ function Dashboard() {
             vozLigada={vozLigada}
             vozSuportada={vozSuportada}
             onAlternarVoz={alternarVoz}
+            onDaisyCommand={onDaisyCommand}
             onFinalizar={() => finalizar(sosAtivo)}
             onSosHoldComplete={(heldMs) => sos.trigger(heldMs)}
             sosDisabled={sos.busy || sos.recovering}
