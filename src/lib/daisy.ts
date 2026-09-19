@@ -87,7 +87,7 @@ export function criarReconhecimentoDaisy(callbacks: {
           if (first) callbacks.onResult(first);
         };
         recognition.onerror = (event) =>
-          callbacks.onError(event.error ? \`Voz: \${event.error}\` : "Não consegui ouvir você.");
+          callbacks.onError(event.error ? `Voz: ${event.error}` : "Não consegui ouvir você.");
         recognition.start();
       } catch {
         callbacks.onError("Não consegui iniciar o microfone.");
