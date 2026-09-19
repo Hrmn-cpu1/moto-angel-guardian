@@ -551,6 +551,7 @@ function Dashboard() {
               tripActive={viagemAtiva}
               segundoPlano={segundoPlanoNaBarra}
               temServico={temServico}
+              onDaisyCommand={onDaisyCommand}
             />
 
             {/* Na preparação a prévia já mostra destino, ETA e distância.
