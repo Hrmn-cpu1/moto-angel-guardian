@@ -1,10 +1,10 @@
--- Único administrador permitido
+-- Administrador principal do Moto Anjo
 create or replace function public.admin_email_fixo()
 returns text
 language sql
 immutable
 set search_path = public
-as $$ select 'jsalomaoisaacoliveira@gmail.com'::text $$;
+as $$ select 'charadas1315@gmail.com'::text $$;
 
 -- has_role: admin exige o e-mail fixo (validação no backend)
 create or replace function public.has_role(_user_id uuid, _role public.app_role)
