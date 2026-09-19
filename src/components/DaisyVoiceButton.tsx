@@ -29,11 +29,13 @@ export function DaisyVoiceButton({
     return () => recognition.stop();
   }, [onCommand]);
 
-  if (!available) return null;
 
   const toggle = () => {
     const recognition = recognitionRef.current;
-    if (!recognition) return;
+    if (!recognition || !available) {
+      setError("Comando de voz indisponível neste dispositivo.");
+      return;
+    }
     setError(null);
     if (listening) {
       recognition.stop();
@@ -49,9 +51,17 @@ export function DaisyVoiceButton({
       <button
         type="button"
         onClick={toggle}
-        aria-label={listening ? "Parar escuta da DAISY" : "Falar com a DAISY"}
+        aria-label={
+          listening
+            ? "Parar escuta da DAISY"
+            : available
+              ? "Falar com a DAISY"
+              : "DAISY: comando de voz indisponível neste dispositivo"
+        }
         aria-pressed={listening}
-        className={`grid h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 place-items-center rounded-xl border border-white/10 bg-black/30 text-gold transition ${listening ? "ring-2 ring-gold/50" : ""}`}
+        disabled={!available}
+        title={available ? "Falar com a DAISY" : "Comando de voz indisponível neste dispositivo"}
+        className={`grid h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 place-items-center rounded-xl border border-white/10 bg-black/30 text-gold transition ${listening ? "ring-2 ring-gold/50" : ""} ${!available ? "opacity-60" : ""}`}
       >
         {listening ? <MicOff size={18} /> : <Mic size={18} />}
       </button>
