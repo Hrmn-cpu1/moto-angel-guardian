@@ -46,7 +46,7 @@ export interface DaisyRecognition {
   onError?: (message: string) => void;
 }
 
-type RecognitionCtor = new () => {
+interface SpeechRecognitionLike {
   lang: string;
   continuous: boolean;
   interimResults: boolean;
@@ -54,7 +54,8 @@ type RecognitionCtor = new () => {
   onerror: ((event: { error?: string }) => void) | null;
   start: () => void;
   stop: () => void;
-};
+}
+type RecognitionCtor = new () => SpeechRecognitionLike;
 
 function ctor(): RecognitionCtor | null {
   if (typeof window === "undefined") return null;
@@ -66,7 +67,7 @@ export function criarReconhecimentoDaisy(callbacks: {
   onResult: (text: string) => void;
   onError: (message: string) => void;
 }): DaisyRecognition {
-  let recognition: InstanceType<RecognitionCtor> | null = null;
+  let recognition: SpeechRecognitionLike | null = null;
 
   return {
     available: () => Boolean(ctor()),
