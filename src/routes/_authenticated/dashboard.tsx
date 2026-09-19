@@ -603,7 +603,7 @@ function Dashboard() {
             anjos, apoio, riscos, trânsito). Nenhum handler mudou. */}
         <div
           className={`absolute right-3 ${
-            modoCockpit ? "top-[calc(var(--ma-top)+128px)]" : "top-[calc(var(--ma-top)+128px)]"
+            modoCockpit ? "top-[calc(var(--ma-top)+128px)]" : "top-[calc(var(--ma-top)+196px)]"
           } z-30 flex flex-col gap-2`}
         >
           <LayerToggle

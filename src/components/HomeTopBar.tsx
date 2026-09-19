@@ -38,31 +38,35 @@ export function HomeTopBar({
   const estadoSegundoPlano = tripActive && segundoPlano ? segundoPlano : null;
 
   return (
-    <header className="pointer-events-none absolute inset-x-4 top-[var(--ma-top)] z-30 grid h-10 grid-cols-[minmax(0,1fr)_auto] items-center rounded-2xl border border-white/10 bg-map-panel/95 px-3 shadow-map backdrop-blur-xl">
-      <div className="flex min-w-0 items-center gap-2">
-        <Star size={17} className="shrink-0 fill-gold text-gold" aria-hidden="true" />
-        <span className="truncate font-display text-[15px] font-extrabold text-foreground">
-          Moto Anjo
-        </span>
-      </div>
-      <div className="pointer-events-auto flex shrink-0 items-center gap-2">
-        {onDaisyCommand && (
-          <div className="flex items-center gap-1.5 rounded-xl border border-gold/30 bg-black/40 px-1.5">
-            <span className="text-[10px] font-extrabold tracking-wide text-gold">DAISY AI</span>
-            <DaisyVoiceButton onCommand={onDaisyCommand} />
-          </div>
-        )}
-        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground">
-          {gpsOnline ? "GPS ativo" : "Buscando GPS"}
+    <>
+      <header className="pointer-events-none absolute inset-x-4 top-[var(--ma-top)] z-30 grid h-10 grid-cols-[minmax(0,1fr)_auto] items-center rounded-2xl border border-white/10 bg-map-panel/92 px-3 shadow-map backdrop-blur-xl">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-gold/15">
+            <Star size={15} className="fill-gold text-gold" aria-hidden="true" />
+          </span>
+          <span className="truncate font-display text-[15px] font-extrabold text-foreground">
+            Moto Anjo
+          </span>
+        </div>
+        <span className="flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-[10px] font-bold text-foreground">
           <span
-            className={`h-2 w-2 rounded-full ${gpsOnline ? "bg-success" : "bg-muted-foreground"}`}
+            className={`h-2 w-2 rounded-full ${
+              gpsOnline ? "bg-success shadow-[0_0_10px_rgba(34,197,94,0.8)]" : "bg-muted-foreground"
+            }`}
             aria-label={gpsOnline ? "GPS ativo" : "GPS aguardando sinal"}
           />
+          {gpsOnline ? "GPS ativo" : "Buscando GPS"}
         </span>
-      </div>
-      {estadoSegundoPlano && (
-        <span className="sr-only">Proteção em segundo plano: {estadoSegundoPlano.descricao}</span>
+        {estadoSegundoPlano && (
+          <span className="sr-only">Proteção em segundo plano: {estadoSegundoPlano.descricao}</span>
+        )}
+      </header>
+
+      {onDaisyCommand && (
+        <div className="pointer-events-auto absolute right-3 top-[calc(var(--ma-top)+124px)] z-30">
+          <DaisyVoiceButton onCommand={onDaisyCommand} variant="floating" />
+        </div>
       )}
-    </header>
+    </>
   );
 }
