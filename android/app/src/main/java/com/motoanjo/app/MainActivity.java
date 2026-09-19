@@ -16,6 +16,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(ViagemSeguraPlugin.class);
+        registerPlugin(DaisySpeechPlugin.class);
         super.onCreate(savedInstanceState);
         bridge.addWebViewListener(new WebViewListener() {
             @Override

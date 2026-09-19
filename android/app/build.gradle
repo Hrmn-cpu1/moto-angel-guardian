@@ -35,9 +35,9 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // versionCode monotonico: cada APK que sai do CI precisa de um numero
-        // maior que o anterior, senao a Play rejeita. 4 = primeiro RC Android.
-        versionCode 16
-        versionName "1.6.0"
+        // maior que o anterior, senao a Play rejeita. 17 = DAISY nativa.
+        versionCode 17
+        versionName "1.6.1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {

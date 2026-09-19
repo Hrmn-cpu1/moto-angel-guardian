@@ -1194,6 +1194,7 @@ test("ANDROID: nenhuma permissão sem justificativa escrita", () => {
     "ACCESS_NETWORK_STATE",
     "ACCESS_FINE_LOCATION",
     "ACCESS_COARSE_LOCATION",
+    "RECORD_AUDIO",
     "POST_NOTIFICATIONS",
     "FOREGROUND_SERVICE",
     "FOREGROUND_SERVICE_LOCATION",
@@ -1209,7 +1210,7 @@ test("ANDROID: nenhuma permissão sem justificativa escrita", () => {
     "background location traz revisão extra na Play e o foreground service cobre o caso",
   );
   // Cada permissão sensível precisa de um comentário explicando o porquê.
-  for (const p of ["POST_NOTIFICATIONS", "FOREGROUND_SERVICE_LOCATION"]) {
+  for (const p of ["RECORD_AUDIO", "POST_NOTIFICATIONS", "FOREGROUND_SERVICE_LOCATION"]) {
     const antes = manifest.slice(0, manifest.indexOf(p));
     assert.ok(/<!--[\s\S]*$/.test(antes.slice(-1200)), `${p} sem justificativa no Manifest`);
   }

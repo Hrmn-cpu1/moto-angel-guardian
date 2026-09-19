@@ -39,11 +39,47 @@ export function interpretarComando(texto: string): DaisyCommand {
 }
 
 export interface DaisyRecognition {
-  start: () => void;
-  stop: () => void;
-  available: () => boolean;
+  start: () => Promise<void>;
+  stop: () => Promise<void>;
+  available: () => Promise<boolean>;
   onResult?: (text: string) => void;
   onError?: (message: string) => void;
+}
+
+type DaisyNativePlugin = {
+  available: () => Promise<{ available?: boolean }>;
+  start: (options?: { language?: string }) => Promise<{ text?: string }>;
+  stop: () => Promise<void>;
+};
+
+function pluginNativo(): DaisyNativePlugin | null {
+  if (typeof window === "undefined") return null;
+  const cap = (
+    window as unknown as {
+      Capacitor?: {
+        isNativePlatform?: () => boolean;
+        Plugins?: { DaisySpeech?: DaisyNativePlugin };
+      };
+    }
+  ).Capacitor;
+  if (typeof cap?.isNativePlatform !== "function" || !cap.isNativePlatform()) return null;
+  return cap.Plugins?.DaisySpeech ?? null;
+}
+
+function mensagemDoErro(error: unknown): string {
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+  return "Não consegui reconhecer sua voz.";
+}
+
+function codigoDoErro(error: unknown): string {
+  if (error && typeof error === "object" && "code" in error) {
+    const code = (error as { code?: unknown }).code;
+    if (typeof code === "string") return code;
+  }
+  return "";
 }
 
 interface SpeechRecognitionLike {
@@ -59,7 +95,10 @@ type RecognitionCtor = new () => SpeechRecognitionLike;
 
 function ctor(): RecognitionCtor | null {
   if (typeof window === "undefined") return null;
-  const w = window as unknown as { SpeechRecognition?: RecognitionCtor; webkitSpeechRecognition?: RecognitionCtor };
+  const w = window as unknown as {
+    SpeechRecognition?: RecognitionCtor;
+    webkitSpeechRecognition?: RecognitionCtor;
+  };
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
@@ -70,8 +109,31 @@ export function criarReconhecimentoDaisy(callbacks: {
   let recognition: SpeechRecognitionLike | null = null;
 
   return {
-    available: () => Boolean(ctor()),
-    start: () => {
+    available: async () => {
+      const native = pluginNativo();
+      if (native) {
+        try {
+          return (await native.available()).available === true;
+        } catch {
+          return false;
+        }
+      }
+      return Boolean(ctor());
+    },
+    start: async () => {
+      const native = pluginNativo();
+      if (native) {
+        try {
+          const result = await native.start({ language: "pt-BR" });
+          const text = result.text?.trim();
+          if (text) callbacks.onResult(text);
+          else callbacks.onError("Não entendi. Fale novamente.");
+        } catch (error) {
+          if (codigoDoErro(error) !== "DAISY_CANCELLED") callbacks.onError(mensagemDoErro(error));
+        }
+        return;
+      }
+
       const Ctor = ctor();
       if (!Ctor) {
         callbacks.onError("Reconhecimento de voz indisponível neste aparelho.");
@@ -93,7 +155,16 @@ export function criarReconhecimentoDaisy(callbacks: {
         callbacks.onError("Não consegui iniciar o microfone.");
       }
     },
-    stop: () => {
+    stop: async () => {
+      const native = pluginNativo();
+      if (native) {
+        try {
+          await native.stop();
+        } catch {
+          // Encerramento idempotente.
+        }
+        return;
+      }
       try {
         recognition?.stop();
       } catch {

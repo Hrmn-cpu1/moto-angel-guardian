@@ -132,6 +132,12 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <!--
+      Microfone da DAISY. A permissão é pedida somente quando a pessoa toca no
+      botão de voz; não existe escuta em segundo plano nem gravação de áudio.
+    -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!--
       POST_NOTIFICATIONS — Android 13+ (API 33).
       Por que: a notificacao persistente da navegacao protegida e o aviso de
       possivel queda. Pedida no contexto, quando o recurso e ligado, nunca no
@@ -163,11 +169,17 @@
 
     <!-- GPS é desejável, não obrigatório: o app funciona sem ele (envio manual do SOS). -->
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+    <!-- A DAISY degrada para comandos manuais se o aparelho não tiver microfone. -->
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
     <!-- Abrir o WhatsApp a partir dos botões de contato. -->
     <queries>
         <package android:name="com.whatsapp" />
         <package android:name="com.whatsapp.w4b" />
+        <!-- Android 11+: permite localizar o serviço de reconhecimento de voz. -->
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
