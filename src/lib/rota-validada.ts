@@ -1,4 +1,4 @@
-import { mapearRotaDaResposta, type RotaCalculada } from "./rota";
+import { mapearRotaDaResposta, type RotaCalculada } from "./rota.ts";
 
 /**
  * A Routes API é uma fonte externa. Uma polilinha truncada pode ser decodificada
