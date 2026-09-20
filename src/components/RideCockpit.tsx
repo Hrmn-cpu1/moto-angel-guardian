@@ -76,10 +76,15 @@ export function PreparacaoDeViagem({
             {rotuloVisivel(viagem)}
           </p>
           {rota ? (
-            <p className="mt-0.5 text-xs font-bold text-gold tabular-nums">
-              {rota.duracaoMin} min <span className="text-muted-foreground">•</span>{" "}
-              {rota.distanciaKm.toFixed(1).replace(".", ",")} km
-            </p>
+            <div className="mt-0.5">
+              <p className="text-xs font-bold text-gold tabular-nums">
+                {rota.duracaoMin} min <span className="text-muted-foreground">•</span>{" "}
+                {rota.distanciaKm.toFixed(1).replace(".", ",")} km
+              </p>
+              <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {rota.perfil === "moto" ? "Rota para motocicleta" : "Rota geral de trânsito"}
+              </p>
+            </div>
           ) : (
             <p
               data-testid="estado-da-rota"

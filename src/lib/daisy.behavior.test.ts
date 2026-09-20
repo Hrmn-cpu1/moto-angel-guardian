@@ -18,6 +18,11 @@ describe("DAISY command parser", () => {
     expect(interpretarComando("Daisy, preciso de ajuda").type).toBe("help");
   });
 
+  it("consulta o estado real da proteção sem acionar nada", () => {
+    expect(interpretarComando("Daisy, estou protegido?").type).toBe("protection_status");
+    expect(interpretarComando("qual o status da viagem segura").type).toBe("protection_status");
+  });
+
   it("não transforma frase desconhecida em ação", () => {
     expect(interpretarComando("Daisy, faça qualquer coisa").type).toBe("unknown");
   });

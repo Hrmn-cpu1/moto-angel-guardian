@@ -2,6 +2,7 @@ export type DaisyCommand =
   | { type: "start_trip" }
   | { type: "destination" }
   | { type: "help" }
+  | { type: "protection_status" }
   | { type: "stop_voice" }
   | { type: "unknown" };
 
@@ -23,6 +24,11 @@ export function interpretarComando(texto: string): DaisyCommand {
   const t = normalizarComando(texto);
   if (!t) return { type: "unknown" };
 
+  // Consulta antes de comando: "status da viagem segura" contém as palavras
+  // viagem/segura, mas não pode ser confundida com pedido para iniciar.
+  if (/(estou|esta|status|situacao).*(protegido|protegida|protecao|viagem segura)/.test(t)) {
+    return { type: "protection_status" };
+  }
   if (/(iniciar|comecar|comeca).*(viagem|rota)|viagem.*(segura|iniciar)/.test(t)) {
     return { type: "start_trip" };
   }

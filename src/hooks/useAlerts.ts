@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { registrarPresenca } from "@/lib/presence";
+import { consolidarAlertas } from "@/lib/alert-policy";
 
 /**
  * Referências estáveis (RC7).
@@ -35,6 +36,10 @@ export interface NearbyAlert {
   author_name: string;
   distance_km: number;
   is_mine: boolean;
+  /** Origem calculada a partir do contrato do backend, não do texto livre. */
+  source: "comunidade" | "sos_moto_anjo";
+  /** Validade operacional por categoria; depois disso o cliente não exibe. */
+  expires_at: string;
 }
 
 export const ALERT_LABEL: Record<AlertKind, string> = {
@@ -90,7 +95,7 @@ export function useAlerts(pos: { lat: number; lng: number } | null, radiusKm = 2
         _hours: 24,
       });
       if (error) throw error;
-      return (data ?? []) as unknown as NearbyAlert[];
+      return consolidarAlertas((data ?? []) as unknown as NearbyAlert[]);
     },
   });
 

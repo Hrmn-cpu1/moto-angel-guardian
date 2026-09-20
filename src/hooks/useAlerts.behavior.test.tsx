@@ -57,6 +57,11 @@ test("a remote insert updates two mounted viewers without a manual refresh", asy
     lat: -23.55,
     lng: -46.63,
     distance_km: 0.1,
+    created_at: new Date().toISOString(),
+    description: null,
+    address: null,
+    author_name: "Comunidade",
+    is_mine: false,
   };
   fake.rpc.mockResolvedValue({ data: [report], error: null });
   act(() => fake.listeners.forEach((callback) => callback()));

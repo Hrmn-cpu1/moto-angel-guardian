@@ -37,6 +37,7 @@ export const EVENTOS_MA_TRIP = [
   "trip.native.status.failed",
   "trip.heartbeat",
   "gps.web.watch.start",
+  "gps.web.watch.retry",
   "gps.web.watch.stop",
   "gps.native.position",
   "trip.state.active",

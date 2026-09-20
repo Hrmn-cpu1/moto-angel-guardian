@@ -26,6 +26,18 @@ type Assinante = OpcoesAssinatura;
 const assinantes = new Set<Assinante>();
 let watchId: number | null = null;
 let ultimaPosicao: GeolocationPosition | null = null;
+let ultimaLeituraEm = 0;
+let falhasConsecutivas = 0;
+let reinicioTimer: ReturnType<typeof setTimeout> | null = null;
+let watchdogTimer: ReturnType<typeof setInterval> | null = null;
+let ouvindoCicloDeVida = false;
+
+export const GPS_SEM_LEITURA_MS = 45_000;
+
+/** Backoff curto no primeiro erro e limitado para não martelar o provedor. */
+export function atrasoReinicioGps(falhas: number): number {
+  return Math.min(30_000, 1_000 * 2 ** Math.min(Math.max(0, falhas), 5));
+}
 
 /** Opções únicas: o watcher é compartilhado, então não há negociação por hook. */
 const OPCOES: PositionOptions = { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 };
@@ -35,40 +47,108 @@ function geo(): Geolocation | null {
   return navigator.geolocation;
 }
 
+function limparWatchReal(): void {
+  if (watchId == null) return;
+  geo()?.clearWatch(watchId);
+  watchId = null;
+}
+
+function removerCicloDeVida(): void {
+  if (!ouvindoCicloDeVida || typeof window === "undefined") return;
+  window.removeEventListener("online", retomarSeNecessario);
+  if (typeof document !== "undefined") {
+    document.removeEventListener("visibilitychange", retomarSeNecessario);
+  }
+  ouvindoCicloDeVida = false;
+}
+
+function retomarSeNecessario(): void {
+  if (assinantes.size === 0) return;
+  if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+  if (watchId == null || Date.now() - ultimaLeituraEm > GPS_SEM_LEITURA_MS) {
+    agendarReinicio();
+  }
+}
+
+function instalarCicloDeVida(): void {
+  if (ouvindoCicloDeVida || typeof window === "undefined") return;
+  window.addEventListener("online", retomarSeNecessario);
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", retomarSeNecessario);
+  }
+  ouvindoCicloDeVida = true;
+}
+
+function iniciarWatchdog(): void {
+  if (watchdogTimer != null) return;
+  watchdogTimer = setInterval(retomarSeNecessario, 15_000);
+}
+
+function agendarReinicio(): void {
+  if (assinantes.size === 0 || reinicioTimer != null) return;
+  limparWatchReal();
+  falhasConsecutivas += 1;
+  const atraso = atrasoReinicioGps(falhasConsecutivas - 1);
+  registrarEventoDeViagem("gps.web.watch.retry", { detalhe: `${atraso}ms` });
+  reinicioTimer = setTimeout(() => {
+    reinicioTimer = null;
+    iniciarSeNecessario();
+  }, atraso);
+}
+
 function iniciarSeNecessario(): void {
-  if (watchId != null) return;
+  if (watchId != null || assinantes.size === 0) return;
   const g = geo();
   if (!g) return;
-  watchId = g.watchPosition(
-    (posicao) => {
-      ultimaPosicao = posicao;
-      for (const a of [...assinantes]) {
-        try {
-          a.aoReceber(posicao);
-        } catch {
-          /* um assinante quebrado não derruba os outros nem o watcher */
+  ultimaLeituraEm = Date.now();
+  try {
+    watchId = g.watchPosition(
+      (posicao) => {
+        ultimaPosicao = posicao;
+        ultimaLeituraEm = Date.now();
+        falhasConsecutivas = 0;
+        for (const a of [...assinantes]) {
+          try {
+            a.aoReceber(posicao);
+          } catch {
+            /* um assinante quebrado não derruba os outros nem o watcher */
+          }
         }
-      }
-    },
-    (erro) => {
-      for (const a of [...assinantes]) {
-        try {
-          a.aoFalhar?.(erro);
-        } catch {
-          /* idem */
+      },
+      (erro) => {
+        for (const a of [...assinantes]) {
+          try {
+            a.aoFalhar?.(erro);
+          } catch {
+            /* idem */
+          }
         }
-      }
-    },
-    OPCOES,
-  );
-  registrarEventoDeViagem("gps.web.watch.start");
+        // Negação de permissão não se resolve repetindo. Falta de sinal e
+        // timeout, sim: a assinatura da WebView pode morrer sem se recuperar.
+        if (erro.code !== erro.PERMISSION_DENIED) agendarReinicio();
+      },
+      OPCOES,
+    );
+    instalarCicloDeVida();
+    iniciarWatchdog();
+    registrarEventoDeViagem("gps.web.watch.start");
+  } catch {
+    watchId = null;
+    agendarReinicio();
+  }
 }
 
 function pararSeVazio(): void {
-  if (assinantes.size > 0 || watchId == null) return;
-  geo()?.clearWatch(watchId);
-  watchId = null;
+  if (assinantes.size > 0) return;
+  limparWatchReal();
   ultimaPosicao = null;
+  ultimaLeituraEm = 0;
+  falhasConsecutivas = 0;
+  if (reinicioTimer != null) clearTimeout(reinicioTimer);
+  reinicioTimer = null;
+  if (watchdogTimer != null) clearInterval(watchdogTimer);
+  watchdogTimer = null;
+  removerCicloDeVida();
   registrarEventoDeViagem("gps.web.watch.stop");
 }
 
@@ -114,8 +194,14 @@ export function ultimaPosicaoConhecida(): GeolocationPosition | null {
 
 /** Somente para teste: derruba o watcher e esquece os assinantes. */
 export function __reiniciarGeoWatchParaTeste(): void {
-  if (watchId != null) geo()?.clearWatch(watchId);
-  watchId = null;
+  limparWatchReal();
   ultimaPosicao = null;
+  ultimaLeituraEm = 0;
+  falhasConsecutivas = 0;
+  if (reinicioTimer != null) clearTimeout(reinicioTimer);
+  reinicioTimer = null;
+  if (watchdogTimer != null) clearInterval(watchdogTimer);
+  watchdogTimer = null;
+  removerCicloDeVida();
   assinantes.clear();
 }
