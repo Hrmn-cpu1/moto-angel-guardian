@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { mapearRotaDaResposta, statusDeFalhaHttp, type RotaCalculada } from "@/lib/rota";
+import { statusDeFalhaHttp, type RotaCalculada } from "@/lib/rota";
+import { mapearRotaValidada } from "@/lib/rota-validada";
 
 /**
  * Rota e busca de destino pelo servidor.
@@ -92,7 +93,7 @@ export const calcularRota = createServerFn({ method: "POST" })
       }
 
       const json = await res.json();
-      const rota = mapearRotaDaResposta(json, temCoordenada ? null : data.destino.endereco!);
+      const rota = mapearRotaValidada(json, temCoordenada ? null : data.destino.endereco!);
       if (!rota) return { ok: false, rota: null, status: "ZERO_RESULTS" };
       return { ok: true, rota, status: "OK" };
     } catch (e) {
