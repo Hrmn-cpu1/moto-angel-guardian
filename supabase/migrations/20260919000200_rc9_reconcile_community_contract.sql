@@ -1,6 +1,7 @@
--- CHECKPOINT RC9 — reconciliacao das migrations RC7 duplicadas
--- O repositorio possui dois arquivos RC7 que criavam tabelas/funcoes
--- sobrepostas. Esta migration deixa o banco com um unico contrato efetivo.
+-- CHECKPOINT RC9 — reconciliacao do contrato comunitario RC7
+-- O historico do repositorio foi canonizado para manter uma unica migration
+-- por timestamp. Esta migration preserva o contrato final em bancos existentes
+-- e em reconstrucoes limpas, sem depender da tabela legada community_user_blocks.
 
 alter table public.community_reports
   add column if not exists reported_user_id uuid references auth.users(id) on delete cascade;
@@ -188,9 +189,6 @@ begin
   where reporter_id = v_uid or reported_user_id = v_uid;
 
   delete from public.community_blocks
-  where blocker_id = v_uid or blocked_id = v_uid;
-
-  delete from public.community_user_blocks
   where blocker_id = v_uid or blocked_id = v_uid;
 
   delete from public.community_posts where user_id = v_uid;
