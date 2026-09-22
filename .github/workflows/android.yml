@@ -113,14 +113,24 @@ jobs:
           fi
           echo "nenhum segredo em arquivo versionado"
 
-      - name: Migrations presentes e ordenadas
+      - name: Migrations presentes, ordenadas e com versão única
         run: |
           set -e
           mapfile -t MIGRATIONS < <(printf '%s\n' supabase/migrations/*.sql)
           COUNT=${#MIGRATIONS[@]}
           echo "migrations: $COUNT"
           if [ "$COUNT" -lt 30 ]; then echo "migrations sumiram"; exit 1; fi
-          diff <(printf '%s\n' "${MIGRATIONS[@]}") <(printf '%s\n' "${MIGRATIONS[@]}" | sort)             || { echo "nomes fora de ordem"; exit 1; }
+          diff <(printf '%s\n' "${MIGRATIONS[@]}") <(printf '%s\n' "${MIGRATIONS[@]}" | sort) \
+            || { echo "nomes fora de ordem"; exit 1; }
+
+          VERSOES=$(printf '%s\n' "${MIGRATIONS[@]}" | sed -E 's#^.*/([0-9]{14})_.*#\1#')
+          DUPLICADAS=$(printf '%s\n' "$VERSOES" | sort | uniq -d)
+          if [ -n "$DUPLICADAS" ]; then
+            echo "timestamps de migration duplicados:"
+            echo "$DUPLICADAS"
+            exit 1
+          fi
+          echo "timestamps de migration únicos"
 
       - name: Declarar o frontend que o APK vai carregar
         run: |
