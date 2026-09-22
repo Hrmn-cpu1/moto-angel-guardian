@@ -10,6 +10,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: android-${{ github.ref }}
   cancel-in-progress: true
@@ -143,43 +146,27 @@ jobs:
         working-directory: android
         run: ./gradlew :app:testDebugUnitTest assembleDebug --stacktrace
 
-      - name: Montar release APK + AAB
+      - name: Montar APK + AAB de teste (chave temporária)
         working-directory: android
-        env:
-          MOTOANJO_KEYSTORE_BASE64: ${{ secrets.MOTOANJO_KEYSTORE_BASE64 }}
-          MOTOANJO_KEYSTORE_PASSWORD: ${{ secrets.MOTOANJO_KEYSTORE_PASSWORD }}
-          MOTOANJO_KEY_ALIAS: ${{ secrets.MOTOANJO_KEY_ALIAS }}
-          MOTOANJO_KEY_PASSWORD: ${{ secrets.MOTOANJO_KEY_PASSWORD }}
         run: |
-          set -e
-          # Sem os 4 secrets de publicação, gere uma assinatura temporária de RC.
-          # Isso deixa o APK instalável para teste físico sem colocar chave privada no repo.
-          # A mesma chave NÃO deve ser usada como chave permanente da Play Store.
-          if [ -z "$MOTOANJO_KEYSTORE_BASE64" ]; then
-            echo "Nenhuma chave de publicação configurada: gerando keystore temporária de RC."
-            mkdir -p app
-            keytool -genkeypair -v \
-              -keystore app/rc-release.jks \
-              -storepass motoanjo-rc \
-              -keypass motoanjo-rc \
-              -alias motoanjo-rc \
-              -keyalg RSA -keysize 2048 -validity 3650 \
-              -dname "CN=Moto Anjo RC, OU=Release Candidate, O=Moto Anjo"
-            test -f app/rc-release.jks
-            export MOTOANJO_KEYSTORE_FILE=rc-release.jks
-            export MOTOANJO_KEYSTORE_PASSWORD=motoanjo-rc
-            export MOTOANJO_KEY_ALIAS=motoanjo-rc
-            export MOTOANJO_KEY_PASSWORD=motoanjo-rc
-          fi
+          set -euo pipefail
+          mkdir -p app
+          keytool -genkeypair -v \
+            -keystore app/rc-release.jks \
+            -storepass motoanjo-rc \
+            -keypass motoanjo-rc \
+            -alias motoanjo-rc \
+            -keyalg RSA -keysize 2048 -validity 3650 \
+            -dname "CN=Moto Anjo RC, OU=Release Candidate, O=Moto Anjo"
+          export MOTOANJO_KEYSTORE_FILE=rc-release.jks
+          export MOTOANJO_KEYSTORE_PASSWORD=motoanjo-rc
+          export MOTOANJO_KEY_ALIAS=motoanjo-rc
+          export MOTOANJO_KEY_PASSWORD=motoanjo-rc
           ./gradlew :app:bundleRelease :app:assembleRelease --stacktrace
-          echo "== outputs release =="
-          find app/build/outputs -maxdepth 4 -type f -name '*.aab' -o -name '*.apk' | sort
-          AAB=$(find app/build/outputs/bundle/release -maxdepth 1 -type f -name '*.aab' | head -1)
-          APK=$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -1)
-          test -n "$AAB" && test -f "$AAB" || { echo "AAB release não encontrado"; exit 1; }
-          test -n "$APK" && test -f "$APK" || { echo "APK release não encontrado"; exit 1; }
+          test -f app/build/outputs/bundle/release/app-release.aab
+          test -f app/build/outputs/apk/release/app-release.apk
 
-      - name: Metadados e SHA-256
+      - name: Metadados e SHA-256 do teste
         id: meta
         run: |
           set -e
@@ -190,14 +177,13 @@ jobs:
           VCODE=$(grep -oE "versionCode +[0-9]+" android/app/build.gradle | grep -oE "[0-9]+")
           VNAME=$(grep -oE 'versionName +"[^"]+"' android/app/build.gradle | cut -d'"' -f2)
           test -n "$VCODE" && test -n "$VNAME" || { echo "versão não lida do build.gradle"; exit 1; }
-          AAB="moto-anjo-${VNAME}-${VCODE}-release.aab"
-          APK="moto-anjo-${VNAME}-${VCODE}-release.apk"
+          AAB="moto-anjo-${VNAME}-${VCODE}-rc-test.aab"
+          APK="moto-anjo-${VNAME}-${VCODE}-rc-test.apk"
           DEBUG_APK="moto-anjo-${VNAME}-${VCODE}-debug.apk"
           cp "$RELEASE_AAB" "$AAB"
           cp "$RELEASE_APK" "$APK"
           cp "$DEBUG" "$DEBUG_APK"
-          SIGNING="signed RC (temporary key)"
-          if [ -n "${{ secrets.MOTOANJO_KEYSTORE_BASE64 }}" ]; then SIGNING="signed release (Play key)"; fi
+          SIGNING="RC_TESTE (chave temporária; não publicar na Play)"
           echo "aab=$AAB" >> "$GITHUB_OUTPUT"
           echo "apk=$APK" >> "$GITHUB_OUTPUT"
           echo "sha256 AAB: $(sha256sum "$AAB" | cut -d' ' -f1)"
@@ -222,10 +208,90 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: moto-anjo-android-release
+          name: moto-anjo-android-rc
           path: |
             ${{ steps.meta.outputs.aab }}
             ${{ steps.meta.outputs.apk }}
             moto-anjo-*-debug.apk
             android-build-metadata.txt
+          retention-days: 14
+
+  play_release:
+    # Nunca executa para PR ou push. O ambiente deve exigir aprovação e
+    # armazenar os quatro secrets de assinatura (sem cópia em repo secrets).
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: gate
+    environment: play-release
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+
+      - name: Preparar web e Android do mesmo commit aprovado no gate
+        run: |
+          npm ci
+          npm run build
+          npx cap sync android
+        env:
+          MOTOANJO_WEB_URL: ${{ vars.MOTOANJO_WEB_URL }}
+
+      - name: Assinar AAB e APK com chave Play protegida
+        working-directory: android
+        env:
+          MOTOANJO_WEB_URL: ${{ vars.MOTOANJO_WEB_URL }}
+          MOTOANJO_KEYSTORE_BASE64: ${{ secrets.MOTOANJO_KEYSTORE_BASE64 }}
+          MOTOANJO_KEYSTORE_PASSWORD: ${{ secrets.MOTOANJO_KEYSTORE_PASSWORD }}
+          MOTOANJO_KEY_ALIAS: ${{ secrets.MOTOANJO_KEY_ALIAS }}
+          MOTOANJO_KEY_PASSWORD: ${{ secrets.MOTOANJO_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          : "${MOTOANJO_KEYSTORE_BASE64:?Configure a keystore no ambiente play-release}"
+          : "${MOTOANJO_KEYSTORE_PASSWORD:?Configure a senha no ambiente play-release}"
+          : "${MOTOANJO_KEY_ALIAS:?Configure o alias no ambiente play-release}"
+          : "${MOTOANJO_KEY_PASSWORD:?Configure a senha da chave no ambiente play-release}"
+          chmod +x gradlew
+          ./gradlew :app:bundleRelease :app:assembleRelease --stacktrace
+          AAB=app/build/outputs/bundle/release/app-release.aab
+          APK=app/build/outputs/apk/release/app-release.apk
+          test -f "$AAB" && test -f "$APK"
+          jarsigner -verify "$AAB" | grep -q "jar verified."
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify "$APK"
+          {
+            echo "status: PLAY_ASSINADO"
+            echo "commit: ${{ github.sha }}"
+            echo "url_do_frontend: ${MOTOANJO_WEB_URL:-https://moto-angel-guardian.lovable.app}"
+            echo "sha256 AAB: $(sha256sum "$AAB" | cut -d' ' -f1)"
+            echo "sha256 APK: $(sha256sum "$APK" | cut -d' ' -f1)"
+          } > play-build-metadata.txt
+          cat play-build-metadata.txt
+
+      - name: Publicar artefatos assinados para revisão
+        uses: actions/upload-artifact@v4
+        with:
+          name: moto-anjo-play-assinado
+          path: |
+            android/app/build/outputs/bundle/release/app-release.aab
+            android/app/build/outputs/apk/release/app-release.apk
+            android/play-build-metadata.txt
           retention-days: 14
