@@ -129,7 +129,7 @@ test("rapid toggles cannot race enable and disable requests", async () => {
     pending = result.current.stop();
     void result.current.start();
   });
-  expect(mocks.rpc).toHaveBeenCalledTimes(1);
+  await waitFor(() => expect(mocks.rpc).toHaveBeenCalledTimes(1));
   await act(async () => {
     resolve({ error: null });
     await pending;
