@@ -31,7 +31,11 @@ export function interpretarComando(texto: string): DaisyCommand {
   if (/(estou|esta|status|situacao).*(protegido|protegida|protecao|viagem segura)/.test(t)) {
     return { type: "protection_status" };
   }
-  if (/(iniciar|comecar|comeca).*(viagem|rota)|viagem.*(segura|iniciar)/.test(t)) {
+  if (
+    /(iniciar|inicia|comecar|comeca|ligar|liga|ativar|ativa).*(viagem|rota|protecao)|(viagem|protecao).*(segura|iniciar|inicia|ligar|liga|ativar|ativa)|vamos (rodar|nessa|viajar)/.test(
+      t,
+    )
+  ) {
     return { type: "start_trip" };
   }
   if (/(qual|me diga|diga).*(destino|proximo destino)|destino/.test(t)) {
