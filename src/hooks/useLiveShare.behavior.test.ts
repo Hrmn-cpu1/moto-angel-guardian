@@ -65,7 +65,9 @@ test("a saved stop reconciles on reopen and never starts the location watcher", 
     }),
   );
   const { result } = renderHook(() => useLiveShareRuntime());
-  await waitFor(() => expect(mocks.rpc).toHaveBeenCalledWith("set_location_sharing", { _enabled: false }));
+  await waitFor(() =>
+    expect(mocks.rpc).toHaveBeenCalledWith("set_location_sharing", { _enabled: false }),
+  );
   expect(mocks.watch).not.toHaveBeenCalled();
   await act(async () => resolve({ error: null }));
   await waitFor(() => expect(result.current.sharing).toBe(false));
