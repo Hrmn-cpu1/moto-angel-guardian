@@ -37,13 +37,21 @@ export function interpretarComando(texto: string): DaisyCommand {
   if (/(qual|me diga|diga).*(destino|proximo destino)|destino/.test(t)) {
     return { type: "destination" };
   }
-  if (/(confirmar|confirma|pode mandar|pode enviar|envia|mande).*(sos|socorro|ajuda)|^(sim|confirmo)$/.test(t)) {
+  if (
+    /(confirmar|confirma|pode mandar|pode enviar|envia|mande).*(sos|socorro|ajuda)|^(sim|confirmo)$/.test(
+      t,
+    )
+  ) {
     return { type: "confirm_sos" };
   }
   if (/(cancelar|cancela|nao mandar|nao enviar|desistir).*(sos|socorro|ajuda)/.test(t)) {
     return { type: "cancel_sos" };
   }
-  if (/(sos|socorro|emergencia|preciso de ajuda|me ajuda|pedir ajuda|chamar ajuda|ativar ajuda|protocolo 1)/.test(t)) {
+  if (
+    /(sos|socorro|emergencia|preciso de ajuda|me ajuda|pedir ajuda|chamar ajuda|ativar ajuda|protocolo 1)/.test(
+      t,
+    )
+  ) {
     return { type: "help" };
   }
   if (/(parar|desligar|silenciar).*(voz|daisy|copiloto)/.test(t)) {
