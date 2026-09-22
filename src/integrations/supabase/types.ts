@@ -713,18 +713,6 @@ export type Database = {
           user_id: string
         }[]
       }
-      block_community_user: {
-        Args: { _blocked_id: string }
-        Returns: boolean
-      }
-      prepare_my_account_deletion: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      report_community_content: {
-        Args: { _comment_id?: string | null; _post_id?: string | null; _reason?: string | null }
-        Returns: string
-      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
