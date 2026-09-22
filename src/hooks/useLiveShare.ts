@@ -268,7 +268,18 @@ export function useLiveShareRuntime() {
     if (sharing && !localStopRequested && cancelarWatch.current == null) subscribePosition();
   }, [sharing, localStopRequested, subscribePosition]);
 
-  return { sharing, toggle, start, stop, lastSync, error, loading, saving, confirmed, localStopRequested };
+  return {
+    sharing,
+    toggle,
+    start,
+    stop,
+    lastSync,
+    error,
+    loading,
+    saving,
+    confirmed,
+    localStopRequested,
+  };
 }
 
 export const LiveShareContext = createContext<ReturnType<typeof useLiveShareRuntime> | null>(null);
