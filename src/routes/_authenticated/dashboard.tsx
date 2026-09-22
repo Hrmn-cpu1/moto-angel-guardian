@@ -205,7 +205,9 @@ function Dashboard() {
               "A confirmação expirou. Diga SOS novamente para preparar um novo pedido.",
             );
           } else if (sos.busy || sos.recovering) {
-            vozDoNavegador.falar("Aguarde. O sistema de emergência ainda está verificando o estado.");
+            vozDoNavegador.falar(
+              "Aguarde. O sistema de emergência ainda está verificando o estado.",
+            );
           } else {
             daisySosPendenteAteRef.current = 0;
             sos.trigger(sos.holdMs);
