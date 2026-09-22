@@ -9,6 +9,7 @@ import { centroAcimaDoUsuario, deslocamentoDaCamera, precisaMoverCamera } from "
 
 import { fimDosPassos, type PontoDaRota } from "@/lib/rota";
 import { calcularRota } from "@/lib/rota.functions";
+import type { PerfilDeRota } from "@/lib/route-policy";
 import { avaliarDesvio, DESVIO_INICIAL, type EstadoDeDesvio } from "@/lib/reroute";
 
 import { diagnosticarRota, type DiagnosticoDeRota } from "@/lib/directions-status";
@@ -298,6 +299,8 @@ export interface RouteInfo {
   /** Traçado real já decodificado. Usado pela navegação na tela bloqueada,
    *  que desenha a rota sem subir um segundo mapa. */
   tracado: PontoDaRota[];
+  /** Perfil confirmado pelo servidor; nunca inferido no cliente. */
+  perfil?: PerfilDeRota;
 }
 
 export default function RealMap({
@@ -701,6 +704,7 @@ export default function RealMap({
           proximaManobra: passo?.manobra ?? null,
           destinoTexto: rota.destinoTexto ?? destination?.address ?? null,
           tracado: rota.pontos,
+          perfil: resposta.perfil ?? undefined,
         });
         onRouteStatusRef.current?.("pronta");
       })

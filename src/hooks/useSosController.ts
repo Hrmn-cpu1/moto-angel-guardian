@@ -18,13 +18,16 @@ import {
   SOS_HOLD_MS,
   buildSosMessage,
   clearActiveSos,
+  clearPendingSosIntent,
   deliveryStateFromRow,
   guardTrigger,
   isActiveSosStatus,
   isEventoEncerradoError,
   loadActiveSos,
+  loadPendingSosIntent,
   newRequestId,
   saveActiveSos,
+  savePendingSosIntent,
   sosPhaseLabel,
   validateSosFix,
   waLink,
@@ -123,7 +126,7 @@ export function useSosRuntime(): SosController {
   const inFlightRef = useRef(false);
   const lastTriggerRef = useRef(0);
   /** Mantido entre tentativas para que o retry seja idempotente. */
-  const pendingRequestIdRef = useRef<string | null>(null);
+  const pendingRequestIdRef = useRef<string | null>(loadPendingSosIntent()?.requestId ?? null);
   const mountedRef = useRef(true);
   const recoveryEpochRef = useRef(0);
 
@@ -393,13 +396,14 @@ export function useSosRuntime(): SosController {
       const rid = pendingRequestIdRef.current ?? newRequestId();
       pendingRequestIdRef.current = rid;
       setRequestId(rid);
+      savePendingSosIntent(rid);
 
       // 4. Sem internet: o alerta existe no aparelho e o caminho manual segue
       //    aberto. Nada é inventado sobre o servidor.
       if (typeof navigator !== "undefined" && navigator.onLine === false) {
         setPhase("sem_internet");
         setErrorMessage(
-          "Sem internet. O SOS não foi registrado no servidor — envie pelo WhatsApp abaixo ou ligue 190.",
+          "Sem internet. O pedido ficou guardado neste aparelho e tentará registrar ao reconectar. Envie também pelo WhatsApp abaixo ou ligue 190.",
         );
         toast.error("Sem internet. Use o WhatsApp abaixo ou ligue 190.");
         return;
@@ -423,6 +427,7 @@ export function useSosRuntime(): SosController {
       setTriggeredAt(new Date(res.triggeredAt));
       lastTriggerRef.current = Date.now();
       pendingRequestIdRef.current = null;
+      clearPendingSosIntent();
 
       // O snapshot local só existe para alertas EM CURSO. Se o banco devolveu
       // um evento que não está mais aberto, guardá-lo faria o painel reabrir
@@ -490,6 +495,7 @@ export function useSosRuntime(): SosController {
       // insistir num acionamento que o banco vai recusar de novo.
       if (isEventoEncerradoError(e)) {
         pendingRequestIdRef.current = null;
+        clearPendingSosIntent();
         clearActiveSos();
         setSosEventId(null);
         setRequestId(null);
@@ -546,6 +552,36 @@ export function useSosRuntime(): SosController {
     void executar();
   }, [executar]);
 
+  /* Pedido feito sem rede: sobrevive a recarga e tenta novamente com um GPS
+   * NOVO quando a conexão volta. O request_id é o mesmo, então o banco mantém
+   * a idempotência; a localização antiga nunca é reaproveitada. */
+  useEffect(() => {
+    if (recovering || sosEventId) return;
+    const pendente = loadPendingSosIntent();
+    if (!pendente) return;
+    pendingRequestIdRef.current = pendente.requestId;
+    setRequestId(pendente.requestId);
+    setOpen(true);
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      setPhase("sem_internet");
+      setErrorMessage(
+        "SOS aguardando conexão. O app tentará novamente com uma localização atualizada.",
+      );
+    }
+
+    const reenviar = () => {
+      if (inFlightRef.current || sosEventId) return;
+      inFlightRef.current = true;
+      void executar();
+    };
+    window.addEventListener("online", reenviar);
+    const timer = navigator.onLine === false ? null : window.setTimeout(reenviar, 0);
+    return () => {
+      window.removeEventListener("online", reenviar);
+      if (timer != null) window.clearTimeout(timer);
+    };
+  }, [recovering, sosEventId, requestId, executar]);
+
   /* ---------------------------------------------------------------- *
    * Cancelamento — persistido no banco, não só na tela
    * ---------------------------------------------------------------- */
@@ -556,6 +592,7 @@ export function useSosRuntime(): SosController {
     const limpar = () => {
       recoveryEpochRef.current += 1;
       clearActiveSos();
+      clearPendingSosIntent();
       pendingRequestIdRef.current = null;
       setSosEventId(null);
       setRequestId(null);

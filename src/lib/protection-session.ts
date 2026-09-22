@@ -8,6 +8,7 @@ export function setProtectionOwner(userId: string): boolean {
   if (changed) {
     localStorage.removeItem("moto-anjo:viagem");
     localStorage.removeItem("moto-anjo:sos-ativo");
+    localStorage.removeItem("moto-anjo:sos-pendente");
     localStorage.setItem("moto-anjo:protection-owner", userId);
   }
   owner = userId;

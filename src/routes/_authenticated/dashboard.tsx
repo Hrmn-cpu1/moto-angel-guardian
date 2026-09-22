@@ -171,7 +171,9 @@ function Dashboard() {
             vozDoNavegador.falar("A viagem segura já está ativa.");
           } else if (viagem.destino) {
             iniciar();
-            vozDoNavegador.falar("Viagem segura iniciada. Estou acompanhando sua rota.");
+            vozDoNavegador.falar(
+              "Viagem segura iniciada no aplicativo. Preparando a proteção em segundo plano.",
+            );
           } else {
             setFolha("destino");
             vozDoNavegador.falar(
@@ -192,6 +194,17 @@ function Dashboard() {
             "Entendi. Para evitar um acionamento acidental, mantenha o botão SOS pressionado para pedir ajuda.",
           );
           break;
+        case "protection_status":
+          if (!viagemAtiva) {
+            vozDoNavegador.falar("Nenhuma viagem segura está ativa.");
+          } else if (servico.ativo && servico.notificacaoVisivel) {
+            vozDoNavegador.falar("Viagem ativa. O Android confirmou a proteção em segundo plano.");
+          } else {
+            vozDoNavegador.falar(
+              "Viagem ativa, mas a proteção em segundo plano ainda não foi confirmada.",
+            );
+          }
+          break;
         case "stop_voice":
           if (vozLigada) alternarVoz();
           vozDoNavegador.calar();
@@ -201,7 +214,7 @@ function Dashboard() {
           break;
       }
     },
-    [viagem, viagemAtiva, iniciar, vozLigada, alternarVoz],
+    [viagem, viagemAtiva, servico, iniciar, vozLigada, alternarVoz],
   );
 
   // A rota vem do Google pelo mapa; guardá-la aqui é o que permite mostrar

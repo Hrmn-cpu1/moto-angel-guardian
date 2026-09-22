@@ -357,6 +357,14 @@ export function CommunityAlertsSheet({
                 })}{" "}
                 · {alert.is_mine ? "por você" : alert.author_name || "pela comunidade"}
               </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Fonte: {alert.source === "sos_moto_anjo" ? "SOS do Moto Anjo" : "comunidade"} ·
+                válido até{" "}
+                {new Date(alert.expires_at).toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
             </article>
           ))}
       </div>

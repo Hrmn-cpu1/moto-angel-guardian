@@ -1,7 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { mapearRotaDaResposta, statusDeFalhaHttp, type RotaCalculada } from "@/lib/rota";
+import { statusDeFalhaHttp, type RotaCalculada } from "@/lib/rota";
+import { mapearRotaValidada } from "@/lib/rota-validada";
+import {
+  corpoDaRota,
+  permiteFallbackParaCarro,
+  perfilDoModo,
+  type ModoGoogleRoutes,
+  type PerfilDeRota,
+} from "@/lib/route-policy";
 
 /**
  * Rota e busca de destino pelo servidor.
@@ -32,6 +40,8 @@ const EntradaRota = z.object({
 export interface RespostaDeRota {
   ok: boolean;
   rota: RotaCalculada | null;
+  /** Perfil realmente usado. Fallback de carro nunca é apresentado como rota de moto. */
+  perfil: PerfilDeRota | null;
   /** Status no vocabulário do Directions (REQUEST_DENIED, ZERO_RESULTS...). */
   status: string | null;
 }
@@ -52,12 +62,12 @@ export const calcularRota = createServerFn({ method: "POST" })
     const lovableKey = process.env.LOVABLE_API_KEY;
     const apiKey = process.env.GOOGLE_MAPS_API_KEY;
     if (!lovableKey || !apiKey) {
-      return { ok: false, rota: null, status: "REQUEST_DENIED" };
+      return { ok: false, rota: null, perfil: null, status: "REQUEST_DENIED" };
     }
 
     const temCoordenada = data.destino.lat != null && data.destino.lng != null;
     if (!temCoordenada && !data.destino.endereco) {
-      return { ok: false, rota: null, status: "INVALID_REQUEST" };
+      return { ok: false, rota: null, perfil: null, status: "INVALID_REQUEST" };
     }
 
     const destino = temCoordenada
@@ -65,39 +75,72 @@ export const calcularRota = createServerFn({ method: "POST" })
       : { address: data.destino.endereco! };
 
     try {
-      const res = await fetch(`${GATEWAY_URL}/routes/directions/v2:computeRoutes`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${lovableKey}`,
-          "X-Connection-Api-Key": apiKey,
-          "Content-Type": "application/json",
-          "X-Goog-FieldMask": CAMPOS_ROTA,
-        },
-        body: JSON.stringify({
-          origin: {
-            location: { latLng: { latitude: data.origem.lat, longitude: data.origem.lng } },
+      const requisitar = (modo: ModoGoogleRoutes) =>
+        fetch(`${GATEWAY_URL}/routes/directions/v2:computeRoutes`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${lovableKey}`,
+            "X-Connection-Api-Key": apiKey,
+            "Content-Type": "application/json",
+            "X-Goog-FieldMask": CAMPOS_ROTA,
           },
-          destination: destino,
-          travelMode: "DRIVE",
-          routingPreference: "TRAFFIC_AWARE",
-          languageCode: "pt-BR",
-          units: "METRIC",
-        }),
-      });
+          body: JSON.stringify(corpoDaRota(data.origem, destino, modo)),
+        });
+
+      let modo: ModoGoogleRoutes = "TWO_WHEELER";
+      let res = await requisitar(modo);
+      if (!res.ok) {
+        const corpo = await res.text();
+        if (!permiteFallbackParaCarro(res.status, corpo)) {
+          console.error(`Routes computeRoutes falhou [${res.status}]: ${corpo}`);
+          return {
+            ok: false,
+            rota: null,
+            perfil: null,
+            status: statusDeFalhaHttp(res.status, corpo),
+          };
+        }
+        modo = "DRIVE";
+        res = await requisitar(modo);
+      }
 
       if (!res.ok) {
         const corpo = await res.text();
-        console.error(`Routes computeRoutes falhou [${res.status}]: ${corpo}`);
-        return { ok: false, rota: null, status: statusDeFalhaHttp(res.status, corpo) };
+        console.error(`Routes fallback falhou [${res.status}]: ${corpo}`);
+        return {
+          ok: false,
+          rota: null,
+          perfil: null,
+          status: statusDeFalhaHttp(res.status, corpo),
+        };
       }
 
-      const json = await res.json();
-      const rota = mapearRotaDaResposta(json, temCoordenada ? null : data.destino.endereco!);
-      if (!rota) return { ok: false, rota: null, status: "ZERO_RESULTS" };
-      return { ok: true, rota, status: "OK" };
+      let json = await res.json();
+      let rota = mapearRotaValidada(json, temCoordenada ? null : data.destino.endereco!);
+      const semRotas = Array.isArray((json as { routes?: unknown[] })?.routes)
+        ? (json as { routes: unknown[] }).routes.length === 0
+        : false;
+      if (!rota && modo === "TWO_WHEELER" && semRotas) {
+        modo = "DRIVE";
+        res = await requisitar(modo);
+        if (!res.ok) {
+          const corpo = await res.text();
+          return {
+            ok: false,
+            rota: null,
+            perfil: null,
+            status: statusDeFalhaHttp(res.status, corpo),
+          };
+        }
+        json = await res.json();
+        rota = mapearRotaValidada(json, temCoordenada ? null : data.destino.endereco!);
+      }
+
+      if (!rota) return { ok: false, rota: null, perfil: null, status: "ZERO_RESULTS" };
+      return { ok: true, rota, perfil: perfilDoModo(modo), status: "OK" };
     } catch (e) {
       console.error("calcularRota erro", e);
-      return { ok: false, rota: null, status: "UNKNOWN_ERROR" };
+      return { ok: false, rota: null, perfil: null, status: "UNKNOWN_ERROR" };
     }
   });
 

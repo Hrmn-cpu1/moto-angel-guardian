@@ -17,6 +17,12 @@ export function DaisyVoiceButton({
   const recognitionRef = useRef<ReturnType<typeof criarReconhecimentoDaisy> | null>(null);
   const onCommandRef = useRef(onCommand);
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const listeningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearListeningTimer = () => {
+    if (listeningTimerRef.current) clearTimeout(listeningTimerRef.current);
+    listeningTimerRef.current = null;
+  };
 
   useEffect(() => {
     onCommandRef.current = onCommand;
@@ -28,6 +34,7 @@ export function DaisyVoiceButton({
       onResult: (text) => {
         if (!active) return;
         setListening(false);
+        clearListeningTimer();
         setError(null);
         setTranscript(text);
         if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
@@ -39,6 +46,7 @@ export function DaisyVoiceButton({
       onError: (message) => {
         if (!active) return;
         setListening(false);
+        clearListeningTimer();
         setTranscript(null);
         setError(message);
       },
@@ -50,6 +58,7 @@ export function DaisyVoiceButton({
     return () => {
       active = false;
       if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+      clearListeningTimer();
       void recognition.stop();
     };
   }, []);
@@ -65,9 +74,15 @@ export function DaisyVoiceButton({
     if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
     if (listening) {
       setListening(false);
+      clearListeningTimer();
       void recognition.stop();
     } else {
       setListening(true);
+      listeningTimerRef.current = setTimeout(() => {
+        setListening(false);
+        setError("Não ouvi um comando. Toque e tente novamente.");
+        void recognition.stop();
+      }, 15_000);
       void recognition.start();
     }
   };

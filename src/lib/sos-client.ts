@@ -57,6 +57,12 @@ export const SOS_LOCAL_TTL_MS = 6 * 60 * 60 * 1000;
 /** Chave usada para sobreviver a um F5 ou a uma troca de tela. */
 export const SOS_STORAGE_KEY = "moto-anjo:sos-ativo";
 
+/** Intenção ainda não confirmada pelo servidor (queda de conexão antes do registro). */
+export const SOS_PENDING_STORAGE_KEY = "moto-anjo:sos-pendente";
+
+/** Depois disto, não se abre automaticamente uma emergência antiga. */
+export const SOS_PENDING_TTL_MS = 15 * 60 * 1000;
+
 /* ------------------------------------------------------------------ *
  * request_id — idempotência
  * ------------------------------------------------------------------ */
@@ -505,6 +511,11 @@ export interface ActiveSosSnapshot {
   triggeredAt: number;
 }
 
+export interface PendingSosIntent {
+  requestId: string;
+  createdAt: number;
+}
+
 type StorageLike = {
   getItem: (k: string) => string | null;
   setItem: (k: string, v: string) => void;
@@ -577,6 +588,63 @@ export function clearActiveSos(): void {
   if (!s) return;
   try {
     s.removeItem(SOS_STORAGE_KEY);
+  } catch {
+    /* nada a fazer */
+  }
+}
+
+export function serializePendingSosIntent(intent: PendingSosIntent): string {
+  return JSON.stringify(intent);
+}
+
+export function parsePendingSosIntent(
+  raw: string | null,
+  now = Date.now(),
+): PendingSosIntent | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    if (!isValidUuid(parsed.requestId)) return null;
+    if (typeof parsed.createdAt !== "number" || !Number.isFinite(parsed.createdAt)) return null;
+    const age = now - parsed.createdAt;
+    if (age < 0 || age > SOS_PENDING_TTL_MS) return null;
+    return { requestId: parsed.requestId as string, createdAt: parsed.createdAt };
+  } catch {
+    return null;
+  }
+}
+
+/** Preserva createdAt no retry: tentar de novo não rejuvenesce um pedido antigo. */
+export function savePendingSosIntent(requestId: string, now = Date.now()): void {
+  if (!isValidUuid(requestId)) return;
+  const s = getStorage();
+  if (!s) return;
+  try {
+    const existing = parsePendingSosIntent(s.getItem(SOS_PENDING_STORAGE_KEY), now);
+    const intent = existing?.requestId === requestId ? existing : { requestId, createdAt: now };
+    s.setItem(SOS_PENDING_STORAGE_KEY, serializePendingSosIntent(intent));
+  } catch {
+    /* sem storage: o request_id continua vivo na memória desta sessão */
+  }
+}
+
+export function loadPendingSosIntent(now = Date.now()): PendingSosIntent | null {
+  const s = getStorage();
+  if (!s) return null;
+  try {
+    const intent = parsePendingSosIntent(s.getItem(SOS_PENDING_STORAGE_KEY), now);
+    if (!intent) s.removeItem(SOS_PENDING_STORAGE_KEY);
+    return intent;
+  } catch {
+    return null;
+  }
+}
+
+export function clearPendingSosIntent(): void {
+  const s = getStorage();
+  if (!s) return;
+  try {
+    s.removeItem(SOS_PENDING_STORAGE_KEY);
   } catch {
     /* nada a fazer */
   }

@@ -29,10 +29,12 @@ function alert(id: string, distance: number, type: NearbyAlert["type"] = "perigo
     address: null,
     lat: -23.55,
     lng: -46.63,
-    created_at: "2026-09-08T20:00:00Z",
+    created_at: new Date().toISOString(),
     author_name: "Comunidade",
     distance_km: distance,
     is_mine: false,
+    source: type === "sos" ? "sos_moto_anjo" : "comunidade",
+    expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
   };
 }
 
