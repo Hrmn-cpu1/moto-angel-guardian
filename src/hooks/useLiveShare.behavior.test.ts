@@ -27,6 +27,7 @@ beforeEach(() => {
   mocks.rpc.mockResolvedValue({ error: null });
   mocks.watch.mockReturnValue(mocks.stop);
   Object.defineProperty(navigator, "geolocation", { configurable: true, value: {} });
+  Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
 });
 
 test("failed revocation keeps sharing active and explicitly reports the failure", async () => {
@@ -42,11 +43,13 @@ test("failed revocation keeps sharing active and explicitly reports the failure"
 test("reconnect retries a pending stop for the same account without restarting GPS", async () => {
   const { result } = renderHook(() => useLiveShareRuntime());
   await waitFor(() => expect(result.current.sharing).toBe(true));
+  Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
   mocks.rpc.mockResolvedValue({ error: { message: "offline" } });
   await act(() => result.current.stop());
   expect(mocks.stop).toHaveBeenCalled();
   expect(result.current.localStopRequested).toBe(true);
   mocks.rpc.mockResolvedValue({ error: null });
+  Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
   act(() => window.dispatchEvent(new Event("online")));
   await waitFor(() => expect(result.current.localStopRequested).toBe(false));
   expect(result.current.sharing).toBe(false);
