@@ -37,7 +37,7 @@ export function interpretarComando(texto: string): DaisyCommand {
   if (/(qual|me diga|diga).*(destino|proximo destino)|destino/.test(t)) {
     return { type: "destination" };
   }
-  if (/(confirmar|confirma|pode mandar|pode enviar|envia|mande|manda).*(sos|socorro|ajuda)|^(sim|confirmo)$/.test(t)) {
+  if (/(confirmar|confirma|pode mandar|pode enviar|envia|mande).*(sos|socorro|ajuda)|^(sim|confirmo)$/.test(t)) {
     return { type: "confirm_sos" };
   }
   if (/(cancelar|cancela|nao mandar|nao enviar|desistir).*(sos|socorro|ajuda)/.test(t)) {
