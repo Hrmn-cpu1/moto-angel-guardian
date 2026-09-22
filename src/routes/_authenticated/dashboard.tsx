@@ -163,6 +163,8 @@ function Dashboard() {
   const { located: locatedPartners } = usePartners();
   // DAISY Fase 1: comandos determinísticos. A voz nunca dispara uma ação
   // crítica sem confirmação e nunca substitui o motor nativo de segurança.
+  const daisySosPendenteAteRef = useRef(0);
+
   const onDaisyCommand = useCallback(
     (command: DaisyCommand) => {
       switch (command.type) {
@@ -189,10 +191,32 @@ function Dashboard() {
           break;
         }
         case "help":
-          // Pedido de emergência por voz exige confirmação física no SOS.
+          // Emergência por voz usa confirmação em duas etapas. O primeiro
+          // comando nunca dispara rede/GPS/contatos sozinho.
+          daisySosPendenteAteRef.current = Date.now() + 15_000;
           vozDoNavegador.falar(
-            "Entendi. Para evitar um acionamento acidental, mantenha o botão SOS pressionado para pedir ajuda.",
+            "Pedido de SOS preparado. Diga confirmar SOS nos próximos quinze segundos para enviar, ou diga cancelar SOS.",
           );
+          break;
+        case "confirm_sos":
+          if (Date.now() > daisySosPendenteAteRef.current) {
+            daisySosPendenteAteRef.current = 0;
+            vozDoNavegador.falar(
+              "A confirmação expirou. Diga SOS novamente para preparar um novo pedido.",
+            );
+          } else if (sos.busy || sos.recovering) {
+            vozDoNavegador.falar("Aguarde. O sistema de emergência ainda está verificando o estado.");
+          } else {
+            daisySosPendenteAteRef.current = 0;
+            sos.trigger(sos.holdMs);
+            vozDoNavegador.falar(
+              "SOS confirmado. Estou obtendo sua localização e abrindo o protocolo de emergência.",
+            );
+          }
+          break;
+        case "cancel_sos":
+          daisySosPendenteAteRef.current = 0;
+          vozDoNavegador.falar("Pedido de SOS por voz cancelado.");
           break;
         case "protection_status":
           if (!viagemAtiva) {
@@ -214,7 +238,7 @@ function Dashboard() {
           break;
       }
     },
-    [viagem, viagemAtiva, servico, iniciar, vozLigada, alternarVoz],
+    [viagem, viagemAtiva, servico, iniciar, vozLigada, alternarVoz, sos],
   );
 
   // A rota vem do Google pelo mapa; guardá-la aqui é o que permite mostrar
