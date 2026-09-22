@@ -3,6 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { publicarPresenca } from "@/lib/presence";
 import { assinarPosicao } from "@/lib/geo-watch";
 
+const LEGACY_STOP_KEY = "moto_anjo_local_share_stop_requested";
+const stopKeyFor = (userId: string) => `${LEGACY_STOP_KEY}:${userId}`;
+
 /**
  * Compartilhamento contínuo de localização.
  *
@@ -33,15 +36,10 @@ export function useLiveShareRuntime() {
   const lastPush = useRef(0);
   const mounted = useRef(false);
   const generation = useRef(0);
-  const LOCAL_STOP_KEY = "moto_anjo_local_share_stop_requested";
+  const ownerId = useRef<string | null>(null);
   useEffect(() => {
     mounted.current = true;
     generation.current += 1;
-    try {
-      setLocalStopRequested(localStorage.getItem(LOCAL_STOP_KEY) === "1");
-    } catch {
-      setLocalStopRequested(false);
-    }
     return () => {
       mounted.current = false;
       generation.current += 1;
@@ -61,6 +59,18 @@ export function useLiveShareRuntime() {
         if (!cancelled) setLoading(false);
         return;
       }
+      ownerId.current = user.id;
+      try {
+        // O marcador antigo não identifica a conta: impede transmissão, mas
+        // só o usuário pode confirmar sua revogação. Nunca o reenviamos
+        // automaticamente para uma conta possivelmente diferente.
+        setLocalStopRequested(
+          localStorage.getItem(stopKeyFor(user.id)) === "1" ||
+            localStorage.getItem(LEGACY_STOP_KEY) === "1",
+        );
+      } catch {
+        setLocalStopRequested(false);
+      }
       const { data, error: readError } = await supabase
         .from("live_locations")
         .select("sharing,updated_at")
@@ -71,11 +81,6 @@ export function useLiveShareRuntime() {
       setConfirmed(!readError);
       setSharing(!!data?.sharing);
       setLastSync(data?.updated_at ?? null);
-      try {
-        setLocalStopRequested(localStorage.getItem(LOCAL_STOP_KEY) === "1");
-      } catch {
-        setLocalStopRequested(false);
-      }
       setLoading(false);
     })().catch(() => {
       if (!cancelled) {
@@ -118,32 +123,93 @@ export function useLiveShareRuntime() {
     cancelarWatch.current?.();
     cancelarWatch.current = null;
     setLocalStopRequested(true);
+    const userId = ownerId.current;
     try {
-      localStorage.setItem(LOCAL_STOP_KEY, "1");
+      if (userId) localStorage.setItem(stopKeyFor(userId), "1");
     } catch {
       /* armazenamento local indisponível: o watch já foi cancelado nesta sessão */
     }
 
     try {
+      if (!userId) throw new Error("Conta indisponível.");
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user?.id !== userId) throw new Error("Conta alterada.");
       const { error: err } = await supabase.rpc("set_location_sharing", { _enabled: false });
       if (err) throw err;
+      if (!mounted.current || ownerId.current !== userId) return;
       setSharing(false);
       setConfirmed(true);
+      setLocalStopRequested(false);
       setError(null);
       try {
-        localStorage.removeItem(LOCAL_STOP_KEY);
+        localStorage.removeItem(stopKeyFor(userId));
+        localStorage.removeItem(LEGACY_STOP_KEY);
       } catch {
         /* ignore */
       }
     } catch {
+      setConfirmed(false);
       setError(
-        "O servidor não confirmou a interrupção. Este aparelho parou de enviar novas posições. Tente desligar novamente quando houver conexão.",
+        "O servidor não confirmou a interrupção. Este aparelho parou de enviar novas posições; a confirmação será tentada quando a conexão voltar.",
       );
     } finally {
       changing.current = false;
       setSaving(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (loading || !localStopRequested || !ownerId.current) return;
+    const userId = ownerId.current;
+    let active = true;
+    const retry = () => {
+      if (!active || !mounted.current || changing.current || navigator.onLine === false) return;
+      try {
+        // Não atribuir a outra conta um pedido antigo sem dono conhecido.
+        if (localStorage.getItem(stopKeyFor(userId)) !== "1") return;
+      } catch {
+        return;
+      }
+      changing.current = true;
+      setSaving(true);
+      void (async () => {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user?.id !== userId || ownerId.current !== userId) return;
+        const { error: err } = await supabase.rpc("set_location_sharing", { _enabled: false });
+        if (err || !active || !mounted.current || ownerId.current !== userId) return;
+        setSharing(false);
+        setConfirmed(true);
+        setLocalStopRequested(false);
+        setError(null);
+        try {
+          localStorage.removeItem(stopKeyFor(userId));
+        } catch {
+          /* uma nova tentativa idempotente após reload é segura */
+        }
+      })()
+        .catch(() => {
+          /* manter o pedido pendente até a próxima tentativa */
+        })
+        .finally(() => {
+          if (mounted.current && ownerId.current === userId) {
+            changing.current = false;
+            setSaving(false);
+          }
+        });
+    };
+    retry();
+    window.addEventListener("online", retry);
+    const interval = window.setInterval(retry, 30_000);
+    return () => {
+      active = false;
+      window.removeEventListener("online", retry);
+      window.clearInterval(interval);
+    };
+  }, [loading, localStopRequested]);
 
   const subscribePosition = useCallback(() => {
     if (!mounted.current || cancelarWatch.current) return;
@@ -160,6 +226,10 @@ export function useLiveShareRuntime() {
 
   const start = useCallback(async () => {
     if (!mounted.current || changing.current) return;
+    if (localStopRequested) {
+      setError("Confirme a interrupção pendente antes de compartilhar novamente.");
+      return;
+    }
     const operation = generation.current;
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       setError("GPS indisponível neste dispositivo.");
@@ -176,7 +246,7 @@ export function useLiveShareRuntime() {
       setLocalStopRequested(false);
       setError(null);
       try {
-        localStorage.removeItem(LOCAL_STOP_KEY);
+        if (ownerId.current) localStorage.removeItem(stopKeyFor(ownerId.current));
       } catch {
         /* ignore */
       }
@@ -187,12 +257,12 @@ export function useLiveShareRuntime() {
       changing.current = false;
       setSaving(false);
     }
-  }, [subscribePosition]);
+  }, [localStopRequested, subscribePosition]);
 
   const toggle = useCallback(() => {
-    if (sharing || !confirmed) void stop();
+    if (sharing || !confirmed || localStopRequested) void stop();
     else void start();
-  }, [sharing, confirmed, start, stop]);
+  }, [sharing, confirmed, localStopRequested, start, stop]);
 
   useEffect(() => {
     if (sharing && !localStopRequested && cancelarWatch.current == null) subscribePosition();
