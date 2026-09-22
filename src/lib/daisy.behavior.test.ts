@@ -6,8 +6,12 @@ describe("DAISY command parser", () => {
     expect(normalizarComando("Daisy, iniciar viagem segura!")).toBe("daisy iniciar viagem segura");
   });
 
-  it("entende iniciar viagem", () => {
+  it("entende formas naturais de iniciar a proteção de viagem", () => {
     expect(interpretarComando("Daisy, iniciar viagem segura").type).toBe("start_trip");
+    expect(interpretarComando("Daisy liga a viagem segura").type).toBe("start_trip");
+    expect(interpretarComando("Daisy ativa a proteção").type).toBe("start_trip");
+    expect(interpretarComando("vamos rodar").type).toBe("start_trip");
+    expect(interpretarComando("começar rota").type).toBe("start_trip");
   });
 
   it("entende consulta de destino", () => {
