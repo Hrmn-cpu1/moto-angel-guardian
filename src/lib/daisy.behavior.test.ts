@@ -14,8 +14,19 @@ describe("DAISY command parser", () => {
     expect(interpretarComando("Daisy, qual meu próximo destino?").type).toBe("destination");
   });
 
-  it("trata pedido de ajuda como intenção que exige confirmação", () => {
+  it("trata pedidos naturais de emergência como intenção que exige confirmação", () => {
     expect(interpretarComando("Daisy, preciso de ajuda").type).toBe("help");
+    expect(interpretarComando("Daisy manda um SOS").type).toBe("help");
+    expect(interpretarComando("socorro").type).toBe("help");
+  });
+
+  it("só confirma SOS com uma segunda fala explícita", () => {
+    expect(interpretarComando("Daisy, confirmar SOS").type).toBe("confirm_sos");
+    expect(interpretarComando("pode mandar o SOS").type).toBe("confirm_sos");
+  });
+
+  it("permite cancelar a confirmação de SOS por voz", () => {
+    expect(interpretarComando("Daisy, cancelar SOS").type).toBe("cancel_sos");
   });
 
   it("consulta o estado real da proteção sem acionar nada", () => {
