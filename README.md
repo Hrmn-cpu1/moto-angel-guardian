@@ -68,7 +68,8 @@ Também é possível gerar pelo GitHub Actions: aba **Actions** →
 **Android Debug APK (v3)** → **Run workflow** (branch `main`). O APK sai como
 artifact `moto-anjo-debug-v3`, com tamanho e SHA-256 no resumo da execução.
 
-> O APK carrega a aplicação publicada (`server.url` em `capacitor.config.ts`).
+> O APK carrega a aplicação publicada (`server.url` em `capacitor.config.ts`),
+> por padrão em `https://motoanjo.app.br`.
 > Mudanças de frontend só aparecem no aparelho depois de publicar a web.
 
 ## Banco de dados
