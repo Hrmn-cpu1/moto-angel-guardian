@@ -35,7 +35,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
  */
 
 /** Para onde o WebView aponta. Trocável em tempo de build pelo CI. */
-const URL_PADRAO = "https://moto-angel-guardian.lovable.app";
+const URL_PADRAO = "https://motoanjo.app.br";
 const urlDoApp = (process.env.MOTOANJO_WEB_URL ?? URL_PADRAO).trim() || URL_PADRAO;
 
 function hostDe(u: string): string {
