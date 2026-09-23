@@ -135,7 +135,7 @@ jobs:
       - name: Declarar o frontend que o APK vai carregar
         run: |
           set -e
-          URL="${MOTOANJO_WEB_URL:-https://moto-angel-guardian.lovable.app}"
+          URL="${MOTOANJO_WEB_URL:-https://motoanjo.app.br}"
           echo "APK_WEB_URL=$URL" >> "$GITHUB_ENV"
           echo "::notice title=Frontend do APK::Este APK carrega $URL (server.url). Ele NAO embute o frontend deste commit; a tela so mostra este codigo depois que essa URL for publicada."
         env:
