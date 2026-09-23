@@ -290,7 +290,7 @@ jobs:
           {
             echo "status: PLAY_ASSINADO"
             echo "commit: ${{ github.sha }}"
-            echo "url_do_frontend: ${MOTOANJO_WEB_URL:-https://moto-angel-guardian.lovable.app}"
+            echo "url_do_frontend: ${MOTOANJO_WEB_URL:-https://motoanjo.app.br}"
             echo "sha256 AAB: $(sha256sum "$AAB" | cut -d' ' -f1)"
             echo "sha256 APK: $(sha256sum "$APK" | cut -d' ' -f1)"
           } > play-build-metadata.txt
