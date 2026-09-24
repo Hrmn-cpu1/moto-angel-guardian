@@ -176,9 +176,12 @@
     <queries>
         <package android:name="com.whatsapp" />
         <package android:name="com.whatsapp.w4b" />
-        <!-- Android 11+: permite localizar o serviço de reconhecimento de voz. -->
+        <!-- Android 11+: permite localizar reconhecimento e síntese de voz. -->
         <intent>
             <action android:name="android.speech.RecognitionService" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
         </intent>
         <intent>
             <action android:name="android.intent.action.VIEW" />
