@@ -7,9 +7,8 @@
  * mostra o estado real: se não houver voz, o aviso continua visual e o botão
  * de voz não aparece prometendo algo que não vai acontecer.
  *
- * Não há plugin nativo de TTS no projeto. Adicionar um seria dependência nova
- * num checkpoint que já está grande; a interface abaixo é o ponto de troca
- * quando isso for feito.
+ * No APK, a DAISY usa a ponte nativa DaisyTts (Android TextToSpeech).
+ * No navegador, speechSynthesis continua como fallback.
  */
 
 export interface AdaptadorDeVoz {
@@ -17,6 +16,11 @@ export interface AdaptadorDeVoz {
   falar: (texto: string) => void;
   calar: () => void;
 }
+
+type DaisyTtsNative = {
+  speak: (options: { text: string }) => Promise<void>;
+  stop: () => Promise<void>;
+};
 
 type SinteseGlobal = {
   speechSynthesis?: {
@@ -35,12 +39,32 @@ function janela(): SinteseGlobal | null {
   return typeof window === "undefined" ? null : (window as unknown as SinteseGlobal);
 }
 
+function ttsNativo(): DaisyTtsNative | null {
+  if (typeof window === "undefined") return null;
+  const cap = (
+    window as unknown as {
+      Capacitor?: {
+        isNativePlatform?: () => boolean;
+        Plugins?: { DaisyTts?: DaisyTtsNative };
+      };
+    }
+  ).Capacitor;
+  if (typeof cap?.isNativePlatform !== "function" || !cap.isNativePlatform()) return null;
+  return cap.Plugins?.DaisyTts ?? null;
+}
+
 export const vozDoNavegador: AdaptadorDeVoz = {
   disponivel: () => {
+    if (ttsNativo()) return true;
     const w = janela();
     return Boolean(w?.speechSynthesis && w?.SpeechSynthesisUtterance);
   },
   falar: (texto) => {
+    const native = ttsNativo();
+    if (native) {
+      void native.speak({ text: texto }).catch(() => undefined);
+      return;
+    }
     const w = janela();
     if (!w?.speechSynthesis || !w.SpeechSynthesisUtterance) return;
     try {
@@ -57,6 +81,11 @@ export const vozDoNavegador: AdaptadorDeVoz = {
     }
   },
   calar: () => {
+    const native = ttsNativo();
+    if (native) {
+      void native.stop().catch(() => undefined);
+      return;
+    }
     try {
       janela()?.speechSynthesis?.cancel();
     } catch {
