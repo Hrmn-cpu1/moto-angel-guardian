@@ -280,6 +280,15 @@ jobs:
           : "${MOTOANJO_KEYSTORE_PASSWORD:?Configure a senha no ambiente play-release}"
           : "${MOTOANJO_KEY_ALIAS:?Configure o alias no ambiente play-release}"
           : "${MOTOANJO_KEY_PASSWORD:?Configure a senha da chave no ambiente play-release}"
+          # Fail fast: prove the secret is a real keystore before Gradle spends minutes building.
+          # This detects wrong or double-encoded secrets at the CI boundary.
+          printf '%s' "$MOTOANJO_KEYSTORE_BASE64" | base64 --decode > /tmp/motoanjo-release.jks
+          test -s /tmp/motoanjo-release.jks
+          keytool -list -v -keystore /tmp/motoanjo-release.jks \
+            -storepass "$MOTOANJO_KEYSTORE_PASSWORD" \
+            -alias "$MOTOANJO_KEY_ALIAS" > /tmp/motoanjo-keystore-check.txt
+          grep -q "Alias name: $MOTOANJO_KEY_ALIAS" /tmp/motoanjo-keystore-check.txt
+          echo "keystore validation: PASS (private material never printed)"
           chmod +x gradlew
           ./gradlew :app:bundleRelease :app:assembleRelease --stacktrace
           AAB=app/build/outputs/bundle/release/app-release.aab
